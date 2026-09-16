@@ -27,7 +27,8 @@
     @if($submission->status===App\Enums\SubmissionStatus::Revision)<div class="notice"><strong>{{ $submission->editable()?'HR membuka revisi':'Revisi belum dikumpulkan' }}</strong>
         <p>{{ $submission->administrative_reason }}</p><a href="{{ route('candidate.history') }}">Lihat versi final sebelumnya →</a>
     </div>@endif
-    @if(!$submission->editable())<div class="errors">Pengumpulan terkunci karena tenggat terlewati atau lamaran diarsipkan. Data tersimpan tetap dapat dilihat. Hubungi HR untuk tindak lanjut.</div>@endif
+    @if($submission->lockedUntilPortfolioSubmitted())<div class="errors">Tes teknis terkunci sampai portofolio dikumpulkan. Kembali ke beranda untuk mengumpulkan portofolio terlebih dahulu.</div>
+    @elseif(!$submission->editable())<div class="errors">Pengumpulan terkunci karena tenggat terlewati atau lamaran diarsipkan. Data tersimpan tetap dapat dilihat. Hubungi HR untuk tindak lanjut.</div>@endif
     <div class="form-grid">
         <div class="stack">
             <section class="panel">

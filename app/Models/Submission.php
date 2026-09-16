@@ -37,7 +37,18 @@ class Submission extends Model
 
     public function editable(): bool
     {
-        return ! $this->application->archived_at && now()->lte($this->deadline) && in_array($this->status, [SubmissionStatus::NotStarted, SubmissionStatus::Draft, SubmissionStatus::Revision], true);
+        return ! $this->application->archived_at && ! $this->lockedUntilPortfolioSubmitted() && now()->lte($this->deadline) && in_array($this->status, [SubmissionStatus::NotStarted, SubmissionStatus::Draft, SubmissionStatus::Revision], true);
+    }
+
+    public function lockedUntilPortfolioSubmitted(): bool
+    {
+        if ($this->type !== SubmissionType::TechnicalTest) {
+            return false;
+        }
+
+        $portfolio = $this->application->submissions()->where('type', SubmissionType::Portfolio)->first();
+
+        return ! in_array($portfolio?->status, [SubmissionStatus::Submitted, SubmissionStatus::Exempt], true);
     }
 
     public function localDeadline(): string

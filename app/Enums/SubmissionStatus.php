@@ -13,7 +13,7 @@ enum SubmissionStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::NotStarted => 'Belum dimulai',
+            self::NotStarted => 'Mulai',
             self::Draft => 'Draf',
             self::Submitted => 'Sudah dikumpulkan',
             self::Revision => 'Dibuka untuk revisi',
