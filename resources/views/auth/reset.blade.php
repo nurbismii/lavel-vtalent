@@ -1,0 +1,4 @@
+<x-layouts.auth title="Reset password">
+    <h1>Buat password baru.</h1>
+    <form method="post" action="{{ route('password.update') }}">@csrf<input type="hidden" name="token" value="{{ $token }}"><label class="field">Email<input name="email" type="email" value="{{ old('email',$email) }}" required></label><label class="field">Password baru<input type="password" name="password" minlength="12" autocomplete="new-password" required></label><small>Minimal 12 karakter.</small><label class="field">Konfirmasi password<input type="password" name="password_confirmation" required autocomplete="new-password"></label><button class="button primary full">Simpan password</button></form>
+</x-layouts.auth>
