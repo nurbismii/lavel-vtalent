@@ -45,7 +45,7 @@ class ScanUploadedFile implements ShouldQueue
                 0 => ScanStatus::Clean,1 => ScanStatus::Rejected,default => ScanStatus::Failed
             };
             $file->update(['scan_status' => $status, 'scan_message' => match ($status) {
-                ScanStatus::Clean => null,ScanStatus::Rejected => 'File ditolak pemeriksaan keamanan. Gunakan file lain.',default => 'Layanan pemeriksaan belum tersedia. Coba lagi atau hubungi HR.'
+                ScanStatus::Clean => null,ScanStatus::Rejected => 'File ditolak pemeriksaan keamanan. Unggah file lain.',default => 'Layanan pemeriksaan belum tersedia. Coba lagi atau hubungi HR.'
             }]);
         } catch (\Throwable) {
             $this->failed();

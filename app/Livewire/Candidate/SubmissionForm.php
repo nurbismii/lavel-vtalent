@@ -88,8 +88,8 @@ class SubmissionForm extends Component
         $file = app(UploadService::class)->store($this->submission(), auth()->user(), $this->upload, $this->purpose);
         $this->reset('upload');
         $this->feedback = config('submissions.scan_enabled')
-            ? 'Unggahan diterima. Tunggu pemeriksaan keamanan, lalu pilih Gunakan file.'
-            : 'File berhasil disimpan. Pilih Gunakan file, lalu Periksa & kirim final untuk menyelesaikan pengumpulan.';
+            ? 'Unggahan diterima. Tunggu pemeriksaan keamanan, lalu pilih Unggah file.'
+            : 'File berhasil disimpan. Pilih Unggah file, lalu Periksa & kirim final untuk menyelesaikan pengumpulan.';
     }
 
     public function useFile(int $id): void
