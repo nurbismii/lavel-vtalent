@@ -13,6 +13,9 @@
                 <div class="icon-box">@if($submission->type===App\Enums\SubmissionType::Portfolio)<x-heroicon-o-folder-open />@else<x-heroicon-o-code-bracket />@endif</div><span class="badge {{ $submission->status->value }}">{{ $submission->status->label() }}</span>
             </div>
             <h2>{{ $submission->type->label() }}</h2>
+            @if($submission->type === App\Enums\SubmissionType::TechnicalTest)
+                @include('candidate.technical-task', ['technicalTask' => $application->technicalTask()])
+            @endif
             <p class="muted">{{ $submission->type===App\Enums\SubmissionType::Portfolio ? 'Perkenalkan pengalaman dan karya terbaik melalui dokumen portofolio.' : 'Unggah hasil pekerjaan sesuai petunjuk tim rekrutmen.' }}</p>
             <hr><small>TENGGAT PENGUMPULAN</small>
             <p><strong>{{ $submission->localDeadline() }}</strong></p>@if($submission->deadline->isPast() && in_array($submission->status,[App\Enums\SubmissionStatus::NotStarted,App\Enums\SubmissionStatus::Draft,App\Enums\SubmissionStatus::Revision]))<p class="field-error">{{ $submission->status===App\Enums\SubmissionStatus::Revision ? 'Revisi belum dikumpulkan' : 'Tenggat terlewati' }}</p>@endif<a class="button {{ $submission->editable()?'primary':'' }} full" href="{{ route('candidate.submission',$submission) }}">{{ match($submission->status){App\Enums\SubmissionStatus::Submitted=>'Lihat tanda terima',App\Enums\SubmissionStatus::Exempt=>'Lihat detail',default=>$submission->editable()?($submission->status===App\Enums\SubmissionStatus::Revision?'Kerjakan revisi':'Lanjutkan pengumpulan'):'Lihat draf'} }} →</a>

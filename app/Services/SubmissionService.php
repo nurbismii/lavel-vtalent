@@ -5,10 +5,8 @@ namespace App\Services;
 use App\Enums\Role;
 use App\Enums\SubmissionStatus;
 use App\Enums\SubmissionType;
-use App\Jobs\SendSubmissionEmail;
 use App\Models\AppSetting;
 use App\Models\AuditLog;
-use App\Models\EmailDelivery;
 use App\Models\RecruitmentApplication;
 use App\Models\Submission;
 use App\Models\SubmissionVersion;
@@ -112,14 +110,7 @@ class SubmissionService
                 $version->update(['status' => 'final', 'submitted_at' => now(), 'receipt' => 'VDNI-'.Str::upper(Str::ulid())]);
                 $submission->update(['status' => SubmissionStatus::Submitted, 'current_version_id' => $version->id]);
                 AuditLog::record('submission.finalized', $submission, $actor, null, ['version' => $version->number, 'receipt' => $version->receipt]);
-                $delivery = EmailDelivery::create(['submission_id' => $submission->id, 'submission_version_id' => $version->id, 'event' => 'finalized']);
-                DB::afterCommit(function () use ($delivery): void {
-                    try {
-                        SendSubmissionEmail::dispatch($delivery->id);
-                    } catch (\Throwable) {
-                        $delivery->update(['status' => 'failed']);
-                    }
-                });
+
             } elseif ($submission->status !== SubmissionStatus::Revision) {
                 $submission->update(['status' => SubmissionStatus::Draft]);
             }
@@ -146,14 +137,7 @@ class SubmissionService
             }
             $submission->update(['status' => SubmissionStatus::Revision, 'deadline' => $date, 'administrative_reason' => $reason]);
             AuditLog::record('submission.revision_opened', $submission, $actor, $reason, ['deadline' => $date->toIso8601String(), 'version' => $draft->number]);
-            $delivery = EmailDelivery::create(['submission_id' => $submission->id, 'submission_version_id' => $draft->id, 'event' => 'revision']);
-            DB::afterCommit(function () use ($delivery): void {
-                try {
-                    SendSubmissionEmail::dispatch($delivery->id);
-                } catch (\Throwable) {
-                    $delivery->update(['status' => 'failed']);
-                }
-            });
+
         });
     }
 

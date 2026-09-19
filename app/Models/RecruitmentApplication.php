@@ -42,4 +42,9 @@ class RecruitmentApplication extends Model
     {
         return $this->hasMany(UploadedFile::class);
     }
+
+    public function technicalTask(): ?TechnicalTask
+    {
+        return TechnicalTask::where('position_id', $this->position_id)->where('recruitment_period_id', $this->recruitment_period_id)->first();
+    }
 }

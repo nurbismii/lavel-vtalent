@@ -48,7 +48,7 @@ class PortalTest extends TestCase
         $one = $service->save($submission, $user, $draft->id, $this->data($file), true);
         $two = $service->save($submission, $user, $draft->id, $this->data($file), true);
         $this->assertSame($one->receipt, $two->receipt);
-        $this->assertSame(1, EmailDelivery::count());
+        $this->assertSame(0, EmailDelivery::count());
         $this->assertSame(SubmissionStatus::NotStarted, $test->fresh()->status);
         $this->assertSame(SubmissionStatus::Submitted, $submission->fresh()->status);
     }

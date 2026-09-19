@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Enums\Role;
 use App\Enums\SubmissionType;
+use App\Models\AccessDelivery;
 use App\Models\AppSetting;
 use App\Models\AuditLog;
 use App\Models\EmailDelivery;
@@ -11,10 +12,12 @@ use App\Models\Position;
 use App\Models\RecruitmentApplication;
 use App\Models\RecruitmentPeriod;
 use App\Models\Submission;
+use App\Models\TechnicalTask;
 use App\Models\UploadedFile;
 use App\Models\User;
 use App\Services\CandidateImportService;
 use App\Services\RecruitmentService;
+use App\Services\RecruitmentToolsService;
 use App\Services\SubmissionService;
 use Filament\Pages\Page;
 use Illuminate\Database\Eloquent\Builder;
@@ -31,6 +34,67 @@ class Recruitment extends Page
 {
     use WithFileUploads;
     use WithPagination;
+
+    public array $bulk = ['position_id' => '', 'recruitment_period_id' => '', 'type' => 'technical_test', 'deadline' => '', 'reason' => ''];
+
+    public array $task = ['position_id' => '', 'recruitment_period_id' => '', 'starts_at' => ''];
+
+    public $taskFile;
+
+    public array $recipientIds = [];
+
+    public string $recipientSearch = '';
+
+    public string $hrMessage = '';
+
+    public bool $confirmAccess = false;
+
+    public function bulkDeadlines(): void
+    {
+        $count = app(RecruitmentToolsService::class)->deadlines($this->authorizeAdmin(), $this->bulk);
+        $this->feedback = "$count tenggat berhasil diperpanjang. Pengumpulan final dan lamaran arsip tidak diubah.";
+    }
+
+    public function sendCandidateAccess(): void
+    {
+        $actor = $this->authorizeAdmin();
+        $this->validate(['confirmAccess' => 'accepted']);
+        $count = app(RecruitmentToolsService::class)->sendAccess($actor, $this->recipientIds, $this->hrMessage);
+        $this->reset('recipientIds', 'confirmAccess');
+        $this->feedback = "$count email akses dibuat. Periksa status pengiriman di bawah.";
+    }
+
+    public function retryAccess(int $id): void
+    {
+        $actor = $this->authorizeAdmin();
+        $service = app(RecruitmentToolsService::class);
+        $service->validateMailer();
+        $delivery = AccessDelivery::findOrFail($id);
+        abort_unless($delivery->status === 'failed' && $delivery->expires_at->isFuture(), 422);
+        if (AccessDelivery::whereKey($id)->where('status', 'failed')->update(['status' => 'pending'])) {
+            AuditLog::record('account.access_email_retried', $delivery, $actor);
+            $service->dispatchAccess($delivery->fresh());
+        }
+        $this->feedback = 'Email dijadwalkan ulang. Periksa status pengiriman.';
+    }
+
+    public function saveTechnicalTask(): void
+    {
+        app(RecruitmentToolsService::class)->saveTask($this->authorizeAdmin(), $this->task, $this->taskFile);
+        if ($this->taskFile instanceof TemporaryUploadedFile) {
+            $this->taskFile->delete();
+        }
+        $this->reset('taskFile');
+        $this->feedback = 'Soal dan jadwal tes teknis berhasil disimpan.';
+    }
+
+    public function editTechnicalTask(int $id): void
+    {
+        $this->authorizeAdmin();
+        $task = TechnicalTask::findOrFail($id);
+        $this->task = ['position_id' => $task->position_id, 'recruitment_period_id' => $task->recruitment_period_id, 'starts_at' => $task->starts_at->timezone(AppSetting::valueFor('timezone'))->format('Y-m-d\TH:i')];
+        $this->reset('taskFile');
+    }
 
     public $importFile;
 
@@ -174,7 +238,7 @@ class Recruitment extends Page
     public function navigate(string $section): void
     {
         $this->authorizeAdmin();
-        abort_unless(in_array($section, ['dashboard', 'applications', 'create', 'import', 'positions', 'periods', 'audit', 'settings', 'operations'], true), 404);
+        abort_unless(in_array($section, ['dashboard', 'applications', 'create', 'import', 'positions', 'periods', 'audit', 'settings', 'operations', 'tools'], true), 404);
         $this->section = $section;
         $this->resetPage();
         $this->applicationId = null;
@@ -401,7 +465,12 @@ class Recruitment extends Page
                 ->orderBy('name')->orderBy('id')->limit(50)->get(['id', 'name', 'email']);
         }
 
-        return ['candidateOptions' => $candidateOptions, 'statusCounts' => (clone $base)->selectRaw('type, status, count(*) as total')->groupBy('type', 'status')->get(), 'applications' => in_array($this->section, ['dashboard', 'applications'], true) ? $query->latest()->paginate(15) : null, 'positions' => Position::orderBy('name')->get(), 'periods' => RecruitmentPeriod::latest()->get(), 'application' => $application, 'submission' => $submission, 'versions' => $versions, 'version' => $version,
+        return [
+            'recipients' => $this->section === 'tools' ? User::where('role', Role::Candidate)->where('active', true)->when($this->recipientSearch, fn ($q) => $q->where(fn ($s) => $s->where('name', 'like', '%'.mb_substr($this->recipientSearch, 0, 255).'%')->orWhere('email', 'like', '%'.mb_substr($this->recipientSearch, 0, 255).'%')))->orderBy('name')->limit(100)->get() : collect(),
+            'accessDeliveries' => $this->section === 'tools' ? AccessDelivery::latest()->paginate(15, pageName: 'accessPage') : collect(),
+            'technicalTasks' => $this->section === 'tools' ? TechnicalTask::with(['position', 'period'])->latest()->paginate(15, pageName: 'taskPage') : collect(),
+            'bulkCount' => $this->section === 'tools' ? Submission::where('type', $this->bulk['type'])->whereIn('status', ['not_started', 'draft', 'revision'])->whereHas('application', fn ($q) => $q->whereNull('archived_at')->where('position_id', $this->bulk['position_id'])->where('recruitment_period_id', $this->bulk['recruitment_period_id']))->count() : 0,
+            'candidateOptions' => $candidateOptions, 'statusCounts' => (clone $base)->selectRaw('type, status, count(*) as total')->groupBy('type', 'status')->get(), 'applications' => in_array($this->section, ['dashboard', 'applications'], true) ? $query->latest()->paginate(15) : null, 'positions' => Position::orderBy('name')->get(), 'periods' => RecruitmentPeriod::latest()->get(), 'application' => $application, 'submission' => $submission, 'versions' => $versions, 'version' => $version,
             'stats' => ['active' => RecruitmentApplication::whereNull('archived_at')->count(), 'portfolio' => (clone $base)->where('type', 'portfolio')->where('status', 'submitted')->count(), 'test' => (clone $base)->where('type', 'technical_test')->where('status', 'submitted')->count(), 'overdue' => (clone $base)->where('deadline', '<', now())->whereIn('status', ['not_started', 'draft', 'revision'])->count()],
             'audits' => in_array($this->section, ['audit', 'detail'], true) ? AuditLog::with('actor')->when($application, fn ($q) => $q->where(fn ($s) => $s->where(fn ($a) => $a->where('target_type', RecruitmentApplication::class)->where('target_id', $application->id))->orWhere(fn ($a) => $a->where('target_type', Submission::class)->whereIn('target_id', $application->submissions->pluck('id')))->orWhere(fn ($a) => $a->where('target_type', User::class)->where('target_id', $application->user_id))))->latest()->paginate(20, pageName: 'auditPage') : collect(),
             'deliveries' => $this->section === 'operations' ? EmailDelivery::with('submission.application.user')->latest()->paginate(20) : collect(),

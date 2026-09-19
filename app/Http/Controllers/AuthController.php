@@ -9,6 +9,7 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
@@ -64,12 +65,18 @@ class AuthController extends Controller
         if (User::where('email', $email)->where('active', true)->where('role', Role::Candidate)->exists()) {
             try {
                 Password::sendResetLink(['email' => $email, 'active' => true, 'role' => Role::Candidate->value]);
-            } catch (\Throwable) {
-                report(new \RuntimeException('Pengiriman email reset password gagal. Periksa konfigurasi mail.'));
+            } catch (\Throwable $exception) {
+                Log::error('Pengiriman email reset password gagal.', [
+                    'exception_type' => get_class($exception),
+                    'mailer' => config('mail.default'),
+                    'smtp_host' => config('mail.mailers.smtp.host'),
+                    'smtp_port' => config('mail.mailers.smtp.port'),
+                    'smtp_timeout' => config('mail.mailers.smtp.timeout'),
+                ]);
             }
         }
 
-        return back()->with('status', 'Jika email terdaftar dan akun aktif, instruksi reset akan dikirim.');
+        return back()->with('status', 'Permintaan reset diterima. Jika akun memenuhi syarat, periksa email Anda. Jika belum masuk, tunggu 60 detik sebelum mencoba kembali atau hubungi HR.');
     }
 
     public function reset(Request $request): mixed

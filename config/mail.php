@@ -16,6 +16,9 @@ return [
 
     'default' => env('MAIL_MAILER', 'log'),
 
+    // Shared pacing for queued portal emails, including multiple workers.
+    'queue_interval_seconds' => (int) env('MAIL_QUEUE_INTERVAL_SECONDS', 11),
+
     /*
     |--------------------------------------------------------------------------
     | Mailer Configurations

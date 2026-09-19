@@ -7,6 +7,9 @@
         </div><span class="badge {{ $submission->status->value }}">{{ $submission->status->label() }}</span>
     </div>
     <x-errors />@if($feedback)<div class="success" role="status">{{ $feedback }}</div>@endif
+    @if($submission->type === App\Enums\SubmissionType::TechnicalTest && ! $submission->application->archived_at)
+        @include('candidate.technical-task', ['technicalTask' => $submission->application->technicalTask()])
+    @endif
     @if($submission->status===App\Enums\SubmissionStatus::Exempt)<section class="panel">
         <h2>Portofolio tidak diwajibkan.</h2>
         <p>{{ $submission->administrative_reason }}</p><small>Status ini ditetapkan oleh HR dan bukan pengiriman final oleh kandidat.</small>

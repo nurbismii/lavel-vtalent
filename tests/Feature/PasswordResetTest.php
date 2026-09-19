@@ -6,6 +6,7 @@ use App\Enums\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
@@ -46,10 +47,24 @@ class PasswordResetTest extends TestCase
         $inactive = User::factory()->create(['active' => false]);
         $admin = User::factory()->create(['role' => Role::Admin]);
         foreach (['missing@example.test', $inactive->email, $admin->email] as $email) {
-            $this->post(route('password.email'), ['email' => $email])->assertSessionHas('status', 'Jika email terdaftar dan akun aktif, instruksi reset akan dikirim.');
+            $this->post(route('password.email'), ['email' => $email])->assertSessionHas('status', 'Permintaan reset diterima. Jika akun memenuhi syarat, periksa email Anda. Jika belum masuk, tunggu 60 detik sebelum mencoba kembali atau hubungi HR.');
         }
         $this->assertCount(0, Mail::mailer('array')->getSymfonyTransport()->messages());
         $this->assertDatabaseCount('password_reset_tokens', 0);
+    }
+
+    public function test_mail_failure_is_logged_without_exposing_credentials_or_account_status(): void
+    {
+        $user = User::factory()->create();
+        Password::shouldReceive('sendResetLink')->once()->andThrow(new \RuntimeException('sensitive-smtp-detail'));
+        Log::shouldReceive('error')->once()->with('Pengiriman email reset password gagal.', \Mockery::on(function (array $context): bool {
+            return $context['exception_type'] === \RuntimeException::class
+                && ! str_contains(json_encode($context), 'sensitive-smtp-detail');
+        }));
+        $this->from(route('password.request'))->post(route('password.email'), ['email' => $user->email])
+            ->assertRedirect(route('password.request'))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', 'Permintaan reset diterima. Jika akun memenuhi syarat, periksa email Anda. Jika belum masuk, tunggu 60 detik sebelum mencoba kembali atau hubungi HR.');
     }
 
     public function test_expired_token_cannot_change_password(): void

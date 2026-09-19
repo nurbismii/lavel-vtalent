@@ -51,6 +51,12 @@ class RecruitmentService
                 if ($deadline->isPast()) {
                     throw ValidationException::withMessages(['portfolio_deadline' => 'Tenggat harus berada di masa depan.']);
                 }
+                if ($type === SubmissionType::TechnicalTest) {
+                    $task = $app->technicalTask();
+                    if ($task && $deadline->lte($task->starts_at)) {
+                        throw ValidationException::withMessages(['test_deadline' => 'Tenggat tes harus setelah jadwal mulai soal untuk posisi dan batch ini.']);
+                    }
+                }
                 $app->submissions()->create(['type' => $type, 'deadline' => $deadline, 'task_label' => $type === SubmissionType::TechnicalTest ? $data['task_label'] : null, 'instructions' => $type === SubmissionType::TechnicalTest ? ($data['instructions'] ?? null) : null]);
             }
             AuditLog::record('application.created', $app, $actor);
@@ -108,7 +114,7 @@ class RecruitmentService
                 DB::table('sessions')->where('user_id', $user->id)->delete();
             }
             $user->fill($data)->save();
-            AuditLog::record('account.updated',$user,$actor,$reason,['before' => $before, 'after' => $user->only('name','email','active')]);
+            AuditLog::record('account.updated', $user, $actor, $reason, ['before' => $before, 'after' => $user->only('name', 'email', 'active')]);
         });
     }
 }
