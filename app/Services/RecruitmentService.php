@@ -33,7 +33,7 @@ class RecruitmentService
         return DB::transaction(function () use ($actor, $data) {
             abort_unless(Position::findOrFail($data['position_id'])->active && RecruitmentPeriod::findOrFail($data['recruitment_period_id'])->active, 422, 'Posisi dan periode harus aktif.');
             $password = null;
-            $user = User::where('email', $data['email'])->lockForUpdate()->first();
+            $user = User::whereRaw('LOWER(email) = ?', [$data['email']])->lockForUpdate()->first();
             if (! $user) {
                 $password = Str::password(20);
                 $user = User::create(['name' => $data['name'], 'email' => $data['email'], 'password' => $password, 'role' => Role::Candidate, 'must_change_password' => true, 'temporary_password_expires_at' => now()->addHours(AppSetting::valueFor('temporary_password_hours'))]);

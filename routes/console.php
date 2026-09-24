@@ -4,6 +4,7 @@ use App\Models\AccessDelivery;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('portal:cleanup')->daily()->withoutOverlapping();
+Schedule::command('forms:cleanup')->daily()->withoutOverlapping();
 
 Schedule::call(function (): void {
     AccessDelivery::whereNotNull('password')->where('expires_at', '<=', now())

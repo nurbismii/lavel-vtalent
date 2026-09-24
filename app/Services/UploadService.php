@@ -6,12 +6,14 @@ use App\Enums\ScanStatus;
 use App\Enums\SubmissionType;
 use App\Jobs\ScanUploadedFile;
 use App\Models\AppSetting;
+use App\Models\FormDocument;
 use App\Models\Submission;
 use App\Models\UploadedFile;
 use App\Models\User;
 use Illuminate\Http\UploadedFile as HttpFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -42,6 +44,9 @@ class UploadService
                 $submission = app(SubmissionService::class)->locked($submission);
                 Gate::forUser($actor)->authorize('update', $submission);
                 $used = UploadedFile::where('recruitment_application_id', $submission->recruitment_application_id)->sum('size');
+                if (Schema::hasTable('form_documents')) {
+                    $used += FormDocument::whereHas('response', fn ($query) => $query->where('recruitment_application_id', $submission->recruitment_application_id))->sum('size');
+                }
                 if ($used + $upload->getSize() > AppSetting::valueFor('quota_mb') * 1024 * 1024) {
                     throw ValidationException::withMessages(['upload' => 'Kuota lamaran penuh, termasuk histori. Hubungi HR.']);
                 }

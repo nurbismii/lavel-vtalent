@@ -172,6 +172,7 @@
             <div><small>{{ $application->position->name }} · {{ $application->period->name }}</small>
                 <h1>{{ $application->user->name }}</h1>
                 <p class="muted">{{ $application->user->email }}</p>
+                @if(App\Services\CandidateFormService::available())<a class="button small" href="{{ route('filament.admin.pages.candidate-forms', ['candidate' => $application->user_id]) }}">Lihat formulir kandidat</a>@endif
             </div><span class="badge {{ $application->archived_at?'':'clean' }}">{{ $application->archived_at?'Diarsipkan':'Lamaran aktif' }}</span>
         </div>
         <div class="tabs">@foreach(['Profil','Portofolio','Tes Teknis','Riwayat'] as $t)<button class="{{ $tab===$t?'active':'' }}" wire:click="selectTab('{{ $t }}')">{{ $t }}</button>@endforeach</div>

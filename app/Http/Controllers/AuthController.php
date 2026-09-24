@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\Role;
 use App\Models\AuditLog;
+use App\Models\FormResponse;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 
@@ -51,6 +53,9 @@ class AuthController extends Controller
             $user->update(['password' => $data['password'], 'must_change_password' => false, 'temporary_password_expires_at' => null, 'session_version' => $user->session_version + 1, 'remember_token' => Str::random(60)]);
             DB::table('sessions')->where('user_id', $user->id)->delete();
             AuditLog::record('account.password_changed', $user, $user);
+            if (Schema::hasTable('form_responses')) {
+                FormResponse::where('user_id', $user->id)->where('activation_pending', true)->update(['activation_pending' => false]);
+            }
         });
         $request->session()->regenerate();
         $request->session()->put('portal_session_version', $user->session_version);

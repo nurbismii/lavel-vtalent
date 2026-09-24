@@ -44,7 +44,7 @@ class AdminPanelProvider extends PanelProvider
             ->navigationItems(array_map(fn ($key, $label, $icon) => NavigationItem::make($label)
                 ->icon($icon)
                 ->url(fn () => route('filament.admin.pages.recruitment', ['section' => $key]))
-                ->isActiveWhen(fn () => request()->query('section', 'dashboard') === $key),
+                ->isActiveWhen(fn () => request()->routeIs('filament.admin.pages.recruitment') && request()->query('section', 'dashboard') === $key),
                 ['dashboard', 'applications', 'positions', 'periods', 'audit', 'operations', 'settings'],
                 ['Ringkasan', 'Kandidat & lamaran', 'Posisi', 'Periode rekrutmen', 'Riwayat aktivitas', 'Operasional', 'Pengaturan'],
                 ['heroicon-o-squares-2x2', 'heroicon-o-users', 'heroicon-o-briefcase', 'heroicon-o-calendar-days', 'heroicon-o-clock', 'heroicon-o-server', 'heroicon-o-cog-6-tooth']))

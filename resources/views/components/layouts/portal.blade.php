@@ -11,6 +11,7 @@
     <header class="portal-header">
         <div class="header-inner"><a class="brand" href="{{ route('candidate.dashboard') }}"><img src="{{ asset('images/vdni-logo.png') }}" alt="VDNi"><span class="brand-label">TALENT PORTAL<br>Ruang untuk langkah berikutnya</span></a>
             <nav class="portal-nav" aria-label="Navigasi utama"><a href="{{ route('candidate.dashboard') }}" @if(request()->routeIs('candidate.dashboard')) aria-current="page" @endif>Beranda</a><a href="{{ route('candidate.history') }}" @if(request()->routeIs('candidate.history')) aria-current="page" @endif>Riwayat</a><a href="{{ route('candidate.profile') }}">Profil</a>
+                @if(App\Services\CandidateFormService::available())<a href="{{ route('candidate.forms') }}" @if(request()->routeIs('candidate.forms')) aria-current="page" @endif>Formulir saya</a>@endif
                 <form method="post" action="{{ route('logout') }}">@csrf<button class="link-button">Keluar</button></form>
             </nav>
         </div>
