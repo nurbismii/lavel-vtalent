@@ -213,7 +213,7 @@ class CandidateFormService
             throw ValidationException::withMessages(['answers' => 'Terdapat pertanyaan yang tidak dikenal. Muat ulang formulir.']);
         }
         $rules = ['name' => [$final ? 'required' : 'nullable', 'string', 'max:255'], 'answers' => 'array', 'consent' => [$final ? 'accepted' : 'nullable']];
-        $labels = [];
+        $labels = ['name' => 'Nama lengkap', 'consent' => 'Persetujuan pemrosesan data'];
         foreach ($fields as $field) {
             $id = $field['id'];
             $type = $field['type'];
@@ -266,7 +266,25 @@ class CandidateFormService
             }
         }
 
-        return Validator::make($data, $rules, [], $labels)->validate();
+        return Validator::make($data, $rules, ['required' => ':attribute wajib diisi.', 'accepted' => ':attribute wajib disetujui.'], $labels)->validate();
+    }
+
+    public function validateDocuments(FormResponse $response): void
+    {
+        $documents = $response->documents()->where('selected', true)->get();
+        $errors = [];
+        foreach ($response->intake->version->fields as $field) {
+            if ($field['type'] !== 'file') {
+                continue;
+            }
+            $files = $documents->where('field_id', $field['id']);
+            if (($field['required'] && $files->isEmpty()) || $files->count() > $field['max_files'] || $files->contains(fn ($file) => ! $file->available())) {
+                $errors['files.'.$field['id']] = 'Lengkapi '.$field['label'].' dan tunggu pemeriksaan file selesai.';
+            }
+        }
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     public function save(FormResponse $response, int $expected, array $data, bool $final = false): FormResponse
@@ -287,15 +305,7 @@ class CandidateFormService
                 if (! $response->submitted_at && $intake->max_responses && $intake->responses()->whereNotNull('submitted_at')->count() >= $intake->max_responses) {
                     throw ValidationException::withMessages(['quota' => 'Batas penerimaan respons sudah tercapai.']);
                 }
-                foreach ($intake->version->fields as $field) {
-                    if ($field['type'] !== 'file') {
-                        continue;
-                    }
-                    $files = $documents->where('field_id', $field['id']);
-                    if (($field['required'] && $files->isEmpty()) || $files->count() > $field['max_files'] || $files->contains(fn ($file) => ! $file->available())) {
-                        throw ValidationException::withMessages(['files.'.$field['id'] => 'Lengkapi '.$field['label'].' dan tunggu pemeriksaan file selesai.']);
-                    }
-                }
+                $this->validateDocuments($response);
             }
             $response->fill(['name' => $valid['name'] ?? '', 'answers' => $valid['answers'] ?? [], 'lock_version' => $expected + 1]);
             if ($final) {

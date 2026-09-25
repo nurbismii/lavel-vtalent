@@ -3,7 +3,7 @@
     @if($field['type'] === 'section')
         <div class="form-section"><span class="eyebrow">Bagian formulir</span><h2>{{ $field['label'] }}</h2><p class="muted">{{ $field['help'] ?? '' }}</p></div>
     @elseif($field['type'] !== 'file')
-        <fieldset class="dynamic-field" @disabled($disabled ?? false)>
+        <fieldset class="dynamic-field" data-required="{{ $field['required'] ? 'true' : 'false' }}" data-field-label="{{ $field['label'] }}" @disabled($disabled ?? false)>
             <legend>{{ $field['label'] }} @if($field['required'])<span aria-label="wajib" class="field-error">*</span>@endif</legend>
             @if(!empty($field['help']))<p class="muted" id="help-{{ $field['id'] }}">{{ $field['help'] }}</p>@endif
             @if($field['type'] === 'textarea')
@@ -19,7 +19,7 @@
             @else
                 <label class="field"><span class="sr-only">{{ $field['label'] }}</span><input type="{{ match($field['type']) { 'phone' => 'tel', 'number','date','email','url' => $field['type'], default => 'text' } }}" name="answers[{{ $field['id'] }}]" value="{{ $value }}" placeholder="{{ $field['placeholder'] ?? '' }}" @if(in_array($field['type'], ['number','date'])) @if(!empty($field['min'])) min="{{ $field['min'] }}" @endif @if(!empty($field['max'])) max="{{ $field['max'] }}" @endif @if($field['type'] === 'number') step="any" @endif @else maxlength="{{ $field['max_length'] ?: 255 }}" @endif></label>
             @endif
-            @error('answers.'.$field['id'])<span class="field-error">{{ $message }}</span>@enderror
+            @error('answers.'.$field['id'])<span class="field-error" role="alert">{{ $message }}</span>@enderror
         </fieldset>
     @else
         <div class="dynamic-field"><strong>{{ $field['label'] }}{{ $field['required'] ? ' *' : '' }}</strong><p class="muted">{{ $field['help'] ?? '' }}</p><small>{{ strtoupper(implode(', ', $field['extensions'])) }} · Maks. {{ $field['max_mb'] }} MB/file · {{ $field['max_files'] }} file</small><p class="muted">Unggah pada bagian Dokumen setelah email diverifikasi.</p></div>

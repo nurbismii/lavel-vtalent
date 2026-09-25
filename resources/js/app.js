@@ -16,6 +16,46 @@ if (answerForm) {
     });
     answerForm.addEventListener('submit', (event) => {
         if (answerForm.dataset.submitting) { event.preventDefault(); return; }
+        if (event.submitter?.value === 'review') {
+            document.querySelectorAll('[data-required-error]').forEach((error) => error.remove());
+            answerForm.querySelectorAll('[aria-invalid]').forEach((field) => field.removeAttribute('aria-invalid'));
+            const missing = [];
+            const markMissing = (target, message) => {
+                const error = document.createElement('p');
+                error.className = 'field-error';
+                error.dataset.requiredError = '';
+                error.setAttribute('role', 'alert');
+                error.textContent = message;
+                target.append(error);
+                missing.push({ target, message });
+            };
+            const name = answerForm.elements.namedItem('name');
+            if (!name.value.trim()) markMissing(name.closest('label'), 'Nama lengkap wajib diisi.');
+            answerForm.querySelectorAll('[data-required="true"]').forEach((group) => {
+                const inputs = [...group.querySelectorAll('input, select, textarea')];
+                const filled = inputs.some((input) => ['checkbox', 'radio'].includes(input.type) ? input.checked : input.value.trim());
+                if (!filled) {
+                    inputs.forEach((input) => input.setAttribute('aria-invalid', 'true'));
+                    markMissing(group, `${group.dataset.fieldLabel} wajib diisi.`);
+                }
+            });
+            document.querySelectorAll('[data-required-document="true"][data-document-ready="false"]').forEach((group) => {
+                markMissing(group, `Unggah ${group.dataset.fieldLabel} dan tunggu pemeriksaan file selesai.`);
+            });
+            const consent = answerForm.elements.namedItem('consent');
+            if (!consent.checked) markMissing(consent.closest('label'), 'Persetujuan pemrosesan data wajib dicentang.');
+            if (missing.length) {
+                event.preventDefault();
+                feedback.hidden = false;
+                feedback.setAttribute('role', 'alert');
+                feedback.textContent = `Belum dapat melanjutkan. ${missing.map((item) => item.message).join(' ')}`;
+                const first = missing[0].target;
+                first.querySelector('input, select, textarea')?.focus({ preventScroll: true });
+                first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            feedback.hidden = true;
+        }
         answerForm.dataset.submitting = 'true';
         dirty = false;
         answerForm.querySelector('[data-dirty-status]').textContent = 'Menyimpan…';

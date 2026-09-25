@@ -18,20 +18,29 @@
             <section><span class="eyebrow">Identitas kandidat</span><h2>Mulai dari diri Anda</h2><label class="field">Nama lengkap *<input name="name" value="{{ old('name', $response?->name ?? ($pending['data']['name'] ?? '')) }}" maxlength="255" autocomplete="name"></label><label class="field">Email utama *<input name="email" type="email" value="{{ old('email', $response?->email ?? ($pending['email'] ?? '')) }}" required maxlength="255" autocomplete="email" @readonly($response)></label>@if($response)<small>Email terverifikasi. Untuk menggunakan email lain sebelum pengiriman, buka tautan formulir publik dan verifikasi email tersebut.</small>@endif</section>
             @if(!$response)<div class="form-honeypot" aria-hidden="true"><label>Situs pribadi<input name="website" tabindex="-1" autocomplete="off"></label></div>@endif
             @include('forms.fields', ['fields' => $intake->version->fields, 'answers' => $response?->answers ?? ($pending['data']['answers'] ?? []), 'disabled' => !$response && !$intake->open()])
-            <label class="form-check"><input type="checkbox" name="consent" value="1" @checked(old('consent'))> <span>Saya menyatakan data benar dan menyetujui pemrosesan data untuk rekrutmen sesuai <a href="{{ route('privacy') }}" target="_blank" rel="noopener">informasi privasi</a>.</span></label>
-            <div class="form-actions">@if($response)<button class="button" name="action" value="save">Simpan draf</button><button class="button primary" name="action" value="review">Tinjau & kirim</button>@else<button class="button primary">Kirim tautan verifikasi email</button>@endif<span data-dirty-status class="muted" role="status"></span></div>
+            <div class="form-actions">@if($response)<button class="button" name="action" value="save">Simpan draf</button>@else<button class="button primary">Kirim tautan verifikasi email</button>@endif<span data-dirty-status class="muted" role="status"></span></div>
         </form>
         @if($response && collect($intake->version->fields)->contains('type','file'))
             <section class="panel form-documents"><div class="row"><div><span class="eyebrow">Dokumen pendukung</span><h2>Unggah dokumen Anda</h2></div><a class="button small" href="{{ route('forms.response', $response->reference) }}">Perbarui status</a></div><p class="muted">Simpan perubahan jawaban sebelum mengelola file. Dokumen tersimpan privat. Melepas file tidak menghapus histori pengiriman sebelumnya.</p>
             @foreach($intake->version->fields as $field)
                 @if($field['type'] !== 'file') @continue @endif
-                <div class="upload-zone"><h3>{{ $field['label'] }}{{ $field['required'] ? ' *' : '' }}</h3><small>{{ strtoupper(implode(', ', $field['extensions'])) }} · Maks. {{ $field['max_mb'] }} MB/file · {{ $field['max_files'] }} file</small>
+                <div class="upload-zone" data-required-document="{{ $field['required'] ? 'true' : 'false' }}" data-document-ready="{{ $response->documents->where('field_id', $field['id'])->where('selected', true)->contains(fn ($document) => $document->available()) ? 'true' : 'false' }}" data-field-label="{{ $field['label'] }}"><h3>{{ $field['label'] }}{{ $field['required'] ? ' *' : '' }}</h3><small>{{ strtoupper(implode(', ', $field['extensions'])) }} · Maks. {{ $field['max_mb'] }} MB/file · {{ $field['max_files'] }} file</small>
+                    @error('files.'.$field['id'])<span class="field-error" role="alert">{{ $message }}</span>@enderror
                     @foreach($response->documents->where('field_id', $field['id'])->where('selected', true) as $document)
                         <div class="file-row"><div class="file-info"><strong>{{ $document->original_name }}</strong><div><span class="badge {{ $document->scan_status }}">{{ ['pending'=>'Menunggu pemeriksaan','clean'=>'Aman','skipped'=>'Tersimpan','failed'=>'Pemeriksaan gagal','rejected'=>'Ditolak'][$document->scan_status] }}</span></div><small>{{ $document->scan_message }}</small></div>@if($document->available())<a class="button small" href="{{ route('forms.document.download', $document) }}">Unduh</a>@endif<form method="post" data-document-action action="{{ route('forms.document.action', $document) }}">@csrf @if($document->scan_status === 'failed')<button class="button small" name="action" value="retry">Periksa ulang</button>@endif<button class="button small danger" name="action" value="remove">Lepaskan</button></form></div>
                     @endforeach
                     <form method="post" enctype="multipart/form-data" data-document-action data-upload-form action="{{ route('forms.upload', $response->reference) }}">@csrf<input type="hidden" name="field_id" value="{{ $field['id'] }}"><label class="field">Pilih {{ $field['label'] }}<input type="file" name="upload" accept="{{ implode(',', array_map(fn($ext)=>'.'.$ext, $field['extensions'])) }}" required></label><button class="button small">Unggah file</button><progress hidden max="100" value="0" aria-label="Progres unggahan"></progress><span data-upload-status role="status"></span></form>
                 </div>
             @endforeach
+            </section>
+        @endif
+        @if($response)
+            <section class="panel stack">
+                <h2>Tinjau dan kirim formulir</h2>
+                <p class="muted">Lengkapi semua isian bertanda * dan unggah dokumen wajib sebelum melanjutkan.</p>
+                <label class="form-check"><input form="candidate-answer-form" type="checkbox" name="consent" value="1" @checked(old('consent'))> <span>Saya menyatakan data benar dan menyetujui pemrosesan data untuk rekrutmen sesuai <a href="{{ route('privacy') }}" target="_blank" rel="noopener">informasi privasi</a>.</span></label>
+                @error('consent')<span class="field-error" role="alert">{{ $message }}</span>@enderror
+                <div class="form-actions"><button form="candidate-answer-form" class="button primary" name="action" value="review">Tinjau & kirim</button></div>
             </section>
         @endif
     @endif

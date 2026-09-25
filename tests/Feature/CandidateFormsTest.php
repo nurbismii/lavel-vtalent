@@ -222,6 +222,42 @@ class CandidateFormsTest extends TestCase
         $this->assertSame('Kandidat', $response->fresh()->name);
     }
 
+    public function test_review_requires_ready_documents_but_incomplete_drafts_can_be_saved(): void
+    {
+        $field = $this->field('file');
+        [, , $intake] = $this->setupForm([$field]);
+        $response = $this->response($intake);
+        $url = route('forms.save', $response->reference);
+        $data = ['lock_version' => 0, 'name' => 'Kandidat', 'consent' => 1, 'action' => 'review'];
+
+        $this->grant($response)->post($url, $data)->assertSessionHasErrors('files.'.$field['id']);
+        $this->assertSame(0, $response->fresh()->lock_version);
+        $this->post($url, [...$data, 'action' => 'save'])->assertSessionHasNoErrors();
+        $this->assertSame(1, $response->fresh()->lock_version);
+
+        $document = $response->documents()->create(['field_id' => $field['id'], 'path' => 'private/cv.pdf', 'original_name' => 'CV.pdf', 'mime' => 'application/pdf', 'size' => 10, 'scan_status' => 'pending']);
+        $this->post($url, [...$data, 'lock_version' => 1])->assertSessionHasErrors('files.'.$field['id']);
+        $this->assertSame(1, $response->fresh()->lock_version);
+
+        $document->update(['scan_status' => 'clean']);
+        $this->post($url, [...$data, 'lock_version' => 1])->assertOk()->assertSee('Periksa sebelum dikirim');
+        $this->assertSame(2, $response->fresh()->lock_version);
+        $this->assertNull($response->fresh()->submitted_at);
+    }
+
+    public function test_missing_required_answers_return_clear_messages_and_preserve_input(): void
+    {
+        $field = $this->field('checkbox');
+        [, , $intake] = $this->setupForm([$field]);
+        $response = $this->response($intake);
+
+        $this->grant($response)->from(route('forms.response', $response->reference))
+            ->post(route('forms.save', $response->reference), ['lock_version' => 0, 'name' => 'Kandidat', 'action' => 'review'])
+            ->assertSessionHasInput('name', 'Kandidat')
+            ->assertSessionHasErrors(['answers.'.$field['id'] => 'Pertanyaan checkbox wajib diisi.', 'consent' => 'Persetujuan pemrosesan data wajib disetujui.']);
+        $this->assertSame(0, $response->fresh()->lock_version);
+    }
+
     public function test_review_final_submit_and_duplicate_submit_create_one_revision(): void
     {
         [, , $intake] = $this->setupForm();

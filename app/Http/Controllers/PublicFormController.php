@@ -159,6 +159,7 @@ class PublicFormController extends Controller
         $data = $request->validate(['lock_version' => 'required|integer|min:0', 'name' => 'nullable|string|max:255', 'answers' => 'sometimes|array|max:100', 'consent' => 'nullable', 'action' => 'required|in:save,review']);
         if ($data['action'] === 'review') {
             $this->forms->validateAnswers($response->intake->version->fields, $data, true);
+            $this->forms->validateDocuments($response);
         }
         $response = $this->forms->save($response, (int) $data['lock_version'], $data);
         if ($data['action'] === 'review') {
