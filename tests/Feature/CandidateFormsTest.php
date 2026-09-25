@@ -483,11 +483,48 @@ class CandidateFormsTest extends TestCase
         Queue::fake();
         [, , $intake] = $this->setupForm();
         for ($i = 0; $i < config('candidate_forms.email_max_per_hour'); $i++) {
-            $this->post(route('forms.access', $intake->slug), ['email' => 'hourly@example.com'])->assertRedirect();
+            $this->post(route('forms.access', $intake->slug), ['email' => 'hourly@example.com', 'resend' => true])->assertRedirect();
             $this->travel(61)->seconds();
         }
-        $this->postJson(route('forms.access', $intake->slug), ['email' => 'hourly@example.com'])->assertStatus(429)->assertHeader('Retry-After')->assertJsonStructure(['message', 'retry_after']);
+        $this->postJson(route('forms.access', $intake->slug), ['email' => 'hourly@example.com', 'resend' => true])->assertStatus(429)->assertHeader('Retry-After')->assertJsonStructure(['message', 'retry_after']);
         Queue::assertPushed(SendFormAccess::class, config('candidate_forms.email_max_per_hour'));
+    }
+
+    public function test_waiting_refresh_and_repeated_form_post_do_not_send_more_emails(): void
+    {
+        Queue::fake();
+        [, , $intake] = $this->setupForm();
+        $url = route('forms.access', $intake->slug);
+        $waiting = route('forms.waiting', $intake->slug);
+        $this->post($url, ['email' => 'refresh@example.com', 'name' => 'Kandidat refresh'])->assertStatus(303)->assertRedirect($waiting);
+        for ($i = 0; $i < 3; $i++) {
+            $this->get($waiting)->assertOk()->assertSee('Refresh halaman ini tidak mengirim email baru.');
+        }
+        $this->travel(61)->seconds();
+        $this->post($url, ['email' => 'REFRESH@example.com', 'name' => 'Kandidat refresh'])->assertStatus(303)->assertRedirect($waiting);
+        Queue::assertPushed(SendFormAccess::class, 1);
+        $this->assertDatabaseCount('form_access_tokens', 1);
+        $this->assertSame(1, RateLimiter::attempts('form-email:'.hash('sha256', 'refresh@example.com')));
+        $this->get(route('forms.show', $intake->slug))->assertSee('Kandidat refresh');
+    }
+
+    public function test_waiting_resend_requires_post_and_obeys_cooldown(): void
+    {
+        Queue::fake();
+        [, , $intake] = $this->setupForm();
+        $this->get(route('forms.waiting', $intake->slug))->assertRedirect(route('forms.show', $intake->slug));
+        $this->post(route('forms.access', $intake->slug), ['email' => 'resend@example.com'])->assertStatus(303);
+        $this->post(route('forms.resend', $intake->slug))->assertStatus(429);
+        $this->travel(61)->seconds();
+        $this->post(route('forms.resend', $intake->slug))->assertStatus(303);
+        $this->get(route('forms.waiting', $intake->slug))->assertOk();
+        Queue::assertPushed(SendFormAccess::class, 2);
+        $job = Queue::pushed(SendFormAccess::class)->last();
+        $this->post(route('forms.consume', $job->rawToken))->assertRedirect();
+        $response = FormResponse::sole();
+        $this->get(route('forms.waiting', $intake->slug))->assertRedirect(route('forms.response', $response->reference));
+        $this->post(route('forms.access', $intake->slug), ['email' => 'resend@example.com'])->assertRedirect(route('forms.response', $response->reference));
+        Queue::assertPushed(SendFormAccess::class, 2);
     }
 
     public function test_verification_throttle_renders_retry_guidance_without_consuming_valid_token(): void

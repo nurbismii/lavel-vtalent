@@ -26,6 +26,8 @@ Route::middleware([FormHeaders::class, 'throttle:forms-public'])->group(function
     $controller = PublicFormController::class;
     Route::get('/forms/{intake:slug}', [$controller, 'show'])->name('forms.show');
     Route::post('/forms/{intake:slug}/access', [$controller, 'access'])->middleware('throttle:forms-email')->name('forms.access');
+    Route::get('/forms/{intake:slug}/waiting', [$controller, 'waiting'])->name('forms.waiting');
+    Route::post('/forms/{intake:slug}/resend', [$controller, 'resend'])->middleware('throttle:forms-email')->name('forms.resend');
     Route::get('/form-access/{token}', [$controller, 'verify'])->where('token', '[A-Za-z0-9]{64}')->name('forms.verify');
     Route::post('/form-access/{token}', [$controller, 'consume'])->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:forms-verification')->name('forms.consume');
     Route::get('/form-responses/{response:reference}', [$controller, 'response'])->name('forms.response');

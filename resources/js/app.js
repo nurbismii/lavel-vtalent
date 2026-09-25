@@ -55,3 +55,24 @@ if (answerForm) {
         });
     });
 }
+const resendForm = document.querySelector('[data-email-resend]');
+if (resendForm) {
+    const button = resendForm.querySelector('button');
+    const status = resendForm.querySelector('[data-resend-countdown]');
+    const readyAt = Date.now() + Number(resendForm.dataset.retrySeconds) * 1000;
+    const updateCountdown = () => {
+        const seconds = Math.max(0, Math.ceil((readyAt - Date.now()) / 1000));
+        button.disabled = seconds > 0;
+        status.textContent = seconds > 0 ? `Tunggu ${seconds} detik sebelum mengirim ulang.` : '';
+        return seconds;
+    };
+    const interval = setInterval(() => { if (!updateCountdown()) clearInterval(interval); }, 1000);
+    updateCountdown();
+    resendForm.addEventListener('submit', (event) => {
+        if (resendForm.dataset.submitting) { event.preventDefault(); return; }
+        resendForm.dataset.submitting = 'true';
+        clearInterval(interval);
+        button.disabled = true;
+        status.textContent = 'Menjadwalkan pengiriman…';
+    });
+}

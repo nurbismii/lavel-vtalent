@@ -12,7 +12,9 @@ use App\Models\FormIntake;
 use App\Models\FormResponse;
 use App\Services\CandidateFormService;
 use App\Services\FormDocumentService;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -25,14 +27,36 @@ class PublicFormController extends Controller
 
     public function show(Request $request, FormIntake $intake): mixed
     {
-        return view('forms.public', ['intake' => $intake->load('version', 'position', 'period'), 'response' => null, 'preview' => false]);
+        return view('forms.public', ['intake' => $intake->load('version', 'position', 'period'), 'response' => null, 'preview' => false, 'pending' => $request->session()->get('form_unverified.'.$intake->id)]);
     }
 
     public function access(Request $request, FormIntake $intake): mixed
     {
-        $data = $request->validate(['email' => 'required|email|max:255', 'name' => 'nullable|string|max:255', 'answers' => 'sometimes|array|max:100', 'website' => 'nullable|max:0']);
+        $request->validate(['email' => 'required|email|max:255']);
+        $key = 'form-access-request:'.hash('sha256', Str::lower(trim($request->email)));
+
+        try {
+            return Cache::lock($key, 30)->block(5, fn () => $this->scheduleAccess($request, $intake));
+        } catch (LockTimeoutException) {
+            return FormRateLimitResponse::make($request, ['Retry-After' => 5]);
+        }
+    }
+
+    private function scheduleAccess(Request $request, FormIntake $intake): mixed
+    {
+        $data = $request->validate(['email' => 'required|email|max:255', 'name' => 'nullable|string|max:255', 'answers' => 'sometimes|array|max:100', 'website' => 'nullable|max:0', 'resend' => 'sometimes|boolean']);
         $email = Str::lower(trim($data['email']));
         $draft = $this->forms->validateAnswers($intake->version->fields, $data, false);
+        $existing = $intake->responses()->where('email', $email)->first();
+        if ($existing && $this->forms->hasPublicAccess($request, $existing)) {
+            return redirect()->route('forms.response', $existing->reference, 303);
+        }
+        $request->session()->put('form_unverified.'.$intake->id, ['email' => $email, 'data' => $draft]);
+        $request->session()->put('form_waiting.'.$intake->id, $email);
+        $activeToken = FormAccessToken::where('form_intake_id', $intake->id)->where('email', $email)->whereNull('used_at')->where('expires_at', '>', now())->latest('id')->first();
+        if ($activeToken && ! $request->boolean('resend')) {
+            return redirect()->route('forms.waiting', $intake->slug, 303);
+        }
         $key = 'form-email:'.hash('sha256', $email);
         $cooldownKey = $key.':resend';
         $retryAfter = max(
@@ -46,15 +70,12 @@ class PublicFormController extends Controller
         }
         RateLimiter::hit($key, 3600);
         RateLimiter::hit($cooldownKey, config('candidate_forms.email_resend_seconds'));
-        $generic = 'Jika permintaan memenuhi syarat, tautan verifikasi dikirim ke email Anda. Periksa inbox/spam. Tautan berlaku '.config('candidate_forms.access_minutes').' menit. Jika sudah terhubung ke akun, gunakan portal atau Lupa password.';
-        $existing = $intake->responses()->where('email', $email)->first();
         if (! $intake->open() && ! $existing) {
-            return back()->with('status', $generic);
+            return redirect()->route('forms.waiting', $intake->slug, 303);
         }
         if ($existing?->user_id) {
-            return back()->with('status', $generic);
+            return redirect()->route('forms.waiting', $intake->slug, 303);
         }
-        $request->session()->put('form_unverified.'.$intake->id, ['email' => $email, 'data' => $draft]);
         $raw = Str::random(64);
         $token = FormAccessToken::create(['form_intake_id' => $intake->id, 'email' => $email, 'token_hash' => hash('sha256', $raw), 'expires_at' => now()->addMinutes(config('candidate_forms.access_minutes'))]);
         try {
@@ -68,7 +89,34 @@ class PublicFormController extends Controller
             return back()->withErrors(['email' => 'Email belum berhasil dijadwalkan. Coba lagi atau hubungi HR.'])->withInput($request->except('website'));
         }
 
-        return back()->with('status', $generic)->withInput($request->except('website'));
+        return redirect()->route('forms.waiting', $intake->slug, 303);
+    }
+
+    public function waiting(Request $request, FormIntake $intake): mixed
+    {
+        $email = $request->session()->get('form_waiting.'.$intake->id);
+        if (! $email) {
+            return redirect()->route('forms.show', $intake->slug);
+        }
+        $response = $intake->responses()->where('email', $email)->first();
+        if ($response && $this->forms->hasPublicAccess($request, $response)) {
+            return redirect()->route('forms.response', $response->reference);
+        }
+        $key = 'form-email:'.hash('sha256', $email);
+        $retryAfter = max(RateLimiter::availableIn($key.':resend'), RateLimiter::tooManyAttempts($key, config('candidate_forms.email_max_per_hour')) ? RateLimiter::availableIn($key) : 0);
+
+        return view('forms.waiting', compact('intake', 'email', 'retryAfter'));
+    }
+
+    public function resend(Request $request, FormIntake $intake): mixed
+    {
+        $pending = $request->session()->get('form_unverified.'.$intake->id);
+        if (! $pending) {
+            return redirect()->route('forms.show', $intake->slug);
+        }
+        $request->merge([...$pending['data'], 'email' => $pending['email'], 'resend' => true]);
+
+        return $this->access($request, $intake);
     }
 
     public function verify(string $token): mixed
