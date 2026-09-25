@@ -36,6 +36,7 @@ Route::middleware([FormHeaders::class, 'throttle:forms-public'])->group(function
     Route::post('/form-responses/{response:reference}/upload', [$controller, 'upload'])->middleware('throttle:forms-upload')->name('forms.upload');
     Route::post('/form-documents/{document}', [$controller, 'documentAction'])->name('forms.document.action');
     Route::get('/form-documents/{document}', [$controller, 'download'])->name('forms.document.download');
+    Route::get('/form-documents/{document}/preview', [$controller, 'download'])->name('forms.document.preview');
 });
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 Route::middleware(['auth', EnsurePortalAccess::class])->group(function () {

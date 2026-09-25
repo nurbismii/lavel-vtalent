@@ -16,6 +16,7 @@ use App\Models\RecruitmentApplication;
 use App\Models\UploadedFile;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -144,12 +145,67 @@ class CandidateFormService
 
         return DB::transaction(function () use ($actor, $data) {
             $version = CandidateFormVersion::findOrFail($data['candidate_form_version_id']);
-            abort_if($version->form->archived_at, 422, 'Formulir diarsipkan.');
+            abort_if(CandidateForm::lockForUpdate()->findOrFail($version->candidate_form_id)->archived_at, 422, 'Formulir diarsipkan.');
             $intake = FormIntake::create([...$data, 'slug' => (string) Str::uuid()]);
             abort_unless($intake->position->active && $intake->period->active, 422, 'Posisi dan periode harus aktif.');
             AuditLog::record('form.intake_created', $intake, $actor);
 
             return $intake;
+        }, 5);
+    }
+
+    public function deletionSummary(User $actor, string $type, int $id): array
+    {
+        $this->admin($actor);
+        abort_unless(in_array($type, ['form', 'intake'], true), 422);
+        $target = $type === 'form' ? CandidateForm::findOrFail($id) : FormIntake::with('version', 'position', 'period')->findOrFail($id);
+        $intakeIds = $type === 'form'
+            ? FormIntake::whereIn('candidate_form_version_id', $target->versions()->select('id'))->orderBy('id')->pluck('id')->all()
+            : [$id];
+        $responses = FormResponse::whereIn('form_intake_id', $intakeIds);
+
+        return [
+            'type' => $type, 'id' => $id,
+            'title' => $type === 'form' ? $target->title : $target->version->title.' · '.$target->position->name.' · '.$target->period->name,
+            'intake_ids' => $intakeIds,
+            'versions' => $type === 'form' ? $target->versions()->count() : 1,
+            'responses' => (clone $responses)->count(),
+            'drafts' => (clone $responses)->whereNull('submitted_at')->count(),
+            'submitted' => (clone $responses)->whereNotNull('submitted_at')->count(),
+            'linked' => (clone $responses)->whereNotNull('user_id')->count(),
+            'documents' => FormDocument::whereIn('form_response_id', (clone $responses)->select('id'))->count(),
+            'pending_tokens' => FormAccessToken::whereIn('form_intake_id', $intakeIds)->whereNull('used_at')->where('expires_at', '>', now())->count(),
+        ];
+    }
+
+    public function deleteUnused(User $actor, string $type, int $id, array $confirmed): void
+    {
+        $this->admin($actor);
+        abort_unless(in_array($type, ['form', 'intake'], true), 422);
+        DB::transaction(function () use ($actor, $type, $id, $confirmed) {
+            if ($type === 'form') {
+                $target = CandidateForm::lockForUpdate()->findOrFail($id);
+                $intakes = FormIntake::whereIn('candidate_form_version_id', $target->versions()->select('id'))->orderBy('id')->lockForUpdate()->get();
+            } else {
+                $target = FormIntake::lockForUpdate()->findOrFail($id);
+                $intakes = new Collection([$target]);
+            }
+            $summary = $this->deletionSummary($actor, $type, $id);
+            if ($summary['responses'] > 0) {
+                throw ValidationException::withMessages(['deletion' => 'Sudah ada pendaftar. Hapus permanen diblokir agar respons dan dokumen tidak hilang. Arsipkan formulir atau tutup penerimaan.']);
+            }
+            if ($summary !== $confirmed) {
+                throw ValidationException::withMessages(['deletion' => 'Data berubah sejak konfirmasi dibuka. Batalkan lalu buka konfirmasi kembali untuk melihat dampak terbaru.']);
+            }
+            AuditLog::record($type === 'form' ? 'form.deleted' : 'form.intake_deleted', $target, $actor, null, $summary);
+            FormAccessToken::whereIn('form_intake_id', $intakes->modelKeys())->delete();
+            foreach ($intakes as $intake) {
+                $intake->delete();
+            }
+            if ($type === 'form') {
+                $target->versions()->delete();
+                $target->delete();
+            }
         }, 5);
     }
 

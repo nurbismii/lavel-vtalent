@@ -208,6 +208,104 @@ class CandidateFormsTest extends TestCase
         $this->grant($response)->get(route('forms.document.download', $file))->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 
+    public function test_document_preview_is_private_inline_and_requires_clean_scan(): void
+    {
+        Storage::fake('private');
+        [, , $intake] = $this->setupForm([$this->field('file')]);
+        $response = $this->response($intake);
+        $file = $response->documents()->create(['field_id' => $intake->version->fields[0]['id'], 'path' => 'private/cv.pdf', 'original_name' => 'CV.pdf', 'mime' => 'application/pdf', 'size' => 10, 'scan_status' => 'clean']);
+        Storage::disk('private')->put($file->path, '%PDF-1.4');
+        $url = route('forms.document.preview', $file);
+
+        $this->get($url)->assertNotFound();
+        $other = $this->response($intake, 'other@example.com');
+        $this->grant($other)->get($url)->assertNotFound();
+        $this->grant($response)->get($url)->assertOk()->assertHeader('Content-Type', 'application/pdf')
+            ->assertHeader('Content-Disposition', 'inline; filename=CV.pdf')->assertHeader('X-Content-Type-Options', 'nosniff');
+        $file->update(['scan_status' => 'pending']);
+        $this->get($url)->assertNotFound();
+    }
+
+    public function test_hr_preview_only_exposes_documents_in_submitted_revisions(): void
+    {
+        Storage::fake('private');
+        [$admin, , $intake] = $this->setupForm([$this->field('file', false)]);
+        $response = $this->finalized($this->response($intake));
+        $file = $response->documents()->create(['field_id' => $intake->version->fields[0]['id'], 'path' => 'private/hr.pdf', 'original_name' => 'HR.pdf', 'mime' => 'application/pdf', 'size' => 10, 'scan_status' => 'clean']);
+        Storage::disk('private')->put($file->path, '%PDF-1.4');
+        $url = route('forms.document.preview', $file);
+
+        $this->actingAs($admin)->withSession(['portal_session_version' => $admin->session_version])->get($url)->assertNotFound();
+        $response->latestRevision->update(['document_ids' => [$file->id]]);
+        $this->get($url)->assertOk()->assertHeader('Content-Disposition', 'inline; filename=HR.pdf');
+        $this->assertDatabaseHas('audit_logs', ['action' => 'form.document_previewed', 'target_id' => $file->id, 'actor_id' => $admin->id]);
+    }
+
+    public function test_unsupported_preview_shows_download_option_without_rendering_file_content(): void
+    {
+        Storage::fake('private');
+        [, , $intake] = $this->setupForm([$this->field('file')]);
+        $response = $this->response($intake);
+        $file = $response->documents()->create(['field_id' => $intake->version->fields[0]['id'], 'path' => 'private/file.docx', 'original_name' => 'file.docx', 'mime' => 'application/pdf', 'size' => 10, 'scan_status' => 'clean']);
+        Storage::disk('private')->put($file->path, '<script>privateDocument()</script>');
+
+        $this->grant($response)->get(route('forms.document.preview', $file))->assertOk()
+            ->assertSee('belum dapat ditampilkan')->assertSee(route('forms.document.download', $file))->assertDontSee('privateDocument');
+    }
+
+    public function test_hr_can_confirm_and_delete_empty_intake_with_pending_verifications(): void
+    {
+        [$admin, $template, $intake] = $this->setupForm();
+        $token = FormAccessToken::create(['form_intake_id' => $intake->id, 'email' => 'pending@example.com', 'token_hash' => hash('sha256', Str::random(64)), 'expires_at' => now()->addMinutes(30)]);
+
+        Livewire::actingAs($admin)->test(CandidateForms::class)->call('confirmDelete', 'intake', $intake->id)
+            ->assertSet('deletion.pending_tokens', 1)->assertSee('Belum ada pendaftar terverifikasi')
+            ->call('deleteConfirmed')->assertHasNoErrors()->assertSet('deletion', []);
+        $this->assertDatabaseMissing('form_intakes', ['id' => $intake->id]);
+        $this->assertDatabaseMissing('form_access_tokens', ['id' => $token->id]);
+        $this->assertDatabaseHas('candidate_forms', ['id' => $template->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'form.intake_deleted', 'target_id' => $intake->id]);
+    }
+
+    public function test_hr_can_delete_empty_form_and_its_versions_and_links(): void
+    {
+        [$admin, $template, $intake] = $this->setupForm();
+
+        Livewire::actingAs($admin)->test(CandidateForms::class)->call('confirmDelete', 'form', $template->id)
+            ->assertSet('deletion.responses', 0)->call('deleteConfirmed')->assertHasNoErrors();
+        $this->assertDatabaseMissing('candidate_forms', ['id' => $template->id]);
+        $this->assertDatabaseMissing('candidate_form_versions', ['id' => $intake->candidate_form_version_id]);
+        $this->assertDatabaseMissing('form_intakes', ['id' => $intake->id]);
+    }
+
+    public function test_delete_preserves_applicants_even_when_they_arrive_after_confirmation(): void
+    {
+        [$admin, $template, $intake] = $this->setupForm();
+        $page = Livewire::actingAs($admin)->test(CandidateForms::class)->call('confirmDelete', 'intake', $intake->id);
+        $response = $this->response($intake);
+
+        $page->call('deleteConfirmed')->assertHasErrors('deletion');
+        $page->call('confirmDelete', 'form', $template->id)->assertSet('deletion.responses', 1)
+            ->assertSee('Tidak dapat dihapus permanen')->call('deleteConfirmed')->assertHasErrors('deletion');
+        $this->assertDatabaseHas('form_responses', ['id' => $response->id]);
+        $this->assertDatabaseHas('form_intakes', ['id' => $intake->id]);
+        $this->assertDatabaseHas('candidate_forms', ['id' => $template->id]);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'form.deleted']);
+    }
+
+    public function test_delete_requires_confirmation_and_rechecks_changed_links(): void
+    {
+        [$admin, $template, $intake] = $this->setupForm();
+        Livewire::actingAs($admin)->test(CandidateForms::class)->call('deleteConfirmed')->assertStatus(422);
+        $page = Livewire::actingAs($admin)->test(CandidateForms::class)->call('confirmDelete', 'form', $template->id);
+        app(CandidateFormService::class)->createIntake($admin, $intake->only('candidate_form_version_id', 'position_id', 'recruitment_period_id'));
+
+        $page->call('deleteConfirmed')->assertHasErrors('deletion');
+        $this->assertDatabaseHas('candidate_forms', ['id' => $template->id]);
+        $page->call('cancelDelete')->assertSet('deletion', []);
+        Livewire::actingAs(User::factory()->create())->test(CandidateForms::class)->assertForbidden();
+    }
+
     public function test_validation_required_unknown_options_dates_and_stale_tabs(): void
     {
         $field = $this->field('select');

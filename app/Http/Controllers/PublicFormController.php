@@ -228,11 +228,23 @@ class PublicFormController extends Controller
         abort_unless($this->forms->canRead($request, $response) && $document->available(), 404);
         if ($request->user()?->role === Role::Admin && ! $this->forms->hasPublicAccess($request, $response)) {
             abort_unless($response->revisions()->get()->contains(fn ($revision) => in_array($document->id, $revision->document_ids, true)), 404);
-            AuditLog::record('form.document_downloaded', $document, $request->user());
+            AuditLog::record($request->routeIs('forms.document.preview') ? 'form.document_previewed' : 'form.document_downloaded', $document, $request->user());
         }
         abort_unless(Storage::disk('private')->exists($document->path), 404);
 
-        return Storage::disk('private')->download($document->path, $document->original_name, ['X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store', 'Referrer-Policy' => 'no-referrer']);
+        $headers = ['X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store', 'Referrer-Policy' => 'no-referrer'];
+        if ($request->routeIs('forms.document.preview')) {
+            $mime = Storage::disk('private')->mimeType($document->path);
+            if (! in_array($mime, ['application/pdf', 'image/jpeg', 'image/png'], true)) {
+                return response()->view('forms.document-preview', compact('document'), 200, $headers);
+            }
+            $headers['Content-Type'] = $mime;
+            $headers['Content-Security-Policy'] = "sandbox; default-src 'none'; frame-ancestors 'self'";
+
+            return Storage::disk('private')->response($document->path, $document->original_name, $headers, 'inline');
+        }
+
+        return Storage::disk('private')->download($document->path, $document->original_name, $headers);
     }
 
     public function mine(Request $request): mixed

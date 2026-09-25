@@ -49,6 +49,9 @@ class CandidateForms extends Page
     #[Locked]
     public ?int $archiveId = null;
 
+    #[Locked]
+    public array $deletion = [];
+
     public string $tab = 'forms';
 
     public string $formTitle = '';
@@ -129,6 +132,7 @@ class CandidateForms extends Page
         abort_unless(in_array($tab, ['forms', 'editor', 'intakes', 'responses'], true), 422);
         $this->tab = $tab;
         $this->cancelBulkAccounts();
+        $this->cancelDelete();
         $this->reset('responseId', 'confirmLink', 'feedback');
         $this->resetValidation();
         $this->resetPage();
@@ -260,6 +264,31 @@ class CandidateForms extends Page
     public function cancelArchive(): void
     {
         $this->archiveId = null;
+    }
+
+    public function confirmDelete(string $type, int $id): void
+    {
+        $this->resetValidation();
+        $this->deletion = app(CandidateFormService::class)->deletionSummary($this->actor(), $type, $id);
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->deletion = [];
+        $this->resetValidation('deletion');
+    }
+
+    public function deleteConfirmed(): void
+    {
+        $actor = $this->actor();
+        abort_unless($this->deletion, 422);
+        app(CandidateFormService::class)->deleteUnused($actor, $this->deletion['type'], $this->deletion['id'], $this->deletion);
+        $this->feedback = $this->deletion['type'] === 'form'
+            ? 'Formulir, seluruh versi, dan tautan kosongnya berhasil dihapus.'
+            : 'Tautan penerimaan berhasil dihapus. Tautan publik dan verifikasi lama tidak dapat digunakan lagi.';
+        $this->cancelDelete();
+        $this->resetPage('templatesPage');
+        $this->resetPage('intakesPage');
     }
 
     public function createIntake(): void
