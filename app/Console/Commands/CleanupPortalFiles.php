@@ -4,8 +4,10 @@ namespace App\Console\Commands;
 
 use App\Models\AppSetting;
 use App\Models\AuditLog;
+use App\Models\PsychometricAttempt;
 use App\Models\RecruitmentApplication;
 use App\Models\UploadedFile;
+use App\Services\PsychometricService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -69,6 +71,9 @@ class CleanupPortalFiles extends Command
                                 $version->update(['notes' => null, 'links' => []]);
                                 $version->attachments()->update(['description' => null]);
                             }
+                        }
+                        if (PsychometricService::available()) {
+                            PsychometricAttempt::where('recruitment_application_id', $application->id)->delete();
                         }
                         $application->update(['purged_at' => now()]);
                         AuditLog::record('application.retention_purged', $application, null, 'Kebijakan retensi aktif');

@@ -1,0 +1,367 @@
+[
+  [
+    {
+      "answer": [
+        "B"
+      ],
+      "confidence": "tinggi",
+      "reason": "Arah panah berputar 90 derajat: bawah, kiri, atas, lalu kanan."
+    },
+    {
+      "answer": [
+        "C"
+      ],
+      "confidence": "tinggi",
+      "reason": "Satu daun tambahan diisi pada setiap langkah; gambar berikutnya mengisi keempat daun."
+    },
+    {
+      "answer": [
+        "B"
+      ],
+      "confidence": "tinggi",
+      "reason": "Bagian berwarna berpindah dari kanan ke atas, kiri, lalu bawah."
+    },
+    {
+      "answer": [
+        "D"
+      ],
+      "confidence": "tinggi",
+      "reason": "Lingkaran kecil bergerak ke kanan di atas garis tanpa berubah ukuran."
+    },
+    {
+      "answer": [
+        "E"
+      ],
+      "confidence": "tinggi",
+      "reason": "Silang dan titik bergerak berlawanan arah di empat kuadran."
+    },
+    {
+      "answer": [
+        "B"
+      ],
+      "confidence": "tinggi",
+      "reason": "Jumlah cabang bertambah satu dan lingkaran kosong membesar."
+    },
+    {
+      "answer": [
+        "D"
+      ],
+      "confidence": "tinggi",
+      "reason": "Pasangan titik pada langkah sebelumnya menjadi garis pembagi tambahan."
+    },
+    {
+      "answer": [
+        "B"
+      ],
+      "confidence": "tinggi",
+      "reason": "Posisi persegi, segitiga, dan lingkaran berulang setelah tiga langkah."
+    },
+    {
+      "answer": [
+        "F"
+      ],
+      "confidence": "sedang",
+      "reason": "Simbol sebelumnya berpindah ke garis; simbol baru berikutnya muncul di bawah garis."
+    },
+    {
+      "answer": [
+        "C"
+      ],
+      "confidence": "tinggi",
+      "reason": "Persegi panjang semakin pendek dan lebar, dengan isian bergantian kosong dan berarsir."
+    },
+    {
+      "answer": [
+        "B"
+      ],
+      "confidence": "tinggi",
+      "reason": "Bentuk tertutup dan terbuka berpindah di empat sudut; berikutnya tertutup kiri atas dan terbuka kanan bawah."
+    },
+    {
+      "answer": [
+        "B"
+      ],
+      "confidence": "tinggi",
+      "reason": "Titik penuh berkurang satu; lingkaran kosong dan simbol berikutnya bertambah membentuk baris 1, 3, 2, 1."
+    },
+    {
+      "answer": [
+        "E"
+      ],
+      "confidence": "sedang",
+      "reason": "Selisih jumlah sisi dan garis bawah berkurang: 3, 2, 1, lalu 0; segitiga dengan tiga garis."
+    }
+  ],
+  [
+    {
+      "answer": [
+        "B",
+        "E"
+      ],
+      "confidence": "tinggi",
+      "reason": "Dua gambar memiliki badan hewan pendek; tiga lainnya memanjang."
+    },
+    {
+      "answer": [
+        "A",
+        "E"
+      ],
+      "confidence": "tinggi",
+      "reason": "Garis panjang terletak di atas garis pendek."
+    },
+    {
+      "answer": [
+        "A",
+        "D"
+      ],
+      "confidence": "tinggi",
+      "reason": "Sudut mengarah ke bawah, berbeda dari tiga sudut yang mengarah ke atas."
+    },
+    {
+      "answer": [
+        "C",
+        "E"
+      ],
+      "confidence": "tinggi",
+      "reason": "Hanya memiliki satu persegi panjang, bukan dua."
+    },
+    {
+      "answer": [
+        "B",
+        "E"
+      ],
+      "confidence": "tinggi",
+      "reason": "Tangan dan lutut berbeda dari tiga organ pada kepala."
+    },
+    {
+      "answer": [
+        "A",
+        "D"
+      ],
+      "confidence": "tinggi",
+      "reason": "Terdiri dari dua ruas garis; tiga pilihan lain terdiri dari tiga ruas."
+    },
+    {
+      "answer": [
+        "B",
+        "E"
+      ],
+      "confidence": "tinggi",
+      "reason": "Berisi empat lingkaran; pilihan lainnya berjumlah ganjil 1, 3, dan 5."
+    },
+    {
+      "answer": [
+        "B",
+        "E"
+      ],
+      "confidence": "sedang",
+      "reason": "Memiliki sudut miring yang berbeda dari bentuk lain yang didominasi sudut siku-siku."
+    },
+    {
+      "answer": [
+        "A",
+        "D"
+      ],
+      "confidence": "tinggi",
+      "reason": "Tidak mempunyai sektor dengan pola titik-titik bulat seperti tiga pilihan lainnya."
+    },
+    {
+      "answer": [
+        "C",
+        "E"
+      ],
+      "confidence": "sedang",
+      "reason": "Jumlah titik merupakan bilangan kuadrat, yaitu 4 dan 1; lainnya 3, 5, dan 11."
+    },
+    {
+      "answer": [
+        "A",
+        "D"
+      ],
+      "confidence": "tinggi",
+      "reason": "Menggabungkan garis lurus dan lengkung; pilihan lainnya hanya satu jenis garis."
+    },
+    {
+      "answer": [
+        "A",
+        "D"
+      ],
+      "confidence": "sedang",
+      "reason": "Memiliki simbol dalam yang sejenis dengan simbol pada bingkai; detail kecil perlu diperiksa kembali."
+    },
+    {
+      "answer": [
+        "B",
+        "C"
+      ],
+      "confidence": "tinggi",
+      "reason": "Kedua diagonal menggunakan jenis garis yang sama: sama-sama putus atau sama-sama utuh."
+    },
+    {
+      "answer": [
+        "C",
+        "D"
+      ],
+      "confidence": "sedang",
+      "reason": "Tiga pilihan lainnya memiliki satu lingkaran dan satu poligon yang terpisah; C tersambung dan D terdiri dari dua lingkaran."
+    }
+  ],
+  [
+    {
+      "answer": [
+        "E"
+      ],
+      "confidence": "tinggi",
+      "reason": "Urutan ukuran dibalik: dari kecil ke besar menjadi besar ke kecil."
+    },
+    {
+      "answer": [
+        "E"
+      ],
+      "confidence": "tinggi",
+      "reason": "Perubahan persegi menjadi lingkaran mempertahankan arsiran di separuh bawah."
+    },
+    {
+      "answer": [
+        "E"
+      ],
+      "confidence": "tinggi",
+      "reason": "Lingkaran kosong kecil berubah menjadi lingkaran lebih besar dengan arsiran yang sama."
+    },
+    {
+      "answer": [
+        "B"
+      ],
+      "confidence": "tinggi",
+      "reason": "Arsiran di luar bentuk dipindahkan ke dalam bentuk dengan arah arsiran tetap."
+    },
+    {
+      "answer": [
+        "C"
+      ],
+      "confidence": "sedang",
+      "reason": "Isian kedua bentuk dipertukarkan dan bentuk kiri diperkecil; pilihan C paling sesuai."
+    },
+    {
+      "answer": [
+        "D"
+      ],
+      "confidence": "tinggi",
+      "reason": "Kolom terakhir berisi bentuk kecil tanpa arsiran; pada baris ketiga bentuknya segitiga."
+    },
+    {
+      "answer": [
+        "E"
+      ],
+      "confidence": "tinggi",
+      "reason": "Ketiga jenis isian berputar sehingga tiap baris dan kolom memuat semua susunan."
+    },
+    {
+      "answer": [
+        "E"
+      ],
+      "confidence": "sedang",
+      "reason": "Hubungan terpisah, berpotongan, dan bersarang bergeser antarkolom; posisi terakhir membutuhkan dua lingkaran berpotongan."
+    },
+    {
+      "answer": [
+        "A"
+      ],
+      "confidence": "sedang",
+      "reason": "Panjang garis berkurang antarkolom; pola rotasi menempatkan dua garis pendek mendatar di atas dan bawah."
+    },
+    {
+      "answer": [
+        "E"
+      ],
+      "confidence": "tinggi",
+      "reason": "Baris terakhir memakai lingkaran berarsir; kolom terakhir menyusunnya mendatar dan saling bersinggungan."
+    },
+    {
+      "answer": [
+        "C"
+      ],
+      "confidence": "sedang",
+      "reason": "Perubahan mengarah ke bentuk yang lebih teratur; oval menjadi lingkaran. Detail A dan B sangat mirip sehingga perlu pemeriksaan HR."
+    },
+    {
+      "answer": [
+        "F"
+      ],
+      "confidence": "rendah",
+      "reason": "Pilihan F mempertahankan kemiringan persegi panjang dan memperbesar bentuk. Hubungan ukuran pada matriks tidak cukup tegas; bandingkan terutama dengan B."
+    }
+  ],
+  [
+    {
+      "answer": [
+        "B"
+      ],
+      "confidence": "tinggi",
+      "reason": "Titik harus berada di dalam lingkaran sekaligus persegi panjang; lingkaran di dalam persegi memenuhi kondisi."
+    },
+    {
+      "answer": [
+        "A"
+      ],
+      "confidence": "tinggi",
+      "reason": "Titik harus di dalam segitiga dan di bawah garis lengkung."
+    },
+    {
+      "answer": [
+        "D"
+      ],
+      "confidence": "tinggi",
+      "reason": "Titik harus berada pada irisan dua persegi panjang sekaligus di dalam lingkaran."
+    },
+    {
+      "answer": [
+        "D"
+      ],
+      "confidence": "tinggi",
+      "reason": "Titik harus berada dalam kedua persegi dan di bawah garis lengkung."
+    },
+    {
+      "answer": [
+        "A"
+      ],
+      "confidence": "sedang",
+      "reason": "Titik berada di dalam segitiga dan lingkaran, tetapi di luar persegi."
+    },
+    {
+      "answer": [
+        "B"
+      ],
+      "confidence": "tinggi",
+      "reason": "Titik berada di dalam lingkaran dan persegi, serta di atas garis lengkung."
+    },
+    {
+      "answer": [
+        "A"
+      ],
+      "confidence": "rendah",
+      "reason": "Pilihan A paling mendekati kombinasi daerah satu persegi dan irisan dua persegi terhadap dua garis. Posisi titik pada gambar sumber kurang jelas; wajib dibandingkan ulang dengan pilihan D."
+    },
+    {
+      "answer": [
+        "D"
+      ],
+      "confidence": "sedang",
+      "reason": "Diperlukan daerah di dalam tiga lingkaran, serta daerah di dua lingkaran saja, keduanya di luar persegi."
+    },
+    {
+      "answer": [
+        "A"
+      ],
+      "confidence": "sedang",
+      "reason": "Ketiga titik memerlukan daerah segitiga saja, segitiga-lingkaran, dan irisan segitiga-lingkaran-persegi panjang."
+    },
+    {
+      "answer": [
+        "A"
+      ],
+      "confidence": "sedang",
+      "reason": "Memerlukan daerah persegi saja di atas lengkung, irisan persegi-persegi panjang di bawahnya, dan irisan persegi panjang-segitiga di atasnya."
+    }
+  ]
+]

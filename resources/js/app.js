@@ -1,3 +1,5 @@
+import Swal from 'sweetalert2';
+
 document.addEventListener('click', (event) => {
     const button = event.target.closest('[data-password-toggle]');
     if (!button) return;
@@ -116,3 +118,191 @@ if (resendForm) {
         status.textContent = 'Menjadwalkan pengiriman…';
     });
 }
+
+
+async function enterPsychometricFullscreen() {
+    if (document.fullscreenElement === document.documentElement) return;
+    if (!document.fullscreenEnabled || !document.documentElement.requestFullscreen) {
+        throw new Error('Browser ini tidak mendukung layar penuh. Gunakan browser desktop yang mendukung mode layar penuh untuk mengerjakan tes.');
+    }
+    try {
+        await document.documentElement.requestFullscreen();
+    } catch {
+        throw new Error('Mode layar penuh belum diizinkan. Izinkan layar penuh lalu coba kembali.');
+    }
+    if (document.fullscreenElement !== document.documentElement) {
+        throw new Error('Masuk mode layar penuh terlebih dahulu untuk melanjutkan.');
+    }
+}
+
+document.addEventListener('submit', async (event) => {
+    const form = event.target.closest('[data-psych-start]');
+    if (!form) return;
+    event.preventDefault();
+    if (form.dataset.pending) return;
+    form.dataset.pending = 'true';
+    const button = form.querySelector('button');
+    button.disabled = true;
+    try {
+        const confirmation = await Swal.fire({
+            title: 'Sudah siap melakukan tes ?',
+            text: 'Tes wajib dikerjakan dalam mode layar penuh. Timer dimulai setelah Anda mengonfirmasi dan layar penuh berhasil diaktifkan.',
+            icon: 'question', showCancelButton: true,
+            confirmButtonText: 'Ya, mulai tes', cancelButtonText: 'Belum siap',
+            allowOutsideClick: false,
+            preConfirm: async () => {
+                try {
+                    await enterPsychometricFullscreen();
+                    return true;
+                } catch (error) {
+                    Swal.showValidationMessage(error.message);
+                    return false;
+                }
+            },
+        });
+        if (!confirmation.isConfirmed) return;
+        if (document.fullscreenElement !== document.documentElement) {
+            throw new Error('Layar penuh telah ditutup. Coba mulai kembali dalam mode layar penuh.');
+        }
+        button.textContent = 'Memulai tes…';
+        const response = await fetch(form.getAttribute('action'), {
+            method: 'POST', credentials: 'same-origin', body: new FormData(form),
+            headers: { Accept: 'text/html' }, signal: AbortSignal.timeout(20000),
+        });
+        if (!response.ok) throw new Error('Tes belum dapat ditampilkan. Muat ulang halaman untuk memeriksa status tes sebelum mencoba lagi.');
+        const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+        const content = page.querySelector('#main');
+        if (!content || !page.querySelector('[data-psychometric-form]')) {
+            window.location.reload();
+            return;
+        }
+        document.querySelector('#main').replaceChildren(...content.childNodes);
+        initializePsychometricForm();
+        window.scrollTo(0, 0);
+    } catch (error) {
+        await Swal.fire({ icon: 'error', title: 'Tidak dapat membuka tes', text: `${error.message} Jika permintaan sudah diterima server, timer tetap berjalan.` });
+    } finally {
+        delete form.dataset.pending;
+        button.disabled = false;
+        button.textContent = form.dataset.startLabel;
+    }
+});
+
+function initializePsychometricForm() {
+    document.querySelectorAll('[data-psych-start] button').forEach(button => button.disabled = false);
+    const psychForm = document.querySelector('[data-psychometric-form]');
+    if (psychForm) {
+        const gate = document.querySelector('[data-psych-fullscreen-gate]');
+        const synchronizeFullscreen = () => {
+            const active = document.fullscreenElement === document.documentElement;
+            psychForm.hidden = !active;
+            psychForm.inert = !active;
+            gate.hidden = active;
+        };
+        document.addEventListener('fullscreenchange', synchronizeFullscreen);
+        gate.querySelector('button').addEventListener('click', async () => {
+            try {
+                await enterPsychometricFullscreen();
+                synchronizeFullscreen();
+            } catch (error) {
+                await Swal.fire({ icon: 'warning', title: 'Layar penuh diperlukan', text: error.message });
+            }
+        });
+        synchronizeFullscreen();
+        const status = psychForm.querySelector('[data-psych-status]');
+        const timer = psychForm.querySelector('[data-psych-timer]');
+        const section = Number(psychForm.dataset.section);
+        const started = performance.now();
+        const duration = Number(psychForm.dataset.remaining) * 1000;
+        let revision = Number(psychForm.dataset.revision);
+        let pending = false;
+        let dirty = false;
+        let stopped = false;
+        let debounce;
+        const remaining = () => Math.max(0, Math.ceil((duration - (performance.now() - started)) / 1000));
+        const collect = () => {
+            const answers = {};
+            psychForm.querySelectorAll('input[name^="answers["]:checked').forEach(input => {
+                const number = input.name.match(/answers\[(\d+)\]/)[1];
+                (answers[number] ??= []).push(input.value);
+            });
+            return answers;
+        };
+        async function save(action = 'save') {
+            if (pending || stopped) return;
+            pending = true;
+            dirty = false;
+            status.textContent = 'Menyimpan jawaban…';
+            psychForm.querySelectorAll('button').forEach(button => button.disabled = true);
+            if (action === 'finish') psychForm.querySelectorAll('input[name^="answers["]').forEach(input => input.disabled = true);
+            try {
+                const response = await fetch(psychForm.dataset.endpoint, {
+                    method: 'POST', credentials: 'same-origin', signal: AbortSignal.timeout(15000),
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': psychForm.querySelector('[name="_token"]').value },
+                    body: JSON.stringify({ action, section, revision, answers: collect() }),
+                });
+                if (!response.ok) {
+                    if ([401, 403, 409, 419].includes(response.status)) {
+                        stopped = true;
+                        psychForm.querySelectorAll('input[name^="answers["]').forEach(input => input.disabled = true);
+                        status.textContent = 'Sesi atau bagian berubah. Muat ulang halaman untuk melanjutkan.';
+                        return;
+                    }
+                    throw new Error('save failed');
+                }
+                const result = await response.json();
+                revision = result.revision;
+                psychForm.querySelector('[name="revision"]').value = revision;
+                if (action === 'finish' || result.completed || result.section !== section || !result.active) {
+                    stopped = true;
+                    window.location.reload();
+                    return;
+                }
+                status.textContent = dirty ? 'Ada perubahan, menyimpan lagi…' : 'Semua jawaban tersimpan';
+            } catch {
+                dirty = true;
+                status.textContent = 'Gagal menyimpan. Periksa koneksi; jawaban akan dicoba lagi selama waktu tersedia.';
+            } finally {
+                pending = false;
+                if (!stopped) {
+                    psychForm.querySelectorAll('button, input[name^="answers["]').forEach(input => input.disabled = false);
+                    if (dirty && remaining() > 0) debounce = setTimeout(() => save(), 1500);
+                }
+            }
+        }
+        psychForm.addEventListener('change', event => {
+            if (!event.target.name.startsWith('answers[')) return;
+            const fieldset = event.target.closest('fieldset');
+            if (fieldset.querySelectorAll('input:checked').length > Number(psychForm.dataset.choices)) {
+                event.target.checked = false;
+                status.textContent = `Pilih maksimal ${psychForm.dataset.choices} jawaban untuk satu soal.`;
+                return;
+            }
+            dirty = true;
+            status.textContent = 'Ada perubahan yang belum tersimpan';
+            clearTimeout(debounce);
+            debounce = setTimeout(() => save(), 350);
+        });
+        psychForm.addEventListener('submit', event => {
+            event.preventDefault();
+            clearTimeout(debounce);
+            save(event.submitter?.value === 'finish' ? 'finish' : 'save');
+        });
+        psychForm.querySelector('[data-psych-review]').addEventListener('click', () => psychForm.querySelector('[data-psych-confirm]').hidden = false);
+        psychForm.querySelector('[data-psych-cancel]').addEventListener('click', () => psychForm.querySelector('[data-psych-confirm]').hidden = true);
+        window.addEventListener('beforeunload', event => {
+            if ((dirty || pending) && !stopped) { event.preventDefault(); event.returnValue = ''; }
+        });
+        const tick = setInterval(() => {
+            const seconds = remaining();
+            timer.textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+            if (!seconds && !pending) {
+                clearInterval(tick);
+                stopped = true;
+                window.location.reload();
+            }
+        }, 250);
+    }
+}
+
+initializePsychometricForm();

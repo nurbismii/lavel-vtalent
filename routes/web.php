@@ -3,6 +3,7 @@
 use App\Enums\Role;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\FileController;
+use App\Http\Controllers\PsychometricController;
 use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\TechnicalTaskController;
 use App\Http\Middleware\EnsurePortalAccess;
@@ -40,6 +41,13 @@ Route::middleware([FormHeaders::class, 'throttle:forms-public'])->group(function
 });
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 Route::middleware(['auth', EnsurePortalAccess::class])->group(function () {
+    Route::get('/portal/psychometrics', [PsychometricController::class, 'index'])->name('candidate.psychometrics');
+    Route::get('/portal/psychometrics/{attempt}', [PsychometricController::class, 'show'])->whereNumber('attempt')->name('candidate.psychometrics.show');
+    Route::post('/portal/psychometrics/{attempt}', [PsychometricController::class, 'update'])->whereNumber('attempt')->middleware('throttle:120,1')->name('candidate.psychometrics.update');
+    Route::get('/portal/psychometrics/{attempt}/images/{page}', [PsychometricController::class, 'image'])->whereNumber(['attempt', 'page'])->name('candidate.psychometrics.image');
+    Route::get('/portal/psychometric-preview/{test}/{page}', [PsychometricController::class, 'preview'])->whereNumber('page')->name('psychometrics.preview');
+    Route::get('/portal/psychometrics/{attempt}/questions/{section}/{question}/{part}', [PsychometricController::class, 'questionImage'])->whereNumber(['attempt', 'section', 'question'])->where('part', 'stem|[A-F]')->name('candidate.psychometrics.question-image');
+    Route::get('/portal/psychometric-question-preview/{test}/{section}/{question}/{part}', [PsychometricController::class, 'questionPreview'])->whereNumber(['test', 'section', 'question'])->where('part', 'stem|[A-F]')->name('psychometrics.question-preview');
     Route::get('/portal/forms', [PublicFormController::class, 'mine'])->middleware(FormHeaders::class)->name('candidate.forms');
     Route::get('/portal/technical-tasks/{task}/download', TechnicalTaskController::class)->name('candidate.task.download');
     Route::view('/change-password', 'auth.change')->name('password.initial');
