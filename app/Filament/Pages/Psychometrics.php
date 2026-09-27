@@ -57,7 +57,7 @@ class Psychometrics extends Page
 
     public string $feedback = '';
 
-    public string $applicationId = '';
+    public array $applicationIds = [];
 
     public string $opensAt = '';
 
@@ -99,7 +99,7 @@ class Psychometrics extends Page
         $this->actor();
         $test = PsychometricTest::findOrFail($id);
         $this->testId = $id;
-        $this->reset('questionImage', 'correctedPage', 'imageSection', 'imageQuestion', 'imagePart', 'confirmDelete');
+        $this->reset('questionImage', 'correctedPage', 'imageSection', 'imageQuestion', 'imagePart', 'confirmDelete', 'applicationIds');
         $this->durations = array_map(fn (array $s): mixed => $s['seconds'] ?? '', $test->sections);
         $this->keyText = array_map(fn (array $keys): string => implode(' ', array_map(fn (array $key): string => $key === [] ? '-' : implode(',', $key), $keys)), $test->answer_key ?? []);
         $this->reviewed = false;
@@ -193,11 +193,23 @@ class Psychometrics extends Page
     public function assign(): void
     {
         $this->actor();
-        $this->validate(['applicationId' => ['required', 'integer'], 'opensAt' => ['required', 'date'], 'deadline' => ['required', 'date', 'after:opensAt']]);
+        $this->validate(['applicationIds' => ['required', 'array', 'min:1', 'max:100'], 'applicationIds.*' => ['required', 'integer', 'distinct'], 'opensAt' => ['required', 'date'], 'deadline' => ['required', 'date', 'after:opensAt']]);
         abort_unless($this->testId, 422);
         $zone = AppSetting::valueFor('timezone');
-        app(PsychometricService::class)->assign(auth()->user(), $this->testId, (int) $this->applicationId, Carbon::parse($this->opensAt, $zone)->utc()->toDateTimeString(), Carbon::parse($this->deadline, $zone)->utc()->toDateTimeString());
-        $this->feedback = 'Penugasan tersedia. Penugasan yang sudah ada tidak dibuat ulang.';
+        $opensAt = Carbon::parse($this->opensAt, $zone)->utc()->toDateTimeString();
+        $deadline = Carbon::parse($this->deadline, $zone)->utc()->toDateTimeString();
+        $created = DB::transaction(function () use ($opensAt, $deadline): int {
+            $created = 0;
+            foreach ($this->applicationIds as $applicationId) {
+                $attempt = app(PsychometricService::class)->assign(auth()->user(), $this->testId, (int) $applicationId, $opensAt, $deadline);
+                $created += (int) $attempt->wasRecentlyCreated;
+            }
+
+            return $created;
+        });
+        $skipped = count($this->applicationIds) - $created;
+        $this->reset('applicationIds');
+        $this->feedback = "{$created} penugasan berhasil dibuat. {$skipped} penugasan yang sudah ada dilewati tanpa perubahan.";
     }
 
     public function finalizeExpired(): void

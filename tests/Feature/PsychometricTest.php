@@ -25,6 +25,68 @@ class PsychometricTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_bulk_assignment_keeps_search_selection_and_skips_existing_attempts(): void
+    {
+        $this->freezeTime();
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $existing = PsychometricAttempt::factory()->create();
+        $applications = RecruitmentApplication::factory()->count(2)->create();
+        $ids = [$existing->recruitment_application_id, ...$applications->modelKeys()];
+
+        Livewire::actingAs($admin)->test(Psychometrics::class)
+            ->call('edit', $existing->psychometric_test_id)
+            ->set('applicationIds', $ids)->set('search', 'no-matching-candidate')
+            ->assertSet('applicationIds', $ids)->assertSee('Tidak ada lamaran kandidat aktif yang cocok.')
+            ->set('opensAt', now()->addDay()->format('Y-m-d\TH:i'))
+            ->set('deadline', now()->addDays(3)->format('Y-m-d\TH:i'))
+            ->call('assign')->assertHasNoErrors()->assertSet('applicationIds', [])
+            ->assertSee('2 penugasan berhasil dibuat. 1 penugasan yang sudah ada dilewati');
+
+        $this->assertDatabaseCount('psychometric_attempts', 3);
+        $this->assertTrue($existing->deadline->equalTo($existing->fresh()->deadline));
+        foreach ($applications as $application) {
+            $this->assertDatabaseHas('psychometric_attempts', [
+                'psychometric_test_id' => $existing->psychometric_test_id,
+                'recruitment_application_id' => $application->id,
+                'deadline' => now()->addDays(3)->startOfMinute()->subHours(8)->toDateTimeString(),
+            ]);
+        }
+        $this->assertSame(2, AuditLog::where('action', 'psychometric.assigned')->count());
+    }
+
+    public function test_bulk_assignment_rejects_empty_and_duplicate_selections(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $test = Assessment::factory()->published()->create();
+        $application = RecruitmentApplication::factory()->create();
+
+        $page = Livewire::actingAs($admin)->test(Psychometrics::class)->call('edit', $test->id);
+        $page->call('assign')->assertHasErrors('applicationIds');
+        $page->set('applicationIds', [$application->id, $application->id])
+            ->call('assign')->assertHasErrors('applicationIds.0');
+
+        $this->assertDatabaseCount('psychometric_attempts', 0);
+    }
+
+    public function test_bulk_assignment_rolls_back_when_a_later_candidate_is_inactive(): void
+    {
+        $this->freezeTime();
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $test = Assessment::factory()->published()->create();
+        $first = RecruitmentApplication::factory()->create();
+        $second = RecruitmentApplication::factory()->create();
+        $second->user->update(['active' => false]);
+
+        Livewire::actingAs($admin)->test(Psychometrics::class)->call('edit', $test->id)
+            ->set('applicationIds', [$first->id, $second->id])
+            ->set('opensAt', now()->addDay()->format('Y-m-d\TH:i'))
+            ->set('deadline', now()->addDays(3)->format('Y-m-d\TH:i'))
+            ->call('assign')->assertStatus(422);
+
+        $this->assertDatabaseCount('psychometric_attempts', 0);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'psychometric.assigned']);
+    }
+
     public function test_hr_can_remove_a_participant_and_results_only_from_the_selected_test(): void
     {
         $admin = User::factory()->create(['role' => Role::Admin]);

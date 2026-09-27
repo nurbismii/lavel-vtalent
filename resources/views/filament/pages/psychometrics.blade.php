@@ -100,7 +100,32 @@
                         @endunless
                     </section>
         @if($selected->published_at)
-            <form class="panel hr-psych-assignment" wire:submit="assign"><div class="eyebrow">Langkah berikutnya</div><h2>Tugaskan ke kandidat</h2><p class="muted">Satu kesempatan per paket dan lamaran. Jadwal menggunakan {{ App\Models\AppSetting::valueFor('timezone') }}.</p><label class="field">Cari kandidat<input wire:model.live.debounce.400ms="search" placeholder="Nama atau email"></label><label class="field">Lamaran (maksimum 30 hasil pencarian)<select wire:model="applicationId" required><option value="">Pilih kandidat</option>@foreach($applications as $application)<option value="{{ $application->id }}">{{ $application->user->name }} · {{ $application->user->email }} · {{ $application->position->name }} · {{ $application->period->name }}</option>@endforeach</select></label><div class="two-col"><label class="field">Jadwal dibuka<input type="datetime-local" wire:model="opensAt" required></label><label class="field">Tenggat akhir<input type="datetime-local" wire:model="deadline" required></label></div><div class="hr-psych-actions"><button class="button primary" wire:loading.attr="disabled" wire:target="assign"><x-heroicon-o-user-plus/> Simpan penugasan</button></div></form>
+            <form class="panel hr-psych-assignment" wire:submit="assign">
+                <div class="eyebrow">Langkah berikutnya</div><h2>Tugaskan ke kandidat</h2>
+                <p class="muted">Pilih beberapa lamaran untuk jadwal yang sama. Satu kesempatan per paket dan lamaran. Jadwal menggunakan {{ App\Models\AppSetting::valueFor('timezone') }}.</p>
+                <div class="candidate-picker" x-data="{ open: false }" x-on:keydown.escape.stop.prevent="open = false; $refs.trigger.focus()" x-on:click.outside="open = false" x-on:focusout="if (!$el.contains($event.relatedTarget)) open = false">
+                    <label class="field" id="psych-picker-label">Lamaran kandidat</label>
+                    <button type="button" class="button candidate-picker-trigger" x-ref="trigger" x-on:click="open = !open; if (open) $nextTick(() => $refs.search.focus())" x-bind:aria-expanded="open" aria-controls="psych-picker-panel" aria-labelledby="psych-picker-label psych-picker-summary">
+                        <span id="psych-picker-summary" x-text="$wire.applicationIds.length ? $wire.applicationIds.length + ' lamaran dipilih' : 'Pilih kandidat'">Pilih kandidat</span><span aria-hidden="true">▾</span>
+                    </button>
+                    <div id="psych-picker-panel" class="candidate-picker-panel" x-show="open" x-cloak>
+                        <label class="field candidate-picker-search">Cari kandidat<input type="search" x-ref="search" wire:model.live.debounce.400ms="search" placeholder="Nama atau email" maxlength="255" x-on:keydown.enter.prevent></label>
+                        <div class="candidate-picker-options" role="group" aria-label="Pilihan lamaran kandidat">
+                            @forelse($applications as $application)
+                                <label class="candidate-picker-option" wire:key="psych-application-{{ $application->id }}"><input type="checkbox" wire:model="applicationIds" value="{{ $application->id }}"><span><strong>{{ $application->user->name }}</strong><small>{{ $application->user->email }} · {{ $application->position->name }} · {{ $application->period->name }}</small></span></label>
+                            @empty
+                                <p>Tidak ada lamaran kandidat aktif yang cocok.</p>
+                            @endforelse
+                        </div>
+                        <div class="row candidate-picker-footer"><small>Maksimum 30 hasil pencarian. Pilihan tetap tersimpan saat mencari nama lain.</small><button type="button" class="link-button" x-on:click="$wire.set('applicationIds', [], false)">Hapus pilihan</button><button type="button" class="button small" x-on:click="open = false; $refs.trigger.focus()">Selesai memilih</button></div>
+                    </div>
+                </div>
+                <p class="muted">Maksimal 100 lamaran per penugasan. Penugasan yang sudah ada dilewati tanpa mengubah jadwal atau jawaban.</p>
+                @error('applicationIds')<span class="field-error">{{ $message }}</span>@enderror
+                @error('applicationIds.*')<span class="field-error">{{ $message }}</span>@enderror
+                <div class="two-col"><label class="field">Jadwal dibuka<input type="datetime-local" wire:model="opensAt" required></label><label class="field">Tenggat akhir<input type="datetime-local" wire:model="deadline" required></label></div>
+                <div class="hr-psych-actions"><button class="button primary" wire:loading.attr="disabled" wire:target="assign"><x-heroicon-o-user-plus/><span wire:loading.remove wire:target="assign">Simpan penugasan</span><span wire:loading wire:target="assign">Menyimpan penugasan…</span></button></div>
+            </form>
         @endif
                 @else
                     <section class="panel hr-psych-empty hr-psych-welcome"><span class="hr-psych-welcome-icon"><x-heroicon-o-adjustments-horizontal/></span><div class="eyebrow">Ruang pengelolaan tes</div><h2>Mulai dari sebuah paket</h2><p>Pilih paket di daftar untuk mengatur durasi dan kunci jawaban. Setelah diterbitkan, paket siap ditugaskan kepada kandidat.</p><div class="hr-psych-steps"><span><b>1</b> Atur tes</span><span><b>2</b> Terbitkan</span><span><b>3</b> Tugaskan</span></div></section>
