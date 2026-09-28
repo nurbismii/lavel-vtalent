@@ -5,9 +5,11 @@ namespace App\Filament\Pages;
 use App\Enums\Role;
 use App\Models\AppSetting;
 use App\Models\AuditLog;
+use App\Models\Position;
 use App\Models\PsychometricAttempt;
 use App\Models\PsychometricTest;
 use App\Models\RecruitmentApplication;
+use App\Models\RecruitmentPeriod;
 use App\Services\PsychometricService;
 use Carbon\Carbon;
 use Filament\Pages\Page;
@@ -64,6 +66,26 @@ class Psychometrics extends Page
     public string $deadline = '';
 
     public string $search = '';
+
+    public string $resultSearch = '';
+
+    public string $positionFilter = '';
+
+    public string $periodFilter = '';
+
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['resultSearch', 'positionFilter', 'periodFilter'], true)) {
+            $this->resetPage();
+        }
+    }
+
+    public function resetResultFilters(): void
+    {
+        $this->actor();
+        $this->reset('resultSearch', 'positionFilter', 'periodFilter');
+        $this->resetPage();
+    }
 
     public function getHeading(): ?string
     {
@@ -227,7 +249,16 @@ class Psychometrics extends Page
             'tests' => PsychometricTest::latest()->get(),
             'selected' => $this->testId ? PsychometricTest::withCount('attempts')->findOrFail($this->testId) : null,
             'applications' => RecruitmentApplication::whereNull('archived_at')->whereNull('purged_at')->whereHas('user', fn ($q) => $q->where('active', true)->where('role', Role::Candidate)->where(fn ($q) => $q->where('name', 'like', '%'.$this->search.'%')->orWhere('email', 'like', '%'.$this->search.'%')))->with(['user', 'position', 'period'])->latest()->limit(30)->get(),
-            'attempts' => PsychometricAttempt::with(['test', 'application.user'])->latest()->paginate(15),
+            'positions' => Position::orderBy('name')->get(['id', 'name']),
+            'periods' => RecruitmentPeriod::orderByDesc('starts_at')->orderByDesc('id')->get(['id', 'name']),
+            'attemptCount' => PsychometricAttempt::count(),
+            'attempts' => PsychometricAttempt::with(['test', 'application.user', 'application.position', 'application.period'])
+                ->when($this->positionFilter !== '', fn ($query) => $query->whereHas('application', fn ($application) => $application->where('position_id', $this->positionFilter)))
+                ->when($this->periodFilter !== '', fn ($query) => $query->whereHas('application', fn ($application) => $application->where('recruitment_period_id', $this->periodFilter)))
+                ->when(trim($this->resultSearch) !== '', fn ($query) => $query->whereHas('application.user', fn ($user) => $user->where(fn ($candidate) => $candidate
+                    ->where('name', 'like', '%'.trim($this->resultSearch).'%')
+                    ->orWhere('email', 'like', '%'.trim($this->resultSearch).'%'))))
+                ->latest()->orderByDesc('id')->paginate(15),
         ];
     }
 }

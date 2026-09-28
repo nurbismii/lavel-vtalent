@@ -25,6 +25,52 @@ class PsychometricTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_results_filter_by_position_period_and_candidate_and_reset_pagination(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $match = PsychometricAttempt::factory()->create();
+        $match->application->position->update(['active' => false]);
+        $other = PsychometricAttempt::factory()->create();
+        $other->application->update(['recruitment_period_id' => $match->application->recruitment_period_id]);
+        $match->application->period->update(['active' => false]);
+        $samePosition = PsychometricAttempt::factory()->create([
+            'recruitment_application_id' => RecruitmentApplication::factory()->create([
+                'position_id' => $match->application->position_id,
+            ])->id,
+        ]);
+
+        $page = Livewire::actingAs($admin)->test(Psychometrics::class)
+            ->call('setPage', 2)
+            ->set('positionFilter', (string) $match->application->position_id)
+            ->assertSet('paginators.page', 1)
+            ->assertViewHas('attempts', fn ($attempts) => $attempts->total() === 2 && ! $attempts->contains('id', $other->id))
+            ->set('resultSearch', $match->application->user->email)
+            ->assertViewHas('attempts', fn ($attempts) => $attempts->modelKeys() === [$match->id])
+            ->set('resultSearch', $samePosition->application->user->name)
+            ->assertViewHas('attempts', fn ($attempts) => $attempts->modelKeys() === [$samePosition->id])
+            ->set('resultSearch', $other->application->user->email)
+            ->assertSee('Tidak ada penugasan yang cocok')
+            ->assertViewHas('attempts', fn ($attempts) => $attempts->total() === 0)
+            ->assertViewHas('attemptCount', 3);
+
+        $page->call('resetResultFilters')
+            ->assertSet('resultSearch', '')->assertSet('positionFilter', '')
+            ->assertViewHas('attempts', fn ($attempts) => $attempts->total() === 3);
+
+        $page->call('setPage', 2)
+            ->set('periodFilter', (string) $match->application->recruitment_period_id)
+            ->assertSet('paginators.page', 1)
+            ->assertViewHas('attempts', fn ($attempts) => $attempts->total() === 2 && ! $attempts->contains('id', $samePosition->id))
+            ->set('positionFilter', (string) $match->application->position_id)
+            ->set('resultSearch', $match->application->user->email)
+            ->assertViewHas('attempts', fn ($attempts) => $attempts->modelKeys() === [$match->id])
+            ->call('resetResultFilters')->assertSet('periodFilter', '')
+            ->assertViewHas('attempts', fn ($attempts) => $attempts->total() === 3)
+            ->set('periodFilter', '999999')
+            ->assertSee('Tidak ada penugasan yang cocok')
+            ->assertViewHas('attempts', fn ($attempts) => $attempts->total() === 0);
+    }
+
     public function test_bulk_assignment_keeps_search_selection_and_skips_existing_attempts(): void
     {
         $this->freezeTime();
