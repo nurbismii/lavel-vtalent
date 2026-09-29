@@ -8,7 +8,7 @@
         </div>
 
         <x-errors />@if($feedback)<div class="success" role="status">{{ $feedback }}</div>@endif<div wire:loading.delay role="status">Memproses…</div>
-        @if($section !== 'tools')<div class="row"><button type="button" class="button" wire:click="navigate('tools')">Tenggat massal, email & soal tes</button></div>@endif
+        @if($section !== 'tools')<div class="row"><a class="button" href="{{ route('filament.admin.pages.recruitment', ['section' => 'tools']) }}">Pengelolaan massal</a></div>@endif
         @if($section === 'tools')
             @include('filament.pages.recruitment-tools')
         @elseif(in_array($section,['dashboard','applications']))

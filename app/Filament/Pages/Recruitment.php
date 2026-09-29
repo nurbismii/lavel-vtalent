@@ -45,6 +45,10 @@ class Recruitment extends Page
 
     public string $recipientSearch = '';
 
+    public string $recipientPositionFilter = '';
+
+    public string $recipientPeriodFilter = '';
+
     public string $hrMessage = '';
 
     public bool $confirmAccess = false;
@@ -58,7 +62,14 @@ class Recruitment extends Page
     public function sendCandidateAccess(): void
     {
         $actor = $this->authorizeAdmin();
-        $this->validate(['confirmAccess' => 'accepted']);
+        $this->validate([
+            'confirmAccess' => 'accepted',
+            'recipientIds' => 'required|array|min:1|max:100',
+            'recipientIds.*' => 'required|integer|distinct',
+        ]);
+        if ($this->eligibleRecipients()->whereIn('id', $this->recipientIds)->count() !== count($this->recipientIds)) {
+            throw ValidationException::withMessages(['recipientIds' => 'Ada kandidat yang sudah mengunggah portofolio atau tidak sesuai filter. Pilih ulang penerima.']);
+        }
         $count = app(RecruitmentToolsService::class)->sendAccess($actor, $this->recipientIds, $this->hrMessage);
         $this->reset('recipientIds', 'confirmAccess');
         $this->feedback = "$count email akses dibuat. Periksa status pengiriman di bawah.";
@@ -165,6 +176,17 @@ class Recruitment extends Page
             ->whereDoesntHave('applications', fn ($query) => $query->whereNull('archived_at'));
     }
 
+    private function eligibleRecipients(): Builder
+    {
+        return User::query()->where('role', Role::Candidate)->where('active', true)
+            ->whereDoesntHave('applications', fn (Builder $query) => $query->whereNull('archived_at')
+                ->whereHas('files', fn (Builder $files) => $files->whereIn('purpose', ['portfolio_main', 'portfolio_evidence'])))
+            ->when($this->recipientPositionFilter !== '' || $this->recipientPeriodFilter !== '', fn (Builder $query) => $query
+                ->whereHas('applications', fn (Builder $applications) => $applications->whereNull('archived_at')
+                    ->when($this->recipientPositionFilter !== '', fn (Builder $q) => $q->where('position_id', $this->recipientPositionFilter))
+                    ->when($this->recipientPeriodFilter !== '', fn (Builder $q) => $q->where('recruitment_period_id', $this->recipientPeriodFilter))));
+    }
+
     public string $positionFilter = '';
 
     public string $periodFilter = '';
@@ -230,6 +252,9 @@ class Recruitment extends Page
 
     public function updated(string $property): void
     {
+        if (in_array($property, ['recipientPositionFilter', 'recipientPeriodFilter'], true)) {
+            $this->reset('recipientIds', 'confirmAccess');
+        }
         if (str_ends_with($property, 'Filter') || in_array($property, ['archived', 'overdue'], true)) {
             $this->resetPage();
         }
@@ -466,7 +491,7 @@ class Recruitment extends Page
         }
 
         return [
-            'recipients' => $this->section === 'tools' ? User::where('role', Role::Candidate)->where('active', true)->when($this->recipientSearch, fn ($q) => $q->where(fn ($s) => $s->where('name', 'like', '%'.mb_substr($this->recipientSearch, 0, 255).'%')->orWhere('email', 'like', '%'.mb_substr($this->recipientSearch, 0, 255).'%')))->orderBy('name')->limit(100)->get() : collect(),
+            'recipients' => $this->section === 'tools' ? $this->eligibleRecipients()->when($this->recipientSearch, fn ($q) => $q->where(fn ($s) => $s->where('name', 'like', '%'.mb_substr($this->recipientSearch, 0, 255).'%')->orWhere('email', 'like', '%'.mb_substr($this->recipientSearch, 0, 255).'%')))->orderBy('name')->orderBy('id')->limit(100)->get() : collect(),
             'accessDeliveries' => $this->section === 'tools' ? AccessDelivery::latest()->paginate(15, pageName: 'accessPage') : collect(),
             'technicalTasks' => $this->section === 'tools' ? TechnicalTask::with(['position', 'period'])->latest()->paginate(15, pageName: 'taskPage') : collect(),
             'bulkCount' => $this->section === 'tools' ? Submission::where('type', $this->bulk['type'])->whereIn('status', ['not_started', 'draft', 'revision'])->whereHas('application', fn ($q) => $q->whereNull('archived_at')->where('position_id', $this->bulk['position_id'])->where('recruitment_period_id', $this->bulk['recruitment_period_id']))->count() : 0,

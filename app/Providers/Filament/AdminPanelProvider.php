@@ -45,9 +45,9 @@ class AdminPanelProvider extends PanelProvider
                 ->icon($icon)
                 ->url(fn () => route('filament.admin.pages.recruitment', ['section' => $key]))
                 ->isActiveWhen(fn () => request()->routeIs('filament.admin.pages.recruitment') && request()->query('section', 'dashboard') === $key),
-                ['dashboard', 'applications', 'positions', 'periods', 'audit', 'operations', 'settings'],
-                ['Ringkasan', 'Kandidat & lamaran', 'Posisi', 'Periode rekrutmen', 'Riwayat aktivitas', 'Operasional', 'Pengaturan'],
-                ['heroicon-o-squares-2x2', 'heroicon-o-users', 'heroicon-o-briefcase', 'heroicon-o-calendar-days', 'heroicon-o-clock', 'heroicon-o-server', 'heroicon-o-cog-6-tooth']))
+                ['dashboard', 'applications', 'tools', 'positions', 'periods', 'audit', 'operations', 'settings'],
+                ['Ringkasan', 'Kandidat & lamaran', 'Pengelolaan massal', 'Posisi', 'Periode rekrutmen', 'Riwayat aktivitas', 'Operasional', 'Pengaturan'],
+                ['heroicon-o-squares-2x2', 'heroicon-o-users', 'heroicon-o-adjustments-horizontal', 'heroicon-o-briefcase', 'heroicon-o-calendar-days', 'heroicon-o-clock', 'heroicon-o-server', 'heroicon-o-cog-6-tooth']))
             ->pages([
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')

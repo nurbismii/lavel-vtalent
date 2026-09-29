@@ -2,3 +2,93 @@
 @import '../../app.css';
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
+
+.fi-sidebar {
+    background: #fff;
+    border-inline-end: 1px solid var(--line);
+}
+
+.fi-sidebar .fi-sidebar-nav {
+    padding: 24px 18px;
+    gap: 24px;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+    overscroll-behavior: contain;
+}
+
+.fi-sidebar .fi-sidebar-nav-groups {
+    margin-inline: 0;
+    gap: 24px;
+}
+
+.fi-sidebar .fi-sidebar-group-items {
+    gap: 6px;
+}
+
+.fi-sidebar .fi-sidebar-group-btn {
+    padding: 0 12px 10px;
+}
+
+.fi-sidebar .fi-sidebar-group-label {
+    color: #637187;
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.fi-sidebar .fi-sidebar-item-btn {
+    min-height: 46px;
+    padding: 11px 12px;
+    gap: 12px;
+    border-radius: 10px;
+    transition: background-color .15s, box-shadow .15s;
+}
+
+.fi-sidebar .fi-sidebar-item-btn > .fi-icon {
+    width: 20px;
+    height: 20px;
+    color: #718099;
+}
+
+.fi-sidebar .fi-sidebar-item-label {
+    color: #40516a;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.fi-sidebar .fi-sidebar-item-btn:hover {
+    background: #f3f6fb;
+}
+
+.fi-sidebar .fi-sidebar-item-btn:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+    background: #edf2fc;
+    box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.fi-sidebar .fi-active > .fi-sidebar-item-btn > .fi-icon,
+.fi-sidebar .fi-active > .fi-sidebar-item-btn > .fi-sidebar-item-label {
+    color: #36538f;
+    font-weight: 650;
+}
+
+@media (max-width: 1023px) {
+    .fi-sidebar.fi-sidebar-open {
+        max-width: calc(100vw - 48px);
+    }
+
+    .fi-sidebar .fi-sidebar-nav {
+        padding: 18px 14px;
+    }
+
+    .fi-sidebar .fi-sidebar-item-btn {
+        min-height: 48px;
+    }
+}

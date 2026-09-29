@@ -1,7 +1,7 @@
 <div class="recruitment-tools" x-data="{ workspace: 'deadlines' }">
 <header class="tools-heading">
-    <div><div class="eyebrow">Administrasi rekrutmen</div><h1>Pengelolaan massal & tes teknis</h1><p>Atur tenggat, siapkan soal, dan kirim akses kandidat dari satu tempat.</p><span class="tools-timezone"><x-heroicon-o-clock/> Zona waktu {{ App\Models\AppSetting::valueFor('timezone') }}</span></div>
-    <button type="button" class="button" wire:click="navigate('applications')"><x-heroicon-o-arrow-left/> Kembali ke lamaran</button>
+    <div><div class="eyebrow">Administrasi rekrutmen</div><h1>Pengelolaan massal</h1><p>Atur tenggat, siapkan soal, dan kirim akses kandidat dari satu tempat.</p><span class="tools-timezone"><x-heroicon-o-clock/> Zona waktu {{ App\Models\AppSetting::valueFor('timezone') }}</span></div>
+    <a class="button" href="{{ route('filament.admin.pages.recruitment', ['section' => 'applications']) }}"><x-heroicon-o-arrow-left/> Kembali ke lamaran</a>
 </header>
 <nav class="tools-navigation" aria-label="Pilih pengelolaan">
     <button type="button" x-on:click="workspace = 'deadlines'" x-bind:class="{ 'is-active': workspace === 'deadlines' }" x-bind:aria-pressed="workspace === 'deadlines'"><span class="tools-nav-icon"><x-heroicon-o-calendar-days/></span><span><strong>Tenggat massal</strong><small>Perpanjang jadwal satu batch</small></span><span class="tools-nav-arrow" aria-hidden="true">→</span></button>
@@ -51,12 +51,17 @@
     <div class="notice">Password lama tidak dapat dibaca. Tindakan ini membuat password sementara baru dan mengakhiri sesi login lama. Kandidat wajib menggantinya saat login pertama.</div>
     <form wire:submit="sendCandidateAccess" class="tools-email-grid"><div class="tools-recipients"><h3><span class="number">01</span>Pilih penerima</h3>
         <label class="field">Cari kandidat terdaftar<input type="search" wire:model.live.debounce.350ms="recipientSearch" maxlength="255" placeholder="Nama atau email"></label>
+        <div class="tools-form-grid">
+            <label class="field">Posisi<select wire:model.live="recipientPositionFilter"><option value="">Semua posisi</option>@foreach($positions as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach</select></label>
+            <label class="field">Batch / periode<select wire:model.live="recipientPeriodFilter"><option value="">Semua batch</option>@foreach($periods as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach</select></label>
+        </div>
+        <p class="muted">Kandidat yang sudah mengunggah portofolio pada lamaran aktif tidak ditampilkan, termasuk unggahan yang belum final.</p>
         <div class="candidate-picker-options tools-recipient-list">
         @forelse($recipients as $recipient)
             <label class="candidate-picker-option" wire:key="recipient-{{ $recipient->id }}"><input type="checkbox" wire:model.live="recipientIds" value="{{ $recipient->id }}"><span><strong>{{ $recipient->name }}</strong><small>{{ $recipient->email }}</small></span></label>
         @empty<p>Tidak ada kandidat aktif yang cocok.</p>@endforelse
         </div>
-        <p>{{ count($recipientIds) }} kandidat dipilih. Maksimal 100 per pengiriman. Pilihan tetap tersimpan saat mencari kandidat lain.</p>
+        <p>{{ count($recipientIds) }} kandidat dipilih. Maksimal 100 per pengiriman. Pilihan tetap tersimpan saat mencari kandidat lain dan dikosongkan saat filter posisi atau batch berubah.</p>
         <button type="button" class="button small" wire:click="$set('recipientIds', {{ $recipients->pluck('id')->toJson() }})">Pilih semua hasil ({{ $recipients->count() }})</button>
         <button type="button" class="button small" wire:click="$set('recipientIds', [])">Hapus pilihan</button>
         </div><div class="tools-message"><h3><span class="number">02</span>Tulis pesan HR</h3><label class="field">Pesan HR<textarea placeholder="Tuliskan informasi tes dan arahan untuk kandidat…" wire:model="hrMessage" required minlength="5" maxlength="5000" rows="5"></textarea></label>

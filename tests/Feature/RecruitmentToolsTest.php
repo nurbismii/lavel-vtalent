@@ -37,6 +37,85 @@ class RecruitmentToolsTest extends TestCase
         return $admin;
     }
 
+    public function test_email_recipients_filter_by_position_batch_and_search_and_clear_selection(): void
+    {
+        $application = RecruitmentApplication::factory()->create();
+        $otherBatch = RecruitmentApplication::factory()->create(['position_id' => $application->position_id]);
+        $otherPosition = RecruitmentApplication::factory()->create(['recruitment_period_id' => $application->recruitment_period_id]);
+
+        $page = Livewire::actingAs($this->admin())->test(Recruitment::class)->call('navigate', 'tools')
+            ->set('recipientIds', [$application->user_id])->set('confirmAccess', true)
+            ->set('recipientPositionFilter', (string) $application->position_id)
+            ->assertSet('recipientIds', [])->assertSet('confirmAccess', false)
+            ->assertSee($application->user->email)->assertSee($otherBatch->user->email)->assertDontSee($otherPosition->user->email)
+            ->set('recipientIds', [$otherBatch->user_id])
+            ->set('recipientPeriodFilter', (string) $application->recruitment_period_id)
+            ->assertSet('recipientIds', [])
+            ->assertSee($application->user->email)->assertDontSee($otherBatch->user->email)
+            ->set('recipientSearch', $otherPosition->user->email)->assertDontSee($otherPosition->user->email)
+            ->assertSee('Tidak ada kandidat aktif yang cocok.');
+
+        $page->set('recipientSearch', '')->set('recipientPositionFilter', '')
+            ->assertSee($otherPosition->user->email)->assertDontSee($otherBatch->user->email);
+    }
+
+    public function test_portfolio_upload_hides_recipient_and_blocks_stale_selection_without_resetting_password(): void
+    {
+        Queue::fake();
+        $submission = Submission::factory()->create();
+        $user = $submission->application->user;
+        $password = $user->password;
+        $page = Livewire::actingAs($this->admin())->test(Recruitment::class)->call('navigate', 'tools')
+            ->assertSee($user->email)->set('recipientIds', [$user->id]);
+        $file = \App\Models\UploadedFile::factory()->create([
+            'submission_id' => $submission->id,
+            'recruitment_application_id' => $submission->recruitment_application_id,
+            'uploader_id' => $user->id,
+        ]);
+
+        $page->set('hrMessage', 'Informasi akses dari HR')->set('confirmAccess', true)
+            ->assertDontSee($user->email)->call('sendCandidateAccess')->assertHasErrors('recipientIds');
+
+        $this->assertSame($password, $user->fresh()->password);
+        $this->assertDatabaseCount('access_deliveries', 0);
+        Queue::assertNothingPushed();
+
+        $file->delete();
+        $page->set('recipientSearch', $user->email)->assertSee($user->email);
+    }
+
+    public function test_archived_portfolio_and_technical_upload_do_not_hide_current_candidate(): void
+    {
+        $file = \App\Models\UploadedFile::factory()->create();
+        $application = $file->submission->application;
+        $application->update(['archived_at' => now(), 'active_user_id' => null]);
+        $current = RecruitmentApplication::factory()->create(['user_id' => $application->user_id, 'active_user_id' => $application->user_id]);
+        $technical = \App\Models\UploadedFile::factory()->create(['purpose' => 'technical_result']);
+
+        Livewire::actingAs($this->admin())->test(Recruitment::class)->call('navigate', 'tools')
+            ->assertSee($current->user->email)->assertSee($technical->submission->application->user->email);
+    }
+
+    public function test_email_sends_only_to_selected_candidates_matching_filters(): void
+    {
+        Queue::fake();
+        $application = RecruitmentApplication::factory()->create();
+        $other = RecruitmentApplication::factory()->create();
+
+        $page = Livewire::actingAs($this->admin())->test(Recruitment::class)->call('navigate', 'tools')
+            ->set('recipientPositionFilter', (string) $application->position_id)
+            ->set('recipientPeriodFilter', (string) $application->recruitment_period_id)
+            ->set('hrMessage', 'Informasi akses dari HR')->set('confirmAccess', true)
+            ->set('recipientIds', [$other->user_id])->call('sendCandidateAccess')->assertHasErrors('recipientIds');
+
+        $this->assertDatabaseCount('access_deliveries', 0);
+
+        $page->set('recipientIds', [$application->user_id])->call('sendCandidateAccess')
+            ->assertHasNoErrors()->assertSet('recipientIds', [])->assertSee('1 email akses dibuat.');
+
+        $this->assertSame($application->user_id, AccessDelivery::sole()->user_id);
+    }
+
     public function test_bulk_extension_targets_only_unfinished_applications_in_selected_batch(): void
     {
         $first = Submission::factory()->create();
