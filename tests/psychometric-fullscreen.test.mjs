@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const source = readFileSync(new URL('../resources/js/app.js', import.meta.url), 'utf8')
     .replace("import Swal from 'sweetalert2';", '');
 
-function setup({ cancel = false, supported = true, denied = false, failed = false } = {}) {
+function setup({ cancel = false, supported = true, denied = false, failed = false, userAgent = 'Desktop' } = {}) {
     const listeners = {};
     const requests = [];
     const dialogs = [];
@@ -27,11 +27,11 @@ function setup({ cancel = false, supported = true, denied = false, failed = fals
         } },
     };
     const context = vm.createContext({
-        document, AbortSignal, FormData: class {},
+        document, navigator: { userAgent }, AbortSignal, FormData: class {},
         window: { location: { reload() {} } },
         DOMParser: class { parseFromString() { return { querySelector: () => null }; } },
         fetch: async (...args) => {
-            assert.equal(document.fullscreenElement, document.documentElement);
+            assert.equal(document.fullscreenElement, userAgent === 'Desktop' ? document.documentElement : null);
             requests.push(args);
             if (failed) throw new Error('Connection lost');
             return { ok: true, text: async () => '' };
@@ -49,6 +49,31 @@ function setup({ cancel = false, supported = true, denied = false, failed = fals
         target: { closest: () => form }, preventDefault() {},
     }) };
 }
+
+for (const userAgent of ['Mozilla/5.0 (Linux; Android 14) Mobile', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)']) {
+    test(`mobile starts without requesting fullscreen: ${userAgent}`, async () => {
+        const app = setup({ userAgent, supported: false, denied: true });
+        await app.submit();
+        assert.equal(app.requests.length, 1);
+        assert.match(app.dialogs[0].text, /tanpa mode layar penuh/);
+        assert.equal(app.button.disabled, false);
+    });
+}
+
+test('mobile questions remain accessible without fullscreen, including after exiting', () => {
+    const synchronize = source.match(/const synchronizeFullscreen = \(\) => \{[\s\S]*?\n        \};/)[0];
+    for (const required of [false, true]) {
+        const psychForm = {};
+        const gate = {};
+        vm.runInNewContext(`${synchronize}\nsynchronizeFullscreen();`, {
+            psychometricFullscreenRequired: required,
+            document: { fullscreenElement: null, documentElement: {} }, psychForm, gate,
+        });
+        assert.equal(psychForm.hidden, required);
+        assert.equal(psychForm.inert, required);
+        assert.equal(gate.hidden, !required);
+    }
+});
 
 test('cancelling readiness does not start the timer on the server', async () => {
     const app = setup({ cancel: true });

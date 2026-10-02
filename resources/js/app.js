@@ -120,7 +120,10 @@ if (resendForm) {
 }
 
 
+const psychometricFullscreenRequired = !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
 async function enterPsychometricFullscreen() {
+    if (!psychometricFullscreenRequired) return;
     if (document.fullscreenElement === document.documentElement) return;
     if (!document.fullscreenEnabled || !document.documentElement.requestFullscreen) {
         throw new Error('Browser ini tidak mendukung layar penuh. Gunakan browser desktop yang mendukung mode layar penuh untuk mengerjakan tes.');
@@ -146,7 +149,9 @@ document.addEventListener('submit', async (event) => {
     try {
         const confirmation = await Swal.fire({
             title: 'Sudah siap melakukan tes ?',
-            text: 'Tes wajib dikerjakan dalam mode layar penuh. Timer dimulai setelah Anda mengonfirmasi dan layar penuh berhasil diaktifkan.',
+            text: psychometricFullscreenRequired
+                ? 'Tes wajib dikerjakan dalam mode layar penuh. Timer dimulai setelah Anda mengonfirmasi dan layar penuh berhasil diaktifkan.'
+                : 'Timer dimulai setelah Anda mengonfirmasi. Tes di browser HP dapat dikerjakan tanpa mode layar penuh.',
             icon: 'question', showCancelButton: true,
             confirmButtonText: 'Ya, mulai tes', cancelButtonText: 'Belum siap',
             allowOutsideClick: false,
@@ -161,7 +166,7 @@ document.addEventListener('submit', async (event) => {
             },
         });
         if (!confirmation.isConfirmed) return;
-        if (document.fullscreenElement !== document.documentElement) {
+        if (psychometricFullscreenRequired && document.fullscreenElement !== document.documentElement) {
             throw new Error('Layar penuh telah ditutup. Coba mulai kembali dalam mode layar penuh.');
         }
         button.textContent = 'Memulai tes…';
@@ -194,7 +199,7 @@ function initializePsychometricForm() {
     if (psychForm) {
         const gate = document.querySelector('[data-psych-fullscreen-gate]');
         const synchronizeFullscreen = () => {
-            const active = document.fullscreenElement === document.documentElement;
+            const active = !psychometricFullscreenRequired || document.fullscreenElement === document.documentElement;
             psychForm.hidden = !active;
             psychForm.inert = !active;
             gate.hidden = active;

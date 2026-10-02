@@ -10,8 +10,8 @@
             <p>{{ $section['count'] }} soal · {{ $section['seconds'] }} detik · Pilih {{ $section['choices'] }} jawaban per soal.</p>
             <div class="notice">Pelajari contoh di bawah. Timer dimulai saat Anda menekan tombol mulai dan tetap berjalan jika halaman ditutup. Bagian yang sudah selesai tidak dapat dibuka kembali. Tenggat penugasan tetap berlaku.</div>
             <img class="psych-page" src="{{ route('candidate.psychometrics.image', [$attempt, $section['example']]) }}" alt="Contoh {{ $section['title'] }}">
-            <p class="notice">Mode layar penuh wajib diaktifkan sebelum tes dimulai. Jika keluar dari layar penuh, masuk kembali untuk melanjutkan; timer tetap berjalan.</p>
-            <noscript><p class="notice">Aktifkan JavaScript untuk memulai tes dalam mode layar penuh.</p></noscript>
+            <p class="notice">Pada browser HP, tes dapat dikerjakan tanpa layar penuh. Pada desktop, layar penuh wajib diaktifkan; jika keluar, masuk kembali untuk melanjutkan. Timer tetap berjalan.</p>
+            <noscript><p class="notice">Aktifkan JavaScript untuk memulai tes.</p></noscript>
             <form data-psych-start data-start-label="Mulai bagian {{ $attempt->section_index + 1 }}" method="post" action="{{ route('candidate.psychometrics.update', $attempt) }}">@csrf<input type="hidden" name="action" value="start"><input type="hidden" name="section" value="{{ $attempt->section_index }}"><button class="button primary" disabled>Mulai bagian {{ $attempt->section_index + 1 }}</button></form>
         </section>
     @else
