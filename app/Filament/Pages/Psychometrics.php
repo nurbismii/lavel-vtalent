@@ -10,6 +10,7 @@ use App\Models\PsychometricAttempt;
 use App\Models\PsychometricTest;
 use App\Models\RecruitmentApplication;
 use App\Models\RecruitmentPeriod;
+use App\Services\PsychometricResultExportService;
 use App\Services\PsychometricService;
 use Carbon\Carbon;
 use Filament\Pages\Page;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Locked;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class Psychometrics extends Page
 {
@@ -50,6 +52,8 @@ class Psychometrics extends Page
 
     #[Locked]
     public ?int $testId = null;
+
+    public string $packageTitle = '';
 
     public array $durations = [];
 
@@ -121,11 +125,39 @@ class Psychometrics extends Page
         $this->actor();
         $test = PsychometricTest::findOrFail($id);
         $this->testId = $id;
+        $this->packageTitle = $test->title;
         $this->reset('questionImage', 'correctedPage', 'imageSection', 'imageQuestion', 'imagePart', 'confirmDelete', 'applicationIds');
         $this->durations = array_map(fn (array $s): mixed => $s['seconds'] ?? '', $test->sections);
         $this->keyText = array_map(fn (array $keys): string => implode(' ', array_map(fn (array $key): string => $key === [] ? '-' : implode(',', $key), $keys)), $test->answer_key ?? []);
         $this->reviewed = false;
         $this->resetValidation();
+    }
+
+    public function renamePackage(): void
+    {
+        $this->actor();
+        abort_unless($this->testId, 422);
+        $this->reset('feedback');
+        $this->packageTitle = trim($this->packageTitle);
+        $this->validate(['packageTitle' => ['required', 'string', 'max:255']], [
+            'packageTitle.required' => 'Nama paket tes wajib diisi.',
+            'packageTitle.max' => 'Nama paket tes maksimal 255 karakter.',
+        ]);
+
+        DB::transaction(function (): void {
+            $test = PsychometricTest::lockForUpdate()->findOrFail($this->testId);
+            if ($test->title === $this->packageTitle) {
+                return;
+            }
+            $previousTitle = $test->title;
+            $test->update(['title' => $this->packageTitle]);
+            AuditLog::record('psychometric.renamed', $test, auth()->user(), metadata: [
+                'previous_title' => $previousTitle,
+                'title' => $test->title,
+            ]);
+        });
+
+        $this->feedback = 'Nama paket tes berhasil disimpan.';
     }
 
     public function uploadCorrection(): void
@@ -199,7 +231,7 @@ class Psychometrics extends Page
         $this->actor();
         abort_unless($this->testId && $this->confirmDelete, 422);
         app(PsychometricService::class)->deletePackage(auth()->user(), $this->testId);
-        $this->reset('testId', 'confirmDelete', 'questionImage', 'correctedPage', 'durations', 'keyText', 'reviewed');
+        $this->reset('testId', 'packageTitle', 'confirmDelete', 'questionImage', 'correctedPage', 'durations', 'keyText', 'reviewed');
         $this->feedback = 'Paket tes berhasil dihapus.';
     }
 
@@ -241,6 +273,24 @@ class Psychometrics extends Page
         $this->feedback = 'Status diperbarui. Jawaban yang melewati batas waktu telah dikunci.';
     }
 
+    /** @return array{search: string, position: string, period: string} */
+    private function resultFilters(): array
+    {
+        return ['search' => $this->resultSearch, 'position' => $this->positionFilter, 'period' => $this->periodFilter];
+    }
+
+    public function exportResults(): StreamedResponse
+    {
+        $this->actor();
+        $this->validate(['resultSearch' => ['string', 'max:255'], 'positionFilter' => ['nullable', 'integer'], 'periodFilter' => ['nullable', 'integer']]);
+        $actor = auth()->user();
+        $filters = $this->resultFilters();
+
+        return response()->streamDownload(function () use ($actor, $filters): void {
+            app(PsychometricResultExportService::class)->write($actor, $filters, 'php://output');
+        }, 'hasil-psikotes-'.now()->format('Ymd-His').'.xlsx', ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Cache-Control' => 'no-store']);
+    }
+
     protected function getViewData(): array
     {
         $this->actor();
@@ -252,12 +302,8 @@ class Psychometrics extends Page
             'positions' => Position::orderBy('name')->get(['id', 'name']),
             'periods' => RecruitmentPeriod::orderByDesc('starts_at')->orderByDesc('id')->get(['id', 'name']),
             'attemptCount' => PsychometricAttempt::count(),
-            'attempts' => PsychometricAttempt::with(['test', 'application.user', 'application.position', 'application.period'])
-                ->when($this->positionFilter !== '', fn ($query) => $query->whereHas('application', fn ($application) => $application->where('position_id', $this->positionFilter)))
-                ->when($this->periodFilter !== '', fn ($query) => $query->whereHas('application', fn ($application) => $application->where('recruitment_period_id', $this->periodFilter)))
-                ->when(trim($this->resultSearch) !== '', fn ($query) => $query->whereHas('application.user', fn ($user) => $user->where(fn ($candidate) => $candidate
-                    ->where('name', 'like', '%'.trim($this->resultSearch).'%')
-                    ->orWhere('email', 'like', '%'.trim($this->resultSearch).'%'))))
+            'attempts' => app(PsychometricResultExportService::class)->filtered($this->resultFilters())
+                ->with(['test', 'application.user', 'application.position', 'application.period'])
                 ->latest()->orderByDesc('id')->paginate(15),
         ];
     }

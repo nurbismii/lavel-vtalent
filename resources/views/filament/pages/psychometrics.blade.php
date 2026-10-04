@@ -51,6 +51,14 @@
                             <p>{{ count($selected->sections) }} bagian · {{ array_sum(array_column($selected->sections, 'count')) }} soal</p>
                         </div><span class="hr-psych-tag {{ $selected->published_at ? 'is-published' : '' }}">{{ $selected->published_at ? 'Terbit · terkunci' : 'Draf' }}</span>
                     </header>
+                    <form class="hr-psych-package-name" wire:submit="renamePackage">
+                        <label class="field" for="psych-package-title">Nama paket tes
+                            <input id="psych-package-title" type="text" wire:model="packageTitle" required maxlength="255" aria-describedby="psych-package-title-help" @error('packageTitle') aria-invalid="true" @enderror>
+                            <small id="psych-package-title-help">Nama dapat diubah setelah paket terbit dan akan tampil pada halaman kandidat.</small>
+                        </label>
+                        @error('packageTitle')<span class="field-error" role="alert">{{ $message }}</span>@enderror
+                        <button type="submit" class="button" wire:loading.attr="disabled"><x-heroicon-o-pencil-square /> Simpan nama</button>
+                    </form>
                     <div class="hr-psych-sections">
                         @foreach($selected->sections as $i => $section)
                         <section class="hr-psych-section" wire:key="section-{{ $selected->id }}-{{ $i }}">
@@ -169,9 +177,16 @@
         </div>
         <section class="panel hr-psych-results" x-show="workspace === 'results'" x-cloak>
             <div class="row">
-                <h2>Penugasan dan hasil</h2><button class="button" wire:click="finalizeExpired" wire:loading.attr="disabled">Perbarui status</button>
+                <h2>Penugasan dan hasil</h2>
+                <div class="hr-psych-actions">
+                    <button type="button" class="button" wire:click="exportResults" wire:loading.attr="disabled"><x-heroicon-o-arrow-down-tray /><span wire:loading.remove wire:target="exportResults">Export Excel sesuai filter</span><span wire:loading wire:target="exportResults">Menyiapkan Excel…</span></button>
+                    <button class="button" wire:click="finalizeExpired" wire:loading.attr="disabled">Perbarui status</button>
+                </div>
             </div>
             <p class="muted">Nilai hanya tersedia setelah tes selesai. Jawaban kosong atau kombinasi yang tidak lengkap bernilai 0.</p>
+            @error('resultSearch')<p class="error" role="alert">{{ $message }}</p>@enderror
+            @error('positionFilter')<p class="error" role="alert">{{ $message }}</p>@enderror
+            @error('periodFilter')<p class="error" role="alert">{{ $message }}</p>@enderror
             <div class="hr-psych-result-filters">
                 <label class="field">Cari kandidat<input type="search" wire:model.live.debounce.400ms="resultSearch" placeholder="Nama atau email kandidat" maxlength="255"></label>
                 <label class="field">Posisi yang dilamar<select wire:model.live="positionFilter">

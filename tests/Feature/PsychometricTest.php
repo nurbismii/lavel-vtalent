@@ -25,6 +25,54 @@ class PsychometricTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_admin_can_rename_draft_and_published_packages_without_changing_test_data(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $draft = Assessment::factory()->create();
+        $attempt = PsychometricAttempt::factory()->create();
+        $attemptAttributes = $attempt->fresh()->getAttributes();
+
+        foreach ([$draft, $attempt->test] as $test) {
+            $attributes = $test->fresh()->getAttributes();
+            $page = Livewire::actingAs($admin)->test(Psychometrics::class)
+                ->call('edit', $test->id)->assertSet('packageTitle', $test->title)
+                ->set('packageTitle', '  Paket rekrutmen '.$test->id.'  ')
+                ->call('renamePackage')->assertHasNoErrors()
+                ->assertSet('packageTitle', 'Paket rekrutmen '.$test->id)
+                ->assertSee('Nama paket tes berhasil disimpan.')
+                ->assertViewHas('selected', fn ($selected) => $selected->title === 'Paket rekrutmen '.$test->id);
+
+            $renamed = $test->fresh();
+            foreach (['sections', 'answer_key', 'published_at'] as $attribute) {
+                $this->assertSame($attributes[$attribute], $renamed->getAttributes()[$attribute]);
+            }
+            $log = AuditLog::where('action', 'psychometric.renamed')->where('target_id', $test->id)->sole();
+            $this->assertSame($admin->id, $log->actor_id);
+            $this->assertSame(['previous_title' => $attributes['title'], 'title' => $renamed->title], $log->metadata);
+            $page->call('renamePackage')->assertHasNoErrors();
+        }
+
+        $this->assertSame($attemptAttributes, $attempt->fresh()->getAttributes());
+        $this->assertSame(2, AuditLog::where('action', 'psychometric.renamed')->count());
+    }
+
+    public function test_package_rename_validates_name_and_requires_selection_and_active_admin(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $test = Assessment::factory()->create();
+        Livewire::actingAs($admin)->test(Psychometrics::class)->call('renamePackage')->assertStatus(422);
+        $page = Livewire::actingAs($admin)->test(Psychometrics::class)->call('edit', $test->id);
+        $page->set('packageTitle', '   ')->call('renamePackage')->assertHasErrors(['packageTitle' => 'required']);
+        $page->set('packageTitle', str_repeat('a', 256))->call('renamePackage')->assertHasErrors(['packageTitle' => 'max']);
+        $this->assertSame($test->title, $test->fresh()->title);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'psychometric.renamed']);
+
+        $page->set('packageTitle', 'Tidak diizinkan');
+        $admin->update(['active' => false]);
+        $page->call('renamePackage')->assertForbidden();
+        $this->assertSame($test->title, $test->fresh()->title);
+    }
+
     public function test_results_filter_by_position_period_and_candidate_and_reset_pagination(): void
     {
         $admin = User::factory()->create(['role' => Role::Admin]);
