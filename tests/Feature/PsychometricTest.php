@@ -25,6 +25,39 @@ class PsychometricTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_activity_is_recorded_without_changing_answers_or_revision_and_is_visible_to_hr(): void
+    {
+        $attempt = PsychometricAttempt::factory()->create(['section_started_at' => now(), 'section_expires_at' => now()->addMinute(), 'revision' => 7, 'answers' => [[1 => ['A']]]]);
+        $this->loginFor($attempt);
+        foreach (['tab_hidden', 'window_blur', 'fullscreen_exit'] as $event) {
+            $this->postJson(route('candidate.psychometrics.activity', $attempt), ['event' => $event, 'section' => 0])->assertNoContent();
+            $this->assertDatabaseHas('audit_logs', ['target_id' => $attempt->id, 'actor_id' => $attempt->application->user_id, 'action' => 'psychometric.activity.'.$event]);
+        }
+        $this->assertSame(7, $attempt->fresh()->revision);
+        $this->assertSame([[1 => ['A']]], $attempt->fresh()->answers);
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        Livewire::actingAs($admin)->test(Psychometrics::class)->assertSee('Ringkasan aktivitas tes')->assertSee('bukan bukti kecurangan');
+        $this->assertSame(3, $attempt->activityLogs()->count());
+    }
+
+    public function test_activity_rejects_invalid_events_other_candidates_and_inactive_sections(): void
+    {
+        $attempt = PsychometricAttempt::factory()->create(['section_started_at' => now(), 'section_expires_at' => now()->addMinute()]);
+        $url = route('candidate.psychometrics.activity', $attempt);
+        $payload = ['event' => 'tab_hidden', 'section' => 0];
+        $this->postJson($url, $payload)->assertUnauthorized();
+        $this->loginFor(PsychometricAttempt::factory()->create());
+        $this->postJson($url, $payload)->assertNotFound();
+        $this->loginFor($attempt);
+        $this->postJson($url, ['event' => 'arbitrary', 'section' => 0])->assertUnprocessable();
+        $this->postJson($url, ['event' => 'tab_hidden', 'section' => 1])->assertConflict();
+        $attempt->update(['section_expires_at' => now()->subSecond()]);
+        $this->postJson($url, $payload)->assertConflict();
+        $attempt->update(['section_expires_at' => now()->addMinute(), 'completed_at' => now()]);
+        $this->postJson($url, $payload)->assertConflict();
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
     public function test_admin_can_rename_draft_and_published_packages_without_changing_test_data(): void
     {
         $admin = User::factory()->create(['role' => Role::Admin]);

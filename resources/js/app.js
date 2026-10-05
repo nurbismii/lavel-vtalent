@@ -150,8 +150,8 @@ document.addEventListener('submit', async (event) => {
         const confirmation = await Swal.fire({
             title: 'Sudah siap melakukan tes ?',
             text: psychometricFullscreenRequired
-                ? 'Tes wajib dikerjakan dalam mode layar penuh. Timer dimulai setelah Anda mengonfirmasi dan layar penuh berhasil diaktifkan.'
-                : 'Timer dimulai setelah Anda mengonfirmasi. Tes di browser HP dapat dikerjakan tanpa mode layar penuh.',
+                ? 'Kerjakan mandiri tanpa Google, AI, atau bantuan pihak lain. Perpindahan tab, kehilangan fokus dan keluar layar penuh dicatat untuk HR. Gunakan satu tab tes. Tes wajib dalam layar penuh timer dimulai setelah konfirmasi dan layar penuh aktif.'
+                : 'Kerjakan mandiri tanpa Google, AI, atau bantuan pihak lain. Perpindahan tab dan kehilangan fokus dicatat untuk HR. Gunakan satu tab tes. Timer dimulai setelah konfirmasi tes di HP dapat dikerjakan tanpa mode layar penuh.',
             icon: 'question', showCancelButton: true,
             confirmButtonText: 'Ya, mulai tes', cancelButtonText: 'Belum siap',
             allowOutsideClick: false,
@@ -225,6 +225,32 @@ function initializePsychometricForm() {
         let stopped = false;
         let debounce;
         const remaining = () => Math.max(0, Math.ceil((duration - (performance.now() - started)) / 1000));
+        const activityStatus = psychForm.querySelector('[data-psych-activity-status]');
+        const recordActivity = async (event) => {
+            if (stopped || remaining() === 0) return;
+            activityStatus.textContent = 'Aktivitas keluar halaman terdeteksi. Kembali ke tes dan kerjakan mandiri; timer tetap berjalan.';
+            try {
+                const response = await fetch(psychForm.dataset.activityEndpoint, {
+                    method: 'POST', credentials: 'same-origin', keepalive: true,
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': psychForm.querySelector('[name="_token"]').value },
+                    body: JSON.stringify({ event, section }),
+                });
+                if (!response.ok) throw new Error('activity failed');
+                activityStatus.textContent = 'Aktivitas keluar halaman dicatat untuk HR. Lanjutkan tes secara mandiri; timer tetap berjalan.';
+            } catch {
+                activityStatus.textContent = 'Catatan aktivitas belum terkirim. Periksa koneksi dan lanjutkan tes secara mandiri.';
+            }
+        };
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) recordActivity('tab_hidden');
+        });
+        window.addEventListener('blur', () => recordActivity('window_blur'));
+        let wasFullscreen = document.fullscreenElement === document.documentElement;
+        document.addEventListener('fullscreenchange', () => {
+            const isFullscreen = document.fullscreenElement === document.documentElement;
+            if (wasFullscreen && !isFullscreen) recordActivity('fullscreen_exit');
+            wasFullscreen = isFullscreen;
+        });
         const collect = () => {
             const answers = {};
             psychForm.querySelectorAll('input[name^="answers["]:checked').forEach(input => {

@@ -10,7 +10,7 @@ class SuggestPsychometricKey extends Command
 {
     protected $signature = 'psychometrics:suggest-key {test : ID paket draf dengan kunci kosong}';
 
-    protected $description = 'Fill a compatible empty CFIT draft with an unverified AI answer proposal for HR review';
+    protected $description = 'Fill a compatible empty TES IQ draft with an unverified AI answer proposal for HR review';
 
     public function handle(PsychometricService $service): int
     {

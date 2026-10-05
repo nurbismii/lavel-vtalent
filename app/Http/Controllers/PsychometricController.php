@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Role;
+use App\Models\AuditLog;
 use App\Models\PsychometricAttempt;
 use App\Models\PsychometricTest;
 use App\Services\PsychometricService;
@@ -51,6 +52,20 @@ class PsychometricController extends Controller
         abort_unless(in_array($page, $allowed, true), 404);
 
         return $this->imageResponse($page, $record->test);
+    }
+
+    public function activity(Request $request, int $attempt): Response
+    {
+        $data = $request->validate([
+            'event' => ['required', 'in:tab_hidden,window_blur,fullscreen_exit'],
+            'section' => ['required', 'integer', 'min:0', 'max:3'],
+        ]);
+        $record = PsychometricAttempt::with(['application', 'test'])->findOrFail($attempt);
+        $this->service->authorize($request->user(), $record);
+        abort_unless(! $record->completed_at && $record->section_started_at && $record->section_index === $data['section'] && now()->lt($record->section_expires_at) && now()->lt($record->deadline), 409);
+        AuditLog::record('psychometric.activity.'.$data['event'], $record, $request->user(), metadata: ['section' => $record->section_index + 1]);
+
+        return response()->noContent()->header('Cache-Control', 'private, no-store');
     }
 
     public function preview(Request $request, int $test, int $page): Response

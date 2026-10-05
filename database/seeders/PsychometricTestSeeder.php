@@ -9,7 +9,7 @@ class PsychometricTestSeeder extends Seeder
 {
     public function run(): void
     {
-        PsychometricTest::firstOrCreate(['title' => 'CFIT Skala 3 Bentuk B · 2021'], [
+        PsychometricTest::firstOrCreate(['title' => 'TES IQ'], [
             'sections' => array_map(fn (array $section): array => [...$section, 'seconds' => null], config('psychometrics.sections')),
             'answer_key' => [],
         ]);

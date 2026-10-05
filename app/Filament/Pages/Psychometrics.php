@@ -29,9 +29,9 @@ class Psychometrics extends Page
 
     protected string $view = 'filament.pages.psychometrics';
 
-    protected static ?string $title = 'CFIT 3B';
+    protected static ?string $title = 'TES IQ';
 
-    protected static ?string $navigationLabel = 'CFIT 3B';
+    protected static ?string $navigationLabel = 'TES IQ';
 
     protected static string|\UnitEnum|null $navigationGroup = 'Psikotes';
 
@@ -116,7 +116,7 @@ class Psychometrics extends Page
     public function createDraft(): void
     {
         $this->actor();
-        $test = PsychometricTest::create(['title' => 'CFIT Skala 3 Bentuk B · '.now()->format('d/m/Y H:i'), 'sections' => array_map(fn (array $s): array => [...$s, 'seconds' => null], config('psychometrics.sections')), 'answer_key' => []]);
+        $test = PsychometricTest::create(['title' => 'TES IQ · '.now()->format('d/m/Y H:i'), 'sections' => array_map(fn (array $s): array => [...$s, 'seconds' => null], config('psychometrics.sections')), 'answer_key' => []]);
         $this->edit($test->id);
     }
 
@@ -304,6 +304,11 @@ class Psychometrics extends Page
             'attemptCount' => PsychometricAttempt::count(),
             'attempts' => app(PsychometricResultExportService::class)->filtered($this->resultFilters())
                 ->with(['test', 'application.user', 'application.position', 'application.period'])
+                ->withCount([
+                    'activityLogs as tab_hidden_count' => fn ($query) => $query->where('action', 'psychometric.activity.tab_hidden'),
+                    'activityLogs as window_blur_count' => fn ($query) => $query->where('action', 'psychometric.activity.window_blur'),
+                    'activityLogs as fullscreen_exit_count' => fn ($query) => $query->where('action', 'psychometric.activity.fullscreen_exit'),
+                ])
                 ->latest()->orderByDesc('id')->paginate(15),
         ];
     }

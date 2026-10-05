@@ -6,6 +6,39 @@ import vm from 'node:vm';
 const source = readFileSync(new URL('../resources/js/app.js', import.meta.url), 'utf8')
     .replace("import Swal from 'sweetalert2';", '');
 
+test('activity tracks hidden pages, lost focus and fullscreen exits without saving answers', async () => {
+    const listeners = {};
+    const requests = [];
+    const documentElement = {};
+    const document = { hidden: false, fullscreenElement: documentElement, documentElement,
+        addEventListener: (name, handler) => listeners[name] = handler };
+    const status = {};
+    const context = vm.createContext({
+        document, window: { addEventListener: (name, handler) => listeners[name] = handler },
+        stopped: false, remaining: () => 30, section: 2,
+        psychForm: { dataset: { activityEndpoint: '/activity' }, querySelector: selector => selector === '[name="_token"]' ? { value: 'csrf' } : status },
+        fetch: async (url, options) => { requests.push({ url, ...JSON.parse(options.body) }); return { ok: true }; },
+    });
+    vm.runInContext(source.slice(source.indexOf('        const activityStatus ='), source.indexOf('        const collect =')), context);
+    listeners.visibilitychange();
+    assert.equal(requests.length, 0);
+    document.hidden = true;
+    listeners.visibilitychange();
+    listeners.blur();
+    document.fullscreenElement = null;
+    listeners.fullscreenchange();
+    listeners.fullscreenchange();
+    await Promise.resolve();
+    assert.deepEqual(requests, [
+        { url: '/activity', event: 'tab_hidden', section: 2 },
+        { url: '/activity', event: 'window_blur', section: 2 },
+        { url: '/activity', event: 'fullscreen_exit', section: 2 },
+    ]);
+    vm.runInContext('stopped = true;', context);
+    listeners.blur();
+    assert.equal(requests.length, 3);
+});
+
 function setup({ cancel = false, supported = true, denied = false, failed = false, userAgent = 'Desktop' } = {}) {
     const listeners = {};
     const requests = [];

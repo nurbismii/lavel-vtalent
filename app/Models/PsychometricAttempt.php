@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PsychometricAttempt extends Model
 {
@@ -22,6 +23,11 @@ class PsychometricAttempt extends Model
     public function test(): BelongsTo
     {
         return $this->belongsTo(PsychometricTest::class, 'psychometric_test_id');
+    }
+
+    public function activityLogs(): HasMany
+    {
+        return $this->hasMany(AuditLog::class, 'target_id')->where('target_type', $this->getMorphClass())->whereIn('action', ['psychometric.activity.tab_hidden', 'psychometric.activity.window_blur', 'psychometric.activity.fullscreen_exit']);
     }
 
     public function iqScore(): ?int

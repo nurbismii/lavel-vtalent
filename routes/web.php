@@ -42,6 +42,7 @@ Route::middleware([FormHeaders::class, 'throttle:forms-public'])->group(function
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 Route::middleware(['auth', EnsurePortalAccess::class])->group(function () {
     Route::get('/portal/psychometrics', [PsychometricController::class, 'index'])->name('candidate.psychometrics');
+    Route::post('/portal/psychometrics/{attempt}/activity', [PsychometricController::class, 'activity'])->whereNumber('attempt')->middleware('throttle:60,1')->name('candidate.psychometrics.activity');
     Route::get('/portal/psychometrics/{attempt}', [PsychometricController::class, 'show'])->whereNumber('attempt')->name('candidate.psychometrics.show');
     Route::post('/portal/psychometrics/{attempt}', [PsychometricController::class, 'update'])->whereNumber('attempt')->middleware('throttle:120,1')->name('candidate.psychometrics.update');
     Route::get('/portal/psychometrics/{attempt}/images/{page}', [PsychometricController::class, 'image'])->whereNumber(['attempt', 'page'])->name('candidate.psychometrics.image');

@@ -10,6 +10,7 @@
             <p>{{ $section['count'] }} soal · {{ $section['seconds'] }} detik · Pilih {{ $section['choices'] }} jawaban per soal.</p>
             <div class="notice">Pelajari contoh di bawah. Timer dimulai saat Anda menekan tombol mulai dan tetap berjalan jika halaman ditutup. Bagian yang sudah selesai tidak dapat dibuka kembali. Tenggat penugasan tetap berlaku.</div>
             <img class="psych-page" src="{{ route('candidate.psychometrics.image', [$attempt, $section['example']]) }}" alt="Contoh {{ $section['title'] }}">
+            <p class="notice">Kerjakan tes secara mandiri tanpa Google, AI, atau bantuan pihak lain. Perpindahan tab, halaman kehilangan fokus, dan keluar layar penuh dicatat untuk ditinjau HR. Catatan ini tidak otomatis menyatakan Anda curang. Gunakan hanya satu tab tes.</p>
             <p class="notice">Pada browser HP, tes dapat dikerjakan tanpa layar penuh. Pada desktop, layar penuh wajib diaktifkan; jika keluar, masuk kembali untuk melanjutkan. Timer tetap berjalan.</p>
             <noscript><p class="notice">Aktifkan JavaScript untuk memulai tes.</p></noscript>
             <form data-psych-start data-start-label="Mulai bagian {{ $attempt->section_index + 1 }}" method="post" action="{{ route('candidate.psychometrics.update', $attempt) }}">@csrf<input type="hidden" name="action" value="start"><input type="hidden" name="section" value="{{ $attempt->section_index }}"><button class="button primary" disabled>Mulai bagian {{ $attempt->section_index + 1 }}</button></form>
@@ -21,8 +22,9 @@
             <button class="button primary" type="button">Masuk layar penuh</button>
             <noscript><p class="notice">Aktifkan JavaScript untuk melanjutkan tes.</p></noscript>
         </section>
-        <form hidden inert data-psychometric-form data-endpoint="{{ route('candidate.psychometrics.update', $attempt) }}" data-remaining="{{ max(0, now()->diffInSeconds($attempt->section_expires_at, false)) }}" data-section="{{ $attempt->section_index }}" data-revision="{{ $attempt->revision }}" data-choices="{{ $section['choices'] }}" method="post" action="{{ route('candidate.psychometrics.update', $attempt) }}">
+        <form hidden inert data-psychometric-form data-activity-endpoint="{{ route('candidate.psychometrics.activity', $attempt) }}" data-endpoint="{{ route('candidate.psychometrics.update', $attempt) }}" data-remaining="{{ max(0, now()->diffInSeconds($attempt->section_expires_at, false)) }}" data-section="{{ $attempt->section_index }}" data-revision="{{ $attempt->revision }}" data-choices="{{ $section['choices'] }}" method="post" action="{{ route('candidate.psychometrics.update', $attempt) }}">
             @csrf<input type="hidden" name="section" value="{{ $attempt->section_index }}"><input type="hidden" name="revision" value="{{ $attempt->revision }}">
+            <p class="notice" data-psych-activity-status role="status" aria-live="polite">Aktivitas keluar halaman, kehilangan fokus, dan keluar layar penuh dicatat untuk HR.</p>
             <div class="panel psych-toolbar"><div><strong>{{ $section['title'] }}</strong><p>Pilih {{ $section['choices'] }} jawaban per soal.</p></div><div><strong data-psych-timer role="timer">Menghitung waktu…</strong><p data-psych-status role="status" aria-live="polite">Jawaban tersimpan</p></div></div>
             <noscript><div class="notice">JavaScript diperlukan untuk timer dan simpan otomatis. Aktifkan JavaScript sebelum melanjutkan; waktu server tetap berjalan.</div></noscript>
             <div class="psych-question-list">

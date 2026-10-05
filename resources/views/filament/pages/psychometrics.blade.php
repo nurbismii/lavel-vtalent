@@ -3,7 +3,7 @@
         <header class="hr-psych-heading">
             <div>
                 <div class="eyebrow">Asesmen rekrutmen</div>
-                <h1>CFIT 3B</h1>
+                <h1>TES IQ</h1>
                 <p>Siapkan tes, atur penugasan, dan tinjau hasil kandidat.</p>
             </div>
             <button type="button" class="button primary" wire:click="createDraft" x-on:click="workspace = 'packages'" wire:loading.attr="disabled"><x-heroicon-o-plus /> Buat paket tes</button>
@@ -193,8 +193,8 @@
                         <option value="">Semua posisi</option>@foreach($positions as $position)<option value="{{ $position->id }}">{{ $position->name }}</option>@endforeach
                     </select></label>
                 <label class="field">Batch / periode rekrutmen<select wire:model.live="periodFilter">
-                    <option value="">Semua periode</option>@foreach($periods as $period)<option value="{{ $period->id }}">{{ $period->name }}</option>@endforeach
-                </select></label>
+                        <option value="">Semua periode</option>@foreach($periods as $period)<option value="{{ $period->id }}">{{ $period->name }}</option>@endforeach
+                    </select></label>
             </div>
             <div class="row hr-psych-filter-actions">
                 <p class="muted" role="status">{{ $attempts->total() }} penugasan ditemukan · {{ $attempts->firstItem() ?? 0 }}–{{ $attempts->lastItem() ?? 0 }} ditampilkan</p><button type="button" class="button" wire:click="resetResultFilters" wire:loading.attr="disabled">Reset filter</button>
@@ -207,6 +207,11 @@
                     </div><span class="badge">{{ $attempt->completed_at ? 'Selesai' : (now()->gte($attempt->deadline) ? 'Tenggat berakhir · menunggu finalisasi' : 'Bagian '.($attempt->section_index + 1)) }}</span>
                 </div>
                 <p>Tenggat: {{ $attempt->deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}</p>
+                <details>
+                    <summary>Ringkasan aktivitas tes</summary>
+                    <p>Halaman disembunyikan / berpindah tab: <strong>{{ $attempt->tab_hidden_count }}</strong> kali · Kehilangan fokus: <strong>{{ $attempt->window_blur_count }}</strong> kali · Keluar layar penuh: <strong>{{ $attempt->fullscreen_exit_count }}</strong> kali.</p>
+                    <p class="muted">Catatan browser merupakan indikator pemeriksaan, bukan bukti kecurangan. Satu tindakan dapat memicu beberapa jenis kejadian. Aktivitas sebelum fitur diaktifkan, kegagalan pengiriman, atau penggunaan perangkat lain tidak tercakup; angka nol tidak menjamin tidak ada kecurangan.</p>
+                </details>
                 @if($attempt->completed_at)
                 <p><strong>Skor mentah: {{ $attempt->raw_score }} / {{ array_sum(array_column($attempt->test->sections, 'count')) }}</strong></p>
                 @if($attempt->iqScore() !== null)
