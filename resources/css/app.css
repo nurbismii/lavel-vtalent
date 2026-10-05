@@ -222,6 +222,18 @@ body{font-family:var(--font-sans);font-size:15px;line-height:1.65;color:var(--in
 .hr-psych-attempt{padding:22px;border:1px solid #e0e7f0;border-radius:12px;margin-top:16px;background:white}
 .hr-psych-attempt .row p{font-size:12px;color:var(--muted);margin:4px 0 0}
 .hr-psych-attempt>p{font-size:12px;margin:14px 0 0;color:#60708a}
+.hr-psych-activity{margin-top:18px;padding-top:8px;border-top:1px solid #e0e7f0}
+.hr-psych-activity>summary>svg{width:18px;height:18px;flex-shrink:0}
+.hr-psych-activity>summary:focus-visible{outline:2px solid var(--brand);outline-offset:4px;border-radius:4px}
+.hr-psych-activity-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:8px 0 14px}
+.hr-psych-activity-grid>div{padding:16px;border:1px solid #e0e7f0;border-radius:10px;background:#f8faff;min-width:0}
+.hr-psych-activity-grid dt{font-size:12px;font-weight:600;color:#526580}
+.hr-psych-activity-grid dd{margin:8px 0 4px;font-size:28px;font-weight:700;line-height:1.2;color:var(--ink);font-variant-numeric:tabular-nums}
+.hr-psych-activity-grid dd>span{font-size:12px;font-weight:400;color:var(--muted)}
+.hr-psych-activity-grid p{margin:0;font-size:11px;line-height:1.5;color:var(--muted)}
+.hr-psych-activity-note{display:flex;align-items:flex-start;gap:8px;margin:0 0 8px;font-size:12px;line-height:1.6;color:#60708a}
+.hr-psych-activity-note>svg{width:16px;height:16px;flex-shrink:0;margin-top:2px}
+@media(max-width:600px){.hr-psych-activity-grid{grid-template-columns:1fr;gap:8px}.hr-psych-activity-grid>div{padding:14px}.hr-psych-activity-grid dd{font-size:24px}}
 .hr-psych-attempt details>h3{font-size:13px;padding:18px 0 8px;margin:0}
 .hr-psych .portal-table{background:#fff;border:1px solid #e5ebf2;border-radius:8px;min-width:460px}
 .hr-psych .portal-table th,.hr-psych .portal-table td{font-size:12px;padding:11px 14px}

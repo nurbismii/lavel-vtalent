@@ -150,8 +150,8 @@ document.addEventListener('submit', async (event) => {
         const confirmation = await Swal.fire({
             title: 'Sudah siap melakukan tes ?',
             text: psychometricFullscreenRequired
-                ? 'Kerjakan mandiri tanpa Google, AI, atau bantuan pihak lain. Perpindahan tab, kehilangan fokus dan keluar layar penuh dicatat untuk HR. Gunakan satu tab tes. Tes wajib dalam layar penuh timer dimulai setelah konfirmasi dan layar penuh aktif.'
-                : 'Kerjakan mandiri tanpa Google, AI, atau bantuan pihak lain. Perpindahan tab dan kehilangan fokus dicatat untuk HR. Gunakan satu tab tes. Timer dimulai setelah konfirmasi tes di HP dapat dikerjakan tanpa mode layar penuh.',
+                ? 'Perpindahan tab, kehilangan fokus dan keluar layar penuh dicatat untuk HR. Gunakan satu tab tes. Tes wajib dalam layar penuh timer dimulai setelah konfirmasi dan layar penuh aktif.'
+                : 'Perpindahan tab dan kehilangan fokus dicatat untuk HR. Gunakan satu tab tes. Timer dimulai setelah konfirmasi tes di HP dapat dikerjakan tanpa mode layar penuh.',
             icon: 'question', showCancelButton: true,
             confirmButtonText: 'Ya, mulai tes', cancelButtonText: 'Belum siap',
             allowOutsideClick: false,

@@ -207,10 +207,26 @@
                     </div><span class="badge">{{ $attempt->completed_at ? 'Selesai' : (now()->gte($attempt->deadline) ? 'Tenggat berakhir · menunggu finalisasi' : 'Bagian '.($attempt->section_index + 1)) }}</span>
                 </div>
                 <p>Tenggat: {{ $attempt->deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}</p>
-                <details>
-                    <summary>Ringkasan aktivitas tes</summary>
-                    <p>Halaman disembunyikan / berpindah tab: <strong>{{ $attempt->tab_hidden_count }}</strong> kali · Kehilangan fokus: <strong>{{ $attempt->window_blur_count }}</strong> kali · Keluar layar penuh: <strong>{{ $attempt->fullscreen_exit_count }}</strong> kali.</p>
-                    <p class="muted">Catatan browser merupakan indikator pemeriksaan, bukan bukti kecurangan. Satu tindakan dapat memicu beberapa jenis kejadian. Aktivitas sebelum fitur diaktifkan, kegagalan pengiriman, atau penggunaan perangkat lain tidak tercakup; angka nol tidak menjamin tidak ada kecurangan.</p>
+                <details class="hr-psych-disclosure hr-psych-activity">
+                    <summary><x-heroicon-o-eye aria-hidden="true" /> Ringkasan aktivitas tes</summary>
+                    <dl class="hr-psych-activity-grid">
+                        <div>
+                            <dt>Perpindahan tab</dt>
+                            <dd>{{ $attempt->tab_hidden_count }} <span>kali</span></dd>
+                            <p>Halaman tes disembunyikan</p>
+                        </div>
+                        <div>
+                            <dt>Kehilangan fokus</dt>
+                            <dd>{{ $attempt->window_blur_count }} <span>kali</span></dd>
+                            <p>Jendela tes tidak aktif</p>
+                        </div>
+                        <div>
+                            <dt>Keluar layar penuh</dt>
+                            <dd>{{ $attempt->fullscreen_exit_count }} <span>kali</span></dd>
+                            <p>Mode layar penuh ditutup</p>
+                        </div>
+                    </dl>
+                    <p class="hr-psych-activity-note"><x-heroicon-o-information-circle aria-hidden="true" /><span>Catatan browser merupakan indikator pemeriksaan, bukan bukti kecurangan. Satu tindakan dapat memicu beberapa jenis kejadian.</span></p>
                 </details>
                 @if($attempt->completed_at)
                 <p><strong>Skor mentah: {{ $attempt->raw_score }} / {{ array_sum(array_column($attempt->test->sections, 'count')) }}</strong></p>
