@@ -11,6 +11,7 @@ use App\Models\RecruitmentApplication;
 use App\Models\RecruitmentPeriod;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -19,6 +20,32 @@ use Illuminate\Validation\ValidationException;
 
 class RecruitmentService
 {
+    public function selectByEmails(Builder $query, string $text, array $selectedIds, string $errorField): array
+    {
+        if (strlen($text) > 30000) {
+            throw ValidationException::withMessages([$errorField => 'Maksimal 100 email per paste.']);
+        }
+        $emails = array_values(array_unique(preg_split('/[\s,;]+/u', mb_strtolower(trim($text)), -1, PREG_SPLIT_NO_EMPTY) ?: []));
+        $validator = Validator::make(['emails' => $emails], [
+            'emails' => 'required|array|min:1|max:100',
+            'emails.*' => 'required|email|max:255',
+        ]);
+        if ($validator->fails()) {
+            throw ValidationException::withMessages([$errorField => 'Paste 1–100 email valid, dipisahkan baris baru, spasi, koma, atau titik koma.']);
+        }
+        $records = $query->whereIn(DB::raw('LOWER(users.email)'), $emails)->get();
+        $missing = array_diff($emails, $records->map(fn ($record) => mb_strtolower($record->email))->all());
+        if ($missing) {
+            throw ValidationException::withMessages([$errorField => 'Email tidak ditemukan atau kandidat tidak memenuhi syarat/filter: '.implode(', ', $missing)]);
+        }
+        $ids = array_values(array_unique(array_map('strval', [...$selectedIds, ...$records->pluck('id')->all()])));
+        if (count($ids) > 100) {
+            throw ValidationException::withMessages([$errorField => 'Maksimal 100 kandidat dipilih.']);
+        }
+
+        return $ids;
+    }
+
     public function create(User $actor, array $data): array
     {
         abort_unless($actor->active && $actor->role === Role::Admin, 403);

@@ -144,7 +144,10 @@
                         <span id="candidate-picker-summary" x-text="$wire.existingCandidateIds.length ? $wire.existingCandidateIds.length + ' kandidat dipilih' : 'Pilih kandidat'">Pilih kandidat</span><span aria-hidden="true">▾</span>
                     </button>
                     <div id="candidate-picker-panel" class="candidate-picker-panel" x-show="open" x-cloak>
-                        <label class="field candidate-picker-search">Cari kandidat<input x-ref="search" wire:model.live.debounce.350ms="candidateSearch" placeholder="Cari nama atau email" maxlength="255" x-on:keydown.enter.prevent></label>
+                        <label class="field candidate-picker-search">Cari kandidat / paste email<input x-ref="search" wire:model.live.debounce.350ms="candidateSearch" placeholder="Cari nama atau paste satu / beberapa email" maxlength="255" x-on:keydown.enter.prevent x-on:paste="if ($event.clipboardData.getData('text').includes('@')) { $event.preventDefault(); $wire.selectCandidatesByEmail($event.clipboardData.getData('text')); }"></label>
+                        <small>Paste email dari Excel untuk memilih otomatis. Pisahkan dengan baris baru, spasi, koma, atau titik koma.</small>
+                        @error('candidateSearch')<span class="field-error" role="alert">{{ $message }}</span>@enderror
+                        <small wire:loading wire:target="selectCandidatesByEmail" role="status">Mencocokkan email kandidat…</small>
                         <div class="candidate-picker-options" role="group" aria-label="Pilihan kandidat">
                             @forelse($candidateOptions as $option)
                             <label class="candidate-picker-option" wire:key="candidate-option-{{ $option->id }}"><input type="checkbox" wire:model="existingCandidateIds" value="{{ $option->id }}"><span><strong>{{ $option->name }}</strong><small>{{ $option->email }}</small></span></label>

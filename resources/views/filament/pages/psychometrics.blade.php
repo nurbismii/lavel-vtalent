@@ -147,7 +147,10 @@
                             <span id="psych-picker-summary" x-text="$wire.applicationIds.length ? $wire.applicationIds.length + ' lamaran dipilih' : 'Pilih kandidat'">Pilih kandidat</span><span aria-hidden="true">▾</span>
                         </button>
                         <div id="psych-picker-panel" class="candidate-picker-panel" x-show="open" x-cloak>
-                            <label class="field candidate-picker-search">Cari kandidat<input type="search" x-ref="search" wire:model.live.debounce.400ms="search" placeholder="Nama atau email" maxlength="255" x-on:keydown.enter.prevent></label>
+                            <label class="field candidate-picker-search">Cari kandidat / paste email<input type="search" x-ref="search" wire:model.live.debounce.400ms="search" placeholder="Nama atau paste beberapa email" maxlength="255" x-on:keydown.enter.prevent x-on:paste="if ($event.clipboardData.getData('text').includes('@')) { $event.preventDefault(); $wire.selectApplicationsByEmail($event.clipboardData.getData('text')); }"></label>
+                            <small>Paste email dari Excel; pisahkan dengan baris baru, spasi, koma, atau titik koma. Maksimal 100 kandidat.</small>
+                            @error('search')<span class="field-error" role="alert">{{ $message }}</span>@enderror
+                            <small wire:loading wire:target="selectApplicationsByEmail" role="status">Mencocokkan email kandidat…</small>
                             <div class="candidate-picker-options" role="group" aria-label="Pilihan lamaran kandidat">
                                 @forelse($applications as $application)
                                 <label class="candidate-picker-option" wire:key="psych-application-{{ $application->id }}"><input type="checkbox" wire:model="applicationIds" value="{{ $application->id }}"><span><strong>{{ $application->user->name }}</strong><small>{{ $application->user->email }} · {{ $application->position->name }} · {{ $application->period->name }}</small></span></label>

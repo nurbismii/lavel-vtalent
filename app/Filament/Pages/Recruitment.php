@@ -164,6 +164,25 @@ class Recruitment extends Page
 
     public array $existingCandidateIds = [];
 
+    public function selectCandidatesByEmail(string $text): void
+    {
+        $this->authorizeAdmin();
+        $this->resetValidation('candidateSearch');
+        $this->existingCandidateIds = app(RecruitmentService::class)->selectByEmails($this->eligibleCandidates()->select('id', 'email'), $text, $this->existingCandidateIds, 'candidateSearch');
+        $this->candidateSearch = '';
+        $this->feedback = count($this->existingCandidateIds).' kandidat dari email berhasil dipilih.';
+    }
+
+    public function selectRecipientsByEmail(string $text): void
+    {
+        $this->authorizeAdmin();
+        $this->resetValidation('recipientSearch');
+        $this->recipientIds = app(RecruitmentService::class)->selectByEmails($this->eligibleRecipients()->select('id', 'email'), $text, $this->recipientIds, 'recipientSearch');
+        $this->recipientSearch = '';
+        $this->confirmAccess = false;
+        $this->feedback = count($this->recipientIds).' penerima email dipilih.';
+    }
+
     public function updatedCandidateMode(): void
     {
         $this->reset('candidateSearch', 'existingCandidateIds');

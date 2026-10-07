@@ -50,7 +50,10 @@
     @endif
     <div class="notice">Password lama tidak dapat dibaca. Tindakan ini membuat password sementara baru dan mengakhiri sesi login lama. Kandidat wajib menggantinya saat login pertama.</div>
     <form wire:submit="sendCandidateAccess" class="tools-email-grid"><div class="tools-recipients"><h3><span class="number">01</span>Pilih penerima</h3>
-        <label class="field">Cari kandidat terdaftar<input type="search" wire:model.live.debounce.350ms="recipientSearch" maxlength="255" placeholder="Nama atau email"></label>
+        <label class="field">Cari kandidat / paste email<input type="search" wire:model.live.debounce.350ms="recipientSearch" maxlength="255" placeholder="Nama atau paste beberapa email" x-on:paste="if ($event.clipboardData.getData('text').includes('@')) { $event.preventDefault(); $wire.selectRecipientsByEmail($event.clipboardData.getData('text')); }"></label>
+        <small>Paste email dari Excel; pisahkan dengan baris baru, spasi, koma, atau titik koma. Maksimal 100 kandidat.</small>
+        @error('recipientSearch')<span class="field-error" role="alert">{{ $message }}</span>@enderror
+        <small wire:loading wire:target="selectRecipientsByEmail" role="status">Mencocokkan email kandidat…</small>
         <div class="tools-form-grid">
             <label class="field">Posisi<select wire:model.live="recipientPositionFilter"><option value="">Semua posisi</option>@foreach($positions as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach</select></label>
             <label class="field">Batch / periode<select wire:model.live="recipientPeriodFilter"><option value="">Semua batch</option>@foreach($periods as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach</select></label>

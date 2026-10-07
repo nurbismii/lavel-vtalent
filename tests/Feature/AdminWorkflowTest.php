@@ -22,6 +22,37 @@ class AdminWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_pasted_emails_select_candidates_without_duplicates_and_preserve_previous_selection(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $admin->saveAppAuthenticationSecret('TESTSECRET');
+        $first = User::factory()->create(['role' => Role::Candidate, 'email' => 'andi@example.com']);
+        $second = User::factory()->create(['role' => Role::Candidate, 'email' => 'budi@example.com']);
+        Livewire::actingAs($admin)->test(Recruitment::class)->call('navigate', 'create')
+            ->set('candidateMode', 'existing')->set('existingCandidateIds', [(string) $first->id])
+            ->call('selectCandidatesByEmail', " ANDI@example.com\r\n\tbudi@example.com;andi@example.com, budi@example.com ")
+            ->assertHasNoErrors()->assertSet('existingCandidateIds', [(string) $first->id, (string) $second->id])
+            ->assertSet('candidateSearch', '')->assertSee('2 kandidat dari email berhasil dipilih');
+    }
+
+    public function test_pasted_invalid_or_ineligible_emails_do_not_change_selection(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $admin->saveAppAuthenticationSecret('TESTSECRET');
+        $user = User::factory()->create(['role' => Role::Candidate]);
+        $inactive = User::factory()->create(['role' => Role::Candidate, 'active' => false]);
+        $application = RecruitmentApplication::factory()->create();
+        $page = Livewire::actingAs($admin)->test(Recruitment::class)->call('navigate', 'create')
+            ->set('candidateMode', 'existing')->set('existingCandidateIds', [(string) $user->id]);
+        $page->call('selectCandidatesByEmail', '')->assertHasErrors('candidateSearch');
+        foreach (['invalid-email', 'missing@example.com', $inactive->email, $admin->email, $application->user->email, str_repeat('x', 30001), implode(' ', array_map(fn ($i) => "candidate$i@example.com", range(1, 101)))] as $text) {
+            $page->call('selectCandidatesByEmail', $user->email.' '.$text)
+                ->assertHasErrors('candidateSearch')->assertSet('existingCandidateIds', [(string) $user->id]);
+        }
+        $admin->update(['active' => false]);
+        $page->call('selectCandidatesByEmail', $user->email)->assertForbidden();
+    }
+
     public function test_admin_opens_revision_and_candidate_receives_editable_draft(): void
     {
         Queue::fake();

@@ -29,6 +29,26 @@ class RecruitmentToolsTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_pasted_recipient_emails_preserve_selection_and_respect_filters_and_portfolio_uploads(): void
+    {
+        $first = RecruitmentApplication::factory()->create();
+        $second = RecruitmentApplication::factory()->create($first->only('position_id', 'recruitment_period_id'));
+        $other = RecruitmentApplication::factory()->create();
+        $page = Livewire::actingAs($this->admin())->test(Recruitment::class)->call('navigate', 'tools')
+            ->set('recipientPositionFilter', (string) $first->position_id)
+            ->set('recipientPeriodFilter', (string) $first->recruitment_period_id)
+            ->set('recipientIds', [(string) $first->user_id])->set('confirmAccess', true)
+            ->call('selectRecipientsByEmail', strtoupper($second->user->email)."\r\n".$first->user->email.';'.$second->user->email)
+            ->assertHasNoErrors()->assertSet('recipientIds', [(string) $first->user_id, (string) $second->user_id])
+            ->assertSet('recipientSearch', '')->assertSet('confirmAccess', false);
+        $page->call('selectRecipientsByEmail', $other->user->email)->assertHasErrors('recipientSearch')
+            ->assertSet('recipientIds', [(string) $first->user_id, (string) $second->user_id]);
+        $submission = Submission::factory()->create(['recruitment_application_id' => $second->id]);
+        \App\Models\UploadedFile::factory()->create(['submission_id' => $submission->id, 'recruitment_application_id' => $second->id, 'uploader_id' => $second->user_id]);
+        $page->call('selectRecipientsByEmail', $second->user->email)->assertHasErrors('recipientSearch');
+        $this->assertDatabaseCount('access_deliveries', 0);
+    }
+
     private function admin(): User
     {
         $admin = User::factory()->create(['role' => Role::Admin]);

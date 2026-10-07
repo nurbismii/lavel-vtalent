@@ -12,8 +12,10 @@ use App\Models\RecruitmentApplication;
 use App\Models\RecruitmentPeriod;
 use App\Services\PsychometricResultExportService;
 use App\Services\PsychometricService;
+use App\Services\RecruitmentService;
 use Carbon\Carbon;
 use Filament\Pages\Page;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Locked;
@@ -266,6 +268,23 @@ class Psychometrics extends Page
         $this->feedback = "{$created} penugasan berhasil dibuat. {$skipped} penugasan yang sudah ada dilewati tanpa perubahan.";
     }
 
+    private function eligibleApplications(): Builder
+    {
+        return RecruitmentApplication::whereNull('archived_at')->whereNull('purged_at')
+            ->whereHas('user', fn ($query) => $query->where('active', true)->where('role', Role::Candidate));
+    }
+
+    public function selectApplicationsByEmail(string $text): void
+    {
+        $this->actor();
+        $this->resetValidation('search');
+        $query = $this->eligibleApplications()->join('users', 'users.id', '=', 'recruitment_applications.user_id')
+            ->select('recruitment_applications.id', 'users.email');
+        $this->applicationIds = app(RecruitmentService::class)->selectByEmails($query, $text, $this->applicationIds, 'search');
+        $this->search = '';
+        $this->feedback = count($this->applicationIds).' lamaran kandidat dipilih untuk tes IQ.';
+    }
+
     public function finalizeExpired(): void
     {
         $this->actor();
@@ -298,7 +317,7 @@ class Psychometrics extends Page
         return [
             'tests' => PsychometricTest::latest()->get(),
             'selected' => $this->testId ? PsychometricTest::withCount('attempts')->findOrFail($this->testId) : null,
-            'applications' => RecruitmentApplication::whereNull('archived_at')->whereNull('purged_at')->whereHas('user', fn ($q) => $q->where('active', true)->where('role', Role::Candidate)->where(fn ($q) => $q->where('name', 'like', '%'.$this->search.'%')->orWhere('email', 'like', '%'.$this->search.'%')))->with(['user', 'position', 'period'])->latest()->limit(30)->get(),
+            'applications' => $this->eligibleApplications()->whereHas('user', fn ($q) => $q->where(fn ($q) => $q->where('name', 'like', '%'.$this->search.'%')->orWhere('email', 'like', '%'.$this->search.'%')))->with(['user', 'position', 'period'])->latest()->limit(30)->get(),
             'positions' => Position::orderBy('name')->get(['id', 'name']),
             'periods' => RecruitmentPeriod::orderByDesc('starts_at')->orderByDesc('id')->get(['id', 'name']),
             'attemptCount' => PsychometricAttempt::count(),

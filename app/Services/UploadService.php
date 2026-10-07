@@ -30,8 +30,15 @@ class UploadService
         $limits = AppSetting::valueFor('uploads')[$purpose];
         Validator::make(['upload' => $upload], ['upload' => ['required', 'file', 'max:'.($limits['max_mb'] * 1024), 'extensions:'.implode(',', $limits['extensions']), 'mimes:'.implode(',', $limits['extensions'])]])->validate();
         $this->validateOffice($upload);
+        $candidateName = Str::limit(Str::slug($submission->application->user->name, '_'), 120, '') ?: 'kandidat';
+        $documentType = match ($purpose) {
+            'portfolio_main' => 'portofolio',
+            'portfolio_evidence' => 'lampiran_portofolio',
+            'technical_result' => 'tes_teknis',
+        };
+        $filename = $candidateName.'_'.$documentType.'_'.Str::uuid().'.'.strtolower($upload->getClientOriginalExtension());
         try {
-            $path = $upload->storeAs('quarantine', Str::uuid().'.'.strtolower($upload->getClientOriginalExtension()), 'private');
+            $path = $upload->storeAs('quarantine', $filename, 'private');
         } catch (UnableToWriteFile $exception) {
             report($exception);
 
@@ -40,7 +47,7 @@ class UploadService
             ]);
         }
         try {
-            return DB::transaction(function () use ($submission, $actor, $upload, $purpose, $path, $limits) {
+            return DB::transaction(function () use ($submission, $actor, $upload, $purpose, $path, $limits, $filename) {
                 $submission = app(SubmissionService::class)->locked($submission);
                 Gate::forUser($actor)->authorize('update', $submission);
                 $used = UploadedFile::where('recruitment_application_id', $submission->recruitment_application_id)->sum('size');
@@ -57,7 +64,7 @@ class UploadService
                 if (($purpose === 'portfolio_main' && $staged >= 1) || ($purpose !== 'portfolio_main' && $attached + $staged >= $limits['max_files'])) {
                     throw ValidationException::withMessages(['upload' => 'Jumlah file sudah mencapai batas. Hapus unggahan yang tidak digunakan.']);
                 }
-                $file = UploadedFile::create(['recruitment_application_id' => $submission->recruitment_application_id, 'submission_id' => $submission->id, 'uploader_id' => $actor->id, 'purpose' => $purpose, 'path' => $path, 'original_name' => Str::limit(basename(str_replace('\\', '/', $upload->getClientOriginalName())), 240, ''), 'mime' => $upload->getMimeType(), 'size' => $upload->getSize(), 'checksum' => hash_file('sha256', $upload->getRealPath()), 'scan_status' => config('submissions.scan_enabled') ? ScanStatus::Pending : ScanStatus::Skipped]);
+                $file = UploadedFile::create(['recruitment_application_id' => $submission->recruitment_application_id, 'submission_id' => $submission->id, 'uploader_id' => $actor->id, 'purpose' => $purpose, 'path' => $path, 'original_name' => $filename, 'mime' => $upload->getMimeType(), 'size' => $upload->getSize(), 'checksum' => hash_file('sha256', $upload->getRealPath()), 'scan_status' => config('submissions.scan_enabled') ? ScanStatus::Pending : ScanStatus::Skipped]);
                 if ($file->scan_status === ScanStatus::Skipped) {
                     return $file;
                 }

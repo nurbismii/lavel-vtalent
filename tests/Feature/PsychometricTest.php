@@ -25,6 +25,29 @@ class PsychometricTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_pasted_iq_candidate_emails_select_active_applications_and_preserve_selection(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $first = RecruitmentApplication::factory()->create();
+        $second = RecruitmentApplication::factory()->create();
+        $archived = RecruitmentApplication::factory()->create(['archived_at' => now(), 'active_user_id' => null]);
+        $purged = RecruitmentApplication::factory()->create(['purged_at' => now()]);
+        $inactive = RecruitmentApplication::factory()->create();
+        $inactive->user->update(['active' => false]);
+        $page = Livewire::actingAs($admin)->test(Psychometrics::class)
+            ->set('applicationIds', [(string) $first->id])
+            ->call('selectApplicationsByEmail', strtoupper($second->user->email)."\t\r\n".$first->user->email.','.$second->user->email)
+            ->assertHasNoErrors()->assertSet('applicationIds', [(string) $first->id, (string) $second->id])
+            ->assertSet('search', '');
+        foreach ([$archived->user->email, $purged->user->email, $inactive->user->email, 'missing@example.com', 'invalid'] as $email) {
+            $page->call('selectApplicationsByEmail', $email)->assertHasErrors('search')
+                ->assertSet('applicationIds', [(string) $first->id, (string) $second->id]);
+        }
+        $this->assertDatabaseCount('psychometric_attempts', 0);
+        $admin->update(['active' => false]);
+        $page->call('selectApplicationsByEmail', $first->user->email)->assertForbidden();
+    }
+
     public function test_activity_is_recorded_without_changing_answers_or_revision_and_is_visible_to_hr(): void
     {
         $attempt = PsychometricAttempt::factory()->create(['section_started_at' => now(), 'section_expires_at' => now()->addMinute(), 'revision' => 7, 'answers' => [[1 => ['A']]]]);
