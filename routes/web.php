@@ -3,6 +3,7 @@
 use App\Enums\Role;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\FileController;
+use App\Http\Controllers\PortfolioExportController;
 use App\Http\Controllers\PsychometricController;
 use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\TechnicalTaskController;
@@ -41,6 +42,7 @@ Route::middleware([FormHeaders::class, 'throttle:forms-public'])->group(function
 });
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 Route::middleware(['auth', EnsurePortalAccess::class])->group(function () {
+    Route::get('/portal/portfolio-exports/{export}/download', PortfolioExportController::class)->whereNumber('export')->name('portfolio-exports.download');
     Route::get('/portal/psychometrics', [PsychometricController::class, 'index'])->name('candidate.psychometrics');
     Route::post('/portal/psychometrics/{attempt}/activity', [PsychometricController::class, 'activity'])->whereNumber('attempt')->middleware('throttle:60,1')->name('candidate.psychometrics.activity');
     Route::get('/portal/psychometrics/{attempt}', [PsychometricController::class, 'show'])->whereNumber('attempt')->name('candidate.psychometrics.show');

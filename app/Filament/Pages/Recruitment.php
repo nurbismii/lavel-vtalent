@@ -4,10 +4,12 @@ namespace App\Filament\Pages;
 
 use App\Enums\Role;
 use App\Enums\SubmissionType;
+use App\Jobs\BuildPortfolioExport;
 use App\Models\AccessDelivery;
 use App\Models\AppSetting;
 use App\Models\AuditLog;
 use App\Models\EmailDelivery;
+use App\Models\PortfolioExport;
 use App\Models\Position;
 use App\Models\RecruitmentApplication;
 use App\Models\RecruitmentPeriod;
@@ -16,14 +18,12 @@ use App\Models\TechnicalTask;
 use App\Models\UploadedFile;
 use App\Models\User;
 use App\Services\CandidateImportService;
-use App\Services\PortfolioExportService;
 use App\Services\RecruitmentService;
 use App\Services\RecruitmentToolsService;
 use App\Services\SubmissionService;
 use Filament\Pages\Page;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -498,35 +498,36 @@ class Recruitment extends Page
         return $query;
     }
 
-    public function exportPortfolios(): ?StreamedResponse
+    public function exportPortfolios(): void
     {
         $actor = $this->authorizeAdmin();
         $this->resetValidation('portfolioExport');
         $this->feedback = '';
-        $directory = storage_path('app/portal-private/exports');
-        File::ensureDirectoryExists($directory);
-        $path = $directory.'/'.Str::uuid().'.zip';
         try {
-            $count = app(PortfolioExportService::class)->write($actor, $this->filteredApplications(), $path);
+            $export = DB::transaction(function () use ($actor): PortfolioExport {
+                User::whereKey($actor->id)->lockForUpdate()->firstOrFail();
+                if (PortfolioExport::where('actor_id', $actor->id)->whereIn('status', ['pending', 'processing'])->where('expires_at', '>', now())->exists()) {
+                    throw ValidationException::withMessages(['portfolioExport' => 'Export sebelumnya masih diproses. Tunggu hingga selesai sebelum membuat export baru.']);
+                }
+                $limit = (int) config('submissions.portfolio_export.max_candidates');
+                $ids = $this->filteredApplications()->reorder('id')->limit($limit + 1)->pluck('id')->all();
+                if (! $ids || count($ids) > $limit) {
+                    throw ValidationException::withMessages(['portfolioExport' => "Pilih filter dengan 1–$limit kandidat untuk export offline."]);
+                }
+
+                return PortfolioExport::create(['actor_id' => $actor->id, 'application_ids' => $ids, 'path' => 'exports/'.Str::uuid().'.zip', 'candidate_count' => count($ids), 'expires_at' => now()->addDay()]);
+            });
+            BuildPortfolioExport::dispatch($export->id);
+            $this->feedback = 'Export masuk antrean. Status akan diperbarui otomatis; ZIP dapat diunduh setelah selesai.';
         } catch (ValidationException $exception) {
             $this->addError('portfolioExport', $exception->getMessage());
-
-            return null;
         } catch (\Throwable $exception) {
-            report($exception);
-            $this->addError('portfolioExport', 'Export gagal. Silakan coba kembali atau persempit filter kandidat.');
-
-            return null;
-        }
-        $this->feedback = "Export $count kandidat siap. Ekstrak ZIP sebelum membuka Excel; pertahankan susunan foldernya.";
-
-        return response()->streamDownload(function () use ($path) {
-            try {
-                readfile($path);
-            } finally {
-                File::delete($path);
+            if (isset($export)) {
+                (new BuildPortfolioExport($export->id))->failed($exception);
             }
-        }, 'portofolio-'.now()->format('Ymd-His').'.zip', ['Content-Type' => 'application/zip', 'Cache-Control' => 'private, no-store']);
+            report($exception);
+            $this->addError('portfolioExport', 'Export gagal dijadwalkan. Periksa antrean lalu coba kembali.');
+        }
     }
 
     protected function getViewData(): array
@@ -551,6 +552,7 @@ class Recruitment extends Page
         }
 
         return [
+            'portfolioExports' => in_array($this->section, ['dashboard', 'applications'], true) ? PortfolioExport::where('actor_id', auth()->id())->where('expires_at', '>', now())->latest()->limit(5)->get() : collect(),
             'recipients' => $this->section === 'tools' ? $this->eligibleRecipients()->when($this->recipientSearch, fn ($q) => $q->where(fn ($s) => $s->where('name', 'like', '%'.mb_substr($this->recipientSearch, 0, 255).'%')->orWhere('email', 'like', '%'.mb_substr($this->recipientSearch, 0, 255).'%')))->orderBy('name')->orderBy('id')->limit(100)->get() : collect(),
             'accessDeliveries' => $this->section === 'tools' ? AccessDelivery::latest()->paginate(15, pageName: 'accessPage') : collect(),
             'technicalTasks' => $this->section === 'tools' ? TechnicalTask::with(['position', 'period'])->latest()->paginate(15, pageName: 'taskPage') : collect(),

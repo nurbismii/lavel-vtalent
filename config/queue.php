@@ -30,6 +30,14 @@ return [
     */
 
     'connections' => [
+        'portfolio_exports' => [
+            'driver' => 'database',
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => 'exports',
+            'retry_after' => 1860,
+            'after_commit' => true,
+        ],
 
         'sync' => [
             'driver' => 'sync',

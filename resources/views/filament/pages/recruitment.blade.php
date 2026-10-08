@@ -10,7 +10,7 @@
         <x-errors />@if($feedback)<div class="success" role="status">{{ $feedback }}</div>@endif<div wire:loading.delay role="status">Memproses…</div>
         @if($section !== 'tools')<div class="row"><a class="button" href="{{ route('filament.admin.pages.recruitment', ['section' => 'tools']) }}">Pengelolaan massal</a></div>@endif
         @if($section === 'tools')
-            @include('filament.pages.recruitment-tools')
+        @include('filament.pages.recruitment-tools')
         @elseif(in_array($section,['dashboard','applications']))
         @if($section==='dashboard')<div class="heading">
             <div>
@@ -33,104 +33,160 @@
         @if($section==='dashboard')<div class="two-col" style="margin:20px 0">@foreach(App\Enums\SubmissionType::cases() as $type)<section class="panel">
                 <h3>{{ $type->label() }} · Semua status</h3>@foreach(App\Enums\SubmissionStatus::cases() as $status)<div class="row" style="margin-top:8px"><span class="badge {{ $status->value }}">{{ $status->label() }}</span><strong>{{ $statusCounts->first(fn($row)=>$row->type===$type && $row->status===$status)?->total ?? 0 }}</strong></div>@endforeach
             </section>@endforeach</div>@endif<section class="panel applications-panel">
-    <header class="applications-header">
-        <div>
-            <div class="eyebrow">Administrasi rekrutmen</div>
-            <h2>Kandidat & lamaran</h2>
-            <p class="muted">Kelola lamaran dan pantau pengumpulan dokumen kandidat.</p>
-        </div>
-        <div class="applications-actions">
-            <button type="button" class="button" wire:click="exportPortfolios" wire:loading.attr="disabled"><x-heroicon-o-arrow-down-tray/><span wire:loading.remove wire:target="exportPortfolios">Export portofolio offline</span><span wire:loading wire:target="exportPortfolios">Menyiapkan ZIP…</span></button>
-            <button type="button" class="button" wire:click="navigate('import')"><x-heroicon-o-arrow-up-tray/>Import kandidat</button>
-            <button type="button" class="button primary" wire:click="navigate('create')"><x-heroicon-o-plus/>Tambah kandidat / lamaran</button>
-        </div>
-    </header>
-    <div class="applications-filters">
-        <div class="applications-filter-main">
-            <label class="field">Cari kandidat
-                <span class="applications-search"><x-heroicon-o-magnifying-glass/><input wire:model.live.debounce.350ms="search" placeholder="Cari nama atau email…" type="search"></span>
-            </label>
-            <label class="field">Posisi<select wire:model.live="positionFilter"><option value="">Semua posisi</option>@foreach($positions as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach</select></label>
-            <label class="field">Periode rekrutmen<select wire:model.live="periodFilter"><option value="">Semua periode</option>@foreach($periods as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach</select></label>
-        </div>
-        <div class="applications-filter-secondary">
-            @foreach(['portfolioFilter'=>'Status portofolio','testFilter'=>'Status tes teknis'] as $field=>$label)
-                <label class="field">{{ $label }}<select wire:model.live="{{ $field }}"><option value="">Semua status</option>@foreach(App\Enums\SubmissionStatus::cases() as $s)<option value="{{ $s->value }}">{{ $s->label() }}</option>@endforeach</select></label>
-            @endforeach
-            <div class="applications-toggles">
-                <label><input type="checkbox" wire:model.live="overdue">Tenggat terlewati</label>
-                <label><input type="checkbox" wire:model.live="archived">Lamaran diarsipkan</label>
+            <header class="applications-header">
+                <div>
+                    <div class="eyebrow">Administrasi rekrutmen</div>
+                    <h2>Kandidat & lamaran</h2>
+                    <p class="muted">Kelola lamaran dan pantau pengumpulan dokumen kandidat.</p>
+                </div>
+                <div class="applications-actions">
+                    <button type="button" class="button" wire:click="exportPortfolios" wire:loading.attr="disabled"><x-heroicon-o-arrow-down-tray /><span wire:loading.remove wire:target="exportPortfolios">Export portofolio offline</span><span wire:loading wire:target="exportPortfolios">Menyiapkan ZIP…</span></button>
+                    <button type="button" class="button" wire:click="navigate('import')"><x-heroicon-o-arrow-up-tray />Import kandidat</button>
+                    <button type="button" class="button primary" wire:click="navigate('create')"><x-heroicon-o-plus />Tambah kandidat / lamaran</button>
+                </div>
+            </header>
+            <div class="applications-filters">
+                <div class="applications-filter-main">
+                    <label class="field">Cari kandidat
+                        <span class="applications-search"><x-heroicon-o-magnifying-glass /><input wire:model.live.debounce.350ms="search" placeholder="Cari nama atau email…" type="search"></span>
+                    </label>
+                    <label class="field">Posisi<select wire:model.live="positionFilter">
+                            <option value="">Semua posisi</option>@foreach($positions as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach
+                        </select></label>
+                    <label class="field">Periode rekrutmen<select wire:model.live="periodFilter">
+                            <option value="">Semua periode</option>@foreach($periods as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach
+                        </select></label>
+                </div>
+                <div class="applications-filter-secondary">
+                    @foreach(['portfolioFilter'=>'Status portofolio','testFilter'=>'Status tes teknis'] as $field=>$label)
+                    <label class="field">{{ $label }}<select wire:model.live="{{ $field }}">
+                            <option value="">Semua status</option>@foreach(App\Enums\SubmissionStatus::cases() as $s)<option value="{{ $s->value }}">{{ $s->label() }}</option>@endforeach
+                        </select></label>
+                    @endforeach
+                    <div class="applications-toggles">
+                        <label><input type="checkbox" wire:model.live="overdue">Tenggat terlewati</label>
+                        <label><input type="checkbox" wire:model.live="archived">Lamaran diarsipkan</label>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-    <div class="applications-results">
-        <p><strong>{{ number_format($applications->total(), 0, ',', '.') }}</strong> lamaran {{ $archived ? 'diarsipkan' : 'aktif' }} ditemukan</p>
-        @if($search || $positionFilter || $periodFilter || $portfolioFilter || $testFilter || $overdue || $archived)
-            <button type="button" class="link-button" wire:click="resetApplicationFilters">Reset filter</button>
-        @endif
-    </div>
-    <p class="muted">Export sesuai filter berisi Excel dan folder portofolio. Maksimal {{ config('submissions.portfolio_export.max_candidates') }} kandidat / {{ config('submissions.portfolio_export.max_mb') }} MB. Ekstrak ZIP terlebih dahulu; simpan Excel dan folder kandidat bersama.</p>
-    <div class="table-wrap applications-table-wrap">
-        <table class="portal-table applications-table">
-            <caption class="applications-sr-only">Daftar kandidat dan status pengumpulan lamaran</caption>
-            <thead><tr><th scope="col">Kandidat</th><th scope="col">Posisi & periode</th><th scope="col">Portofolio</th><th scope="col">Tes teknis</th><th scope="col"><span class="applications-sr-only">Aksi</span></th></tr></thead>
-            <tbody>
-                @forelse($applications as $app)
-                    <tr wire:key="application-row-{{ $app->id }}">
-                        <td class="applications-person" data-label="Kandidat">
-                            <div class="applications-person-content">
-                                <span class="applications-avatar" aria-hidden="true">{{ mb_strtoupper(mb_substr($app->user->name, 0, 1)) }}</span>
-                                <div><strong>{{ $app->user->name }}</strong><small>{{ $app->user->email }}</small>@if(!$app->user->active)<span class="badge rejected">Akun nonaktif</span>@endif</div>
-                            </div>
-                        </td>
-                        <td data-label="Posisi & periode"><strong class="applications-position">{{ $app->position->name }}</strong><small>{{ $app->period->name }}</small></td>
-                        @foreach(App\Enums\SubmissionType::cases() as $type)
+            <div class="applications-results">
+                <p><strong>{{ number_format($applications->total(), 0, ',', '.') }}</strong> lamaran {{ $archived ? 'diarsipkan' : 'aktif' }} ditemukan</p>
+                @if($search || $positionFilter || $periodFilter || $portfolioFilter || $testFilter || $overdue || $archived)
+                <button type="button" class="link-button" wire:click="resetApplicationFilters">Reset filter</button>
+                @endif
+            </div>
+            <p class="muted">Export diproses di latar belakang, maksimal {{ config('submissions.portfolio_export.max_candidates') }} kandidat. ZIP tersedia selama 24 jam setelah selesai. Ekstrak ZIP; simpan Excel dan folder Kandidat bersama.</p>
+            @if($portfolioExports->isNotEmpty())
+            <div @if($portfolioExports->contains(fn($export) => in_array($export->status, ['pending', 'processing']))) wire:poll.5s @endif role="region" aria-label="Status export portofolio">
+                @foreach($portfolioExports as $export)
+                <div class="file-row" wire:key="portfolio-export-{{ $export->id }}">
+                    <div class="file-info"><strong>Export #{{ $export->id }} · {{ $export->candidate_count }} kandidat</strong><br><span role="status">{{ match($export->status) { 'pending' => 'Menunggu worker', 'processing' => 'Sedang membuat ZIP…', 'ready' => 'Siap diunduh', default => 'Gagal' } }}</span>@if($export->error)<p class="field-error">{{ $export->error }}</p>@endif</div>
+                    @if($export->status === 'ready')<a class="button" href="{{ route('portfolio-exports.download', $export) }}">Download ZIP</a>@endif
+                </div>
+                @endforeach
+            </div>
+            @endif
+            <div class="table-wrap applications-table-wrap">
+                <table class="portal-table applications-table">
+                    <caption class="applications-sr-only">Daftar kandidat dan status pengumpulan lamaran</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Kandidat</th>
+                            <th scope="col">Posisi & periode</th>
+                            <th scope="col">Portofolio</th>
+                            <th scope="col">Tes teknis</th>
+                            <th scope="col"><span class="applications-sr-only">Aksi</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($applications as $app)
+                        <tr wire:key="application-row-{{ $app->id }}">
+                            <td class="applications-person" data-label="Kandidat">
+                                <div class="applications-person-content">
+                                    <span class="applications-avatar" aria-hidden="true">{{ mb_strtoupper(mb_substr($app->user->name, 0, 1)) }}</span>
+                                    <div><strong>{{ $app->user->name }}</strong><small>{{ $app->user->email }}</small>@if(!$app->user->active)<span class="badge rejected">Akun nonaktif</span>@endif</div>
+                                </div>
+                            </td>
+                            <td data-label="Posisi & periode"><strong class="applications-position">{{ $app->position->name }}</strong><small>{{ $app->period->name }}</small></td>
+                            @foreach(App\Enums\SubmissionType::cases() as $type)
                             @php($s=$app->submissions->firstWhere('type',$type))
                             <td data-label="{{ $type->label() }}">
                                 @if($s)
-                                    <span class="badge {{ $s->status->value }}">{{ $s->status->label() }}</span>
-                                    <small class="applications-deadline">{{ $s->localDeadline() }}</small>
-                                    @if($s->deadline->isPast() && in_array($s->status,[App\Enums\SubmissionStatus::NotStarted,App\Enums\SubmissionStatus::Draft,App\Enums\SubmissionStatus::Revision]))
-                                        <span class="field-error">{{ $s->status===App\Enums\SubmissionStatus::Revision?'Revisi belum dikumpulkan':'Tenggat terlewati' }}</span>
-                                    @endif
+                                <span class="badge {{ $s->status->value }}">{{ $s->status->label() }}</span>
+                                <small class="applications-deadline">{{ $s->localDeadline() }}</small>
+                                @if($s->deadline->isPast() && in_array($s->status,[App\Enums\SubmissionStatus::NotStarted,App\Enums\SubmissionStatus::Draft,App\Enums\SubmissionStatus::Revision]))
+                                <span class="field-error">{{ $s->status===App\Enums\SubmissionStatus::Revision?'Revisi belum dikumpulkan':'Tenggat terlewati' }}</span>
+                                @endif
                                 @else
-                                    <small>Belum ada penugasan</small>
+                                <small>Belum ada penugasan</small>
                                 @endif
                             </td>
-                        @endforeach
-                        <td class="applications-row-action"><button type="button" class="button small" wire:click="openApplication({{ $app->id }})" aria-label="Lihat detail lamaran {{ $app->user->name }}">Detail <span aria-hidden="true">→</span></button></td>
-                    </tr>
-                @empty
-                    <tr><td colspan="5" class="applications-empty"><x-heroicon-o-users/><h3>Belum ada lamaran yang cocok</h3><p class="muted">Coba ubah filter atau tambahkan lamaran baru.</p><small>Kandidat hasil import tersedia pada pilihan Kandidat terdaftar saat membuat lamaran.</small></td></tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-    @if($applications->hasPages())<footer class="applications-pagination">{{ $applications->links() }}</footer>@endif
-</section>
+                            @endforeach
+                            <td class="applications-row-action"><button type="button" class="button small" wire:click="openApplication({{ $app->id }})" aria-label="Lihat detail lamaran {{ $app->user->name }}">Detail <span aria-hidden="true">→</span></button></td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="5" class="applications-empty"><x-heroicon-o-users />
+                                <h3>Belum ada lamaran yang cocok</h3>
+                                <p class="muted">Coba ubah filter atau tambahkan lamaran baru.</p><small>Kandidat hasil import tersedia pada pilihan Kandidat terdaftar saat membuat lamaran.</small>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            @if($applications->hasPages())<footer class="applications-pagination">{{ $applications->links() }}</footer>@endif
+        </section>
         @elseif($section==='import')
-<section class="panel">
-<div class="heading"><div><h1>Import kandidat</h1><p class="muted">Daftarkan akun kandidat dari Excel (.xlsx), lalu gunakan pilihan Kandidat terdaftar untuk membuat lamaran.</p></div><button type="button" class="button" wire:click="navigate('create')">Tambah kandidat / lamaran</button></div>
-<button type="button" class="button" wire:click="downloadCandidateTemplate" wire:loading.attr="disabled">Download template Excel</button>
-<div class="table-wrap"><table class="portal-table"><thead><tr><th>Kolom</th><th>Aturan pengisian</th></tr></thead><tbody>
-<tr><td>nama</td><td>Wajib, maksimal 255 karakter.</td></tr>
-<tr><td>email</td><td>Wajib, format email valid dan belum terdaftar. Tidak boleh duplikat dalam file.</td></tr>
-<tr><td>password</td><td>Wajib, minimal 12 karakter dan maksimal 72 byte. Gunakan password berbeda untuk setiap kandidat.</td></tr>
-<tr><td>telepon</td><td>Opsional, maksimal 30 karakter: angka, +, tanda kurung, spasi, titik, atau tanda hubung. Sel template sudah berformat teks agar angka 0 di depan tetap ada.</td></tr>
-</tbody></table></div>
-<p class="muted">Isi sheet Kandidat mulai baris kedua, lalu simpan sebagai Excel Workbook (.xlsx). Petunjuk tersedia pada sheet Panduan. Gunakan teks biasa tanpa rumus. Maksimal {{ config('candidate_import.max_rows') }} kandidat dan {{ config('candidate_import.max_kilobytes') / 1024 }} MB per file. Semua kolom header harus tetap ada, termasuk telepon yang opsional diisi.</p>
-<div class="notice">Jika ada kesalahan, seluruh import dibatalkan. Password disimpan sebagai hash dan wajib diganti saat login pertama; akses sementara berlaku {{ App\Models\AppSetting::valueFor('temporary_password_hours') }} jam. File diproses dari penyimpanan sementara privat dan dihapus setelah diproses. Simpan file sumber dengan aman karena berisi password.</div>
-<form novalidate x-data="{ uploading: false, importing: false, progress: 0 }" x-on:submit.prevent="if (uploading || importing || !$wire.importFile) return; importing = true; try { await $wire.importCandidates() } finally { importing = false }" x-on:livewire-upload-start="uploading = true" x-on:livewire-upload-finish="uploading = false" x-on:livewire-upload-error="uploading = false" x-on:livewire-upload-cancel="uploading = false" x-on:livewire-upload-progress="progress = $event.detail.progress">
-<label class="field">1. Pilih file Excel<input type="file" wire:model="importFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
-<div x-show="uploading" x-cloak role="status">Mengunggah… <progress max="100" x-bind:value="progress"></progress></div>
-@if($importFile instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile)
-<div class="notice" role="status"><strong>File sudah diunggah, akun belum disimpan.</strong><br>{{ $importFile->getClientOriginalName() }} siap diproses. Klik <strong>2. Import dan simpan kandidat</strong> untuk memvalidasi dan menyimpan akun.</div>
-@endif
-<p class="muted">Jika import gagal, perbaiki file sesuai nomor baris pada pesan kesalahan, lalu unggah ulang.</p>
-<button type="submit" class="button primary" x-bind:disabled="uploading || importing || !$wire.importFile" x-bind:aria-busy="importing"><span x-show="!importing">2. Import dan simpan kandidat</span><span x-show="importing" x-cloak>Memvalidasi dan menyimpan…</span></button>
-</form>
-</section>
-@elseif($section==='create')
+        <section class="panel">
+            <div class="heading">
+                <div>
+                    <h1>Import kandidat</h1>
+                    <p class="muted">Daftarkan akun kandidat dari Excel (.xlsx), lalu gunakan pilihan Kandidat terdaftar untuk membuat lamaran.</p>
+                </div><button type="button" class="button" wire:click="navigate('create')">Tambah kandidat / lamaran</button>
+            </div>
+            <button type="button" class="button" wire:click="downloadCandidateTemplate" wire:loading.attr="disabled">Download template Excel</button>
+            <div class="table-wrap">
+                <table class="portal-table">
+                    <thead>
+                        <tr>
+                            <th>Kolom</th>
+                            <th>Aturan pengisian</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>nama</td>
+                            <td>Wajib, maksimal 255 karakter.</td>
+                        </tr>
+                        <tr>
+                            <td>email</td>
+                            <td>Wajib, format email valid dan belum terdaftar. Tidak boleh duplikat dalam file.</td>
+                        </tr>
+                        <tr>
+                            <td>password</td>
+                            <td>Wajib, minimal 12 karakter dan maksimal 72 byte. Gunakan password berbeda untuk setiap kandidat.</td>
+                        </tr>
+                        <tr>
+                            <td>telepon</td>
+                            <td>Opsional, maksimal 30 karakter: angka, +, tanda kurung, spasi, titik, atau tanda hubung. Sel template sudah berformat teks agar angka 0 di depan tetap ada.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="muted">Isi sheet Kandidat mulai baris kedua, lalu simpan sebagai Excel Workbook (.xlsx). Petunjuk tersedia pada sheet Panduan. Gunakan teks biasa tanpa rumus. Maksimal {{ config('candidate_import.max_rows') }} kandidat dan {{ config('candidate_import.max_kilobytes') / 1024 }} MB per file. Semua kolom header harus tetap ada, termasuk telepon yang opsional diisi.</p>
+            <div class="notice">Jika ada kesalahan, seluruh import dibatalkan. Password disimpan sebagai hash dan wajib diganti saat login pertama; akses sementara berlaku {{ App\Models\AppSetting::valueFor('temporary_password_hours') }} jam. File diproses dari penyimpanan sementara privat dan dihapus setelah diproses. Simpan file sumber dengan aman karena berisi password.</div>
+            <form novalidate x-data="{ uploading: false, importing: false, progress: 0 }" x-on:submit.prevent="if (uploading || importing || !$wire.importFile) return; importing = true; try { await $wire.importCandidates() } finally { importing = false }" x-on:livewire-upload-start="uploading = true" x-on:livewire-upload-finish="uploading = false" x-on:livewire-upload-error="uploading = false" x-on:livewire-upload-cancel="uploading = false" x-on:livewire-upload-progress="progress = $event.detail.progress">
+                <label class="field">1. Pilih file Excel<input type="file" wire:model="importFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
+                <div x-show="uploading" x-cloak role="status">Mengunggah… <progress max="100" x-bind:value="progress"></progress></div>
+                @if($importFile instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile)
+                <div class="notice" role="status"><strong>File sudah diunggah, akun belum disimpan.</strong><br>{{ $importFile->getClientOriginalName() }} siap diproses. Klik <strong>2. Import dan simpan kandidat</strong> untuk memvalidasi dan menyimpan akun.</div>
+                @endif
+                <p class="muted">Jika import gagal, perbaiki file sesuai nomor baris pada pesan kesalahan, lalu unggah ulang.</p>
+                <button type="submit" class="button primary" x-bind:disabled="uploading || importing || !$wire.importFile" x-bind:aria-busy="importing"><span x-show="!importing">2. Import dan simpan kandidat</span><span x-show="importing" x-cloak>Memvalidasi dan menyimpan…</span></button>
+            </form>
+        </section>
+        @elseif($section==='create')
         <section class="panel">
             <h1>Tambah kandidat / lamaran</h1>
             <p class="muted">Pilih kandidat terdaftar atau buat kandidat baru. Satu kandidat hanya dapat memiliki satu lamaran aktif.</p>

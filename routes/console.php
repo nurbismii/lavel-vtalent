@@ -1,10 +1,12 @@
 <?php
 
 use App\Models\AccessDelivery;
+use App\Models\PortfolioExport;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('portal:cleanup')->daily()->withoutOverlapping();
 Schedule::command('forms:cleanup')->daily()->withoutOverlapping();
+Schedule::command('model:prune', ['--model' => [PortfolioExport::class]])->hourly()->withoutOverlapping();
 
 Schedule::call(function (): void {
     AccessDelivery::whereNotNull('password')->where('expires_at', '<=', now())

@@ -28,14 +28,15 @@ class PortfolioExportService
     {
         $actor = $actor->fresh();
         abort_unless($actor && $actor->active && ! $actor->must_change_password && $actor->role === Role::Admin && $actor->getAppAuthenticationSecret(), 403);
-        // ponytail: bounded synchronous export; use a queued private export for larger batches.
         $limit = (int) config('submissions.portfolio_export.max_candidates');
         $applications = (clone $query)->reorder('id')->limit($limit + 1)->with([
             'user', 'position', 'period', 'submissions',
             'submissions.versions' => fn ($versions) => $versions->where('status', 'final')->orderByDesc('number')->limit(1),
             'submissions.versions.attachments.file',
-        ])->get();
-        if ($applications->isEmpty() || $applications->count() > $limit) {
+        ])->lazyById(100);
+        $applicationIds = [];
+        $count = (clone $query)->count();
+        if ($count === 0 || $count > $limit) {
             throw ValidationException::withMessages(['portfolioExport' => "Pilih filter dengan 1–$limit kandidat untuk export offline."]);
         }
 
@@ -43,6 +44,7 @@ class PortfolioExportService
         $files = [];
         $bytes = 0;
         foreach ($applications as $application) {
+            $applicationIds[] = $application->id;
             $candidateName = Str::slug(mb_substr($application->user->name, 0, 80)) ?: 'kandidat';
             $folder = 'Kandidat/'.$candidateName.'-'.$application->id;
             $submission = $application->submissions->firstWhere('type', SubmissionType::Portfolio);
@@ -72,9 +74,6 @@ class PortfolioExportService
                     continue;
                 }
                 $bytes += $disk->size($file->path);
-                if ($bytes > (int) config('submissions.portfolio_export.max_mb') * 1024 * 1024) {
-                    throw ValidationException::withMessages(['portfolioExport' => 'Ukuran dokumen melebihi '.config('submissions.portfolio_export.max_mb').' MB. Persempit filter dan export per kelompok.']);
-                }
                 $entry = $attachment->purpose === 'portfolio_main'
                     ? $folder.'/'.$candidateName.'.pdf'
                     : $folder.'/Lampiran/'.$attachment->id.'-'.(Str::slug(mb_substr(pathinfo($file->original_name, PATHINFO_FILENAME), 0, 80)) ?: 'lampiran').'.'.$extension;
@@ -137,7 +136,7 @@ class PortfolioExportService
             if (! $closed) {
                 throw new RuntimeException('ZIP portofolio tidak selesai dibuat.');
             }
-            AuditLog::record('portfolio.offline_exported', $actor, $actor, metadata: ['application_ids' => $applications->modelKeys(), 'documents' => count($files), 'bytes' => $bytes]);
+            AuditLog::record('portfolio.offline_exported', $actor, $actor, metadata: ['application_ids' => $applicationIds, 'documents' => count($files), 'bytes' => $bytes]);
         } catch (\Throwable $exception) {
             if ($opened) {
                 $zip->close();
