@@ -11,6 +11,7 @@ return [
     'scan_enabled' => env('UPLOAD_SCAN_ENABLED', false),
     'scanner_binary' => env('CLAMSCAN_BINARY', 'clamscan'),
     'scanner_timeout' => 120,
+    'portfolio_export' => ['max_candidates' => 100, 'max_mb' => 50],
     'uploads' => [
         'portfolio_main' => ['extensions' => ['pdf'], 'max_mb' => 20, 'max_files' => 1],
         'portfolio_evidence' => ['extensions' => ['pdf', 'docx', 'jpg', 'jpeg', 'png'], 'max_mb' => 10, 'max_files' => 10],

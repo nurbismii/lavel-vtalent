@@ -40,6 +40,7 @@
             <p class="muted">Kelola lamaran dan pantau pengumpulan dokumen kandidat.</p>
         </div>
         <div class="applications-actions">
+            <button type="button" class="button" wire:click="exportPortfolios" wire:loading.attr="disabled"><x-heroicon-o-arrow-down-tray/><span wire:loading.remove wire:target="exportPortfolios">Export portofolio offline</span><span wire:loading wire:target="exportPortfolios">Menyiapkan ZIP…</span></button>
             <button type="button" class="button" wire:click="navigate('import')"><x-heroicon-o-arrow-up-tray/>Import kandidat</button>
             <button type="button" class="button primary" wire:click="navigate('create')"><x-heroicon-o-plus/>Tambah kandidat / lamaran</button>
         </div>
@@ -68,6 +69,7 @@
             <button type="button" class="link-button" wire:click="resetApplicationFilters">Reset filter</button>
         @endif
     </div>
+    <p class="muted">Export sesuai filter berisi Excel dan folder portofolio. Maksimal {{ config('submissions.portfolio_export.max_candidates') }} kandidat / {{ config('submissions.portfolio_export.max_mb') }} MB. Ekstrak ZIP terlebih dahulu; simpan Excel dan folder kandidat bersama.</p>
     <div class="table-wrap applications-table-wrap">
         <table class="portal-table applications-table">
             <caption class="applications-sr-only">Daftar kandidat dan status pengumpulan lamaran</caption>

@@ -16,12 +16,15 @@ use App\Models\TechnicalTask;
 use App\Models\UploadedFile;
 use App\Models\User;
 use App\Services\CandidateImportService;
+use App\Services\PortfolioExportService;
 use App\Services\RecruitmentService;
 use App\Services\RecruitmentToolsService;
 use App\Services\SubmissionService;
 use Filament\Pages\Page;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
@@ -479,9 +482,8 @@ class Recruitment extends Page
         $this->feedback = 'Pengaturan diperbarui.';
     }
 
-    protected function getViewData(): array
+    private function filteredApplications(): Builder
     {
-        $this->authorizeAdmin();
         $query = RecruitmentApplication::query()->with(['user', 'position', 'period', 'submissions']);
         $query->when(! $this->archived, fn ($q) => $q->whereNull('archived_at'))->when($this->archived, fn ($q) => $q->whereNotNull('archived_at'));
         $query->when($this->search, fn ($q) => $q->whereHas('user', fn ($u) => $u->where(fn ($s) => $s->where('name', 'like', '%'.$this->search.'%')->orWhere('email', 'like', '%'.$this->search.'%'))));
@@ -492,6 +494,45 @@ class Recruitment extends Page
             }
         }
         $query->when($this->overdue, fn ($q) => $q->whereHas('submissions', fn ($s) => $s->where('deadline', '<', now())->whereIn('status', ['not_started', 'draft', 'revision'])));
+
+        return $query;
+    }
+
+    public function exportPortfolios(): ?StreamedResponse
+    {
+        $actor = $this->authorizeAdmin();
+        $this->resetValidation('portfolioExport');
+        $this->feedback = '';
+        $directory = storage_path('app/portal-private/exports');
+        File::ensureDirectoryExists($directory);
+        $path = $directory.'/'.Str::uuid().'.zip';
+        try {
+            $count = app(PortfolioExportService::class)->write($actor, $this->filteredApplications(), $path);
+        } catch (ValidationException $exception) {
+            $this->addError('portfolioExport', $exception->getMessage());
+
+            return null;
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->addError('portfolioExport', 'Export gagal. Silakan coba kembali atau persempit filter kandidat.');
+
+            return null;
+        }
+        $this->feedback = "Export $count kandidat siap. Ekstrak ZIP sebelum membuka Excel; pertahankan susunan foldernya.";
+
+        return response()->streamDownload(function () use ($path) {
+            try {
+                readfile($path);
+            } finally {
+                File::delete($path);
+            }
+        }, 'portofolio-'.now()->format('Ymd-His').'.zip', ['Content-Type' => 'application/zip', 'Cache-Control' => 'private, no-store']);
+    }
+
+    protected function getViewData(): array
+    {
+        $this->authorizeAdmin();
+        $query = $this->filteredApplications();
         $application = $this->applicationId ? RecruitmentApplication::with(['user', 'position', 'period', 'submissions'])->findOrFail($this->applicationId) : null;
         $submission = $application?->submissions->firstWhere('type', $this->tab === 'Portofolio' ? SubmissionType::Portfolio : SubmissionType::TechnicalTest);
         $versions = $submission?->versions()->where('status', 'final')->latest('number')->get() ?? collect();
