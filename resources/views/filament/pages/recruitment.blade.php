@@ -74,8 +74,9 @@
                 @if($search || $positionFilter || $periodFilter || $portfolioFilter || $testFilter || $overdue || $archived)
                 <button type="button" class="link-button" wire:click="resetApplicationFilters">Reset filter</button>
                 @endif
+                
+                <p class="muted">Export diproses di latar belakang, maksimal {{ config('submissions.portfolio_export.max_candidates') }} kandidat. ZIP tersedia selama 24 jam setelah selesai. Ekstrak ZIP; simpan Excel dan folder Kandidat bersama.</p>
             </div>
-            <p class="muted">Export diproses di latar belakang, maksimal {{ config('submissions.portfolio_export.max_candidates') }} kandidat. ZIP tersedia selama 24 jam setelah selesai. Ekstrak ZIP; simpan Excel dan folder Kandidat bersama.</p>
             @if($portfolioExports->isNotEmpty())
             <div @if($portfolioExports->contains(fn($export) => in_array($export->status, ['pending', 'processing']))) wire:poll.5s @endif role="region" aria-label="Status export portofolio">
                 @foreach($portfolioExports as $export)
