@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\EditProfile;
 use App\Http\Middleware\EnsurePortalAccess;
 use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Http\Middleware\Authenticate;
@@ -31,7 +32,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandName('VDNi · Talent Portal')
             ->brandLogo(asset('images/vdni-logo.png'))
             ->brandLogoHeight('2.5rem')
-            ->profile()
+            ->profile(EditProfile::class)
             ->darkMode(false)
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->multiFactorAuthentication([AppAuthentication::make()], isRequired: true)
