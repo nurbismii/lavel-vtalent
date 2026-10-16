@@ -152,7 +152,7 @@ class CandidateForms extends Page
         $this->formLock = $form->lock_version;
         $this->formTitle = $form->title;
         $this->description = $form->description ?? '';
-        $this->fields = array_map(fn ($f) => [...$f, 'options_text' => implode("\n", $f['options'])], $form->fields);
+        $this->fields = array_map(fn ($f) => [...$f, 'condition' => $f['condition'] ?? ['field_id' => '', 'value' => ''], 'options_text' => implode("\n", $f['options'])], $form->fields);
         $this->preview = false;
     }
 
@@ -162,9 +162,17 @@ class CandidateForms extends Page
         $this->formId = null;
         $this->formLock = 0;
         $this->formTitle .= ' (Salinan)';
-        foreach ($this->fields as &$field) {
-            $field['id'] = (string) Str::uuid();
+        $ids = [];
+        foreach ($this->fields as $field) {
+            $ids[$field['id']] = (string) Str::uuid();
         }
+        foreach ($this->fields as &$field) {
+            $field['id'] = $ids[$field['id']];
+            if (! empty($field['condition']['field_id'])) {
+                $field['condition']['field_id'] = $ids[$field['condition']['field_id']];
+            }
+        }
+        unset($field);
         $this->save();
     }
 
@@ -174,7 +182,7 @@ class CandidateForms extends Page
         if (count($this->fields) >= 100) {
             return;
         }
-        $this->fields[] = ['id' => (string) Str::uuid(), 'type' => 'text', 'label' => '', 'help' => '', 'placeholder' => '', 'required' => false, 'options_text' => '', 'options' => [], 'max_length' => 255, 'min' => '', 'max' => '', 'max_mb' => 10, 'max_files' => 1, 'extensions' => ['pdf']];
+        $this->fields[] = ['id' => (string) Str::uuid(), 'type' => 'text', 'label' => '', 'help' => '', 'placeholder' => '', 'required' => false, 'options_text' => '', 'options' => [], 'max_length' => 255, 'min' => '', 'max' => '', 'max_mb' => 10, 'max_files' => 1, 'extensions' => ['pdf'], 'condition' => ['field_id' => '', 'value' => '']];
     }
 
     public function moveField(int $index, int $direction): void
@@ -190,6 +198,14 @@ class CandidateForms extends Page
     public function removeField(int $index): void
     {
         $this->actor();
+        abort_unless(isset($this->fields[$index]), 422);
+        foreach ($this->fields as $field) {
+            if (($field['condition']['field_id'] ?? null) === $this->fields[$index]['id']) {
+                $this->addError('fields', 'Pertanyaan ini masih menjadi pemicu. Ubah aturan Tampilkan jika pada field terkait sebelum menghapusnya.');
+
+                return;
+            }
+        }
         unset($this->fields[$index]);
         $this->fields = array_values($this->fields);
     }
@@ -214,6 +230,14 @@ class CandidateForms extends Page
         }, $this->fields);
 
         return ['title' => $this->formTitle, 'description' => $this->description, 'fields' => $fields];
+    }
+
+    public function updatedFields(mixed $value, ?string $key = null): void
+    {
+        if ($key !== null && preg_match('/^(\d+)\.condition\.field_id$/', $key, $matches)) {
+            $this->fields[(int) $matches[1]]['condition']['value'] = '';
+        }
+        $this->preview = false;
     }
 
     public function showPreview(): void
@@ -282,6 +306,20 @@ class CandidateForms extends Page
     {
         $actor = $this->actor();
         abort_unless($this->deletion, 422);
+        if ($this->deletion['type'] === 'response') {
+            $cleaned = app(CandidateFormService::class)->deleteResponse($actor, $this->deletion['id'], $this->deletion);
+            $this->cancelDelete();
+            $this->cancelBulkAccounts();
+            $this->reset('responseId', 'confirmLink');
+            $this->tab = 'responses';
+            $this->resetPage();
+            $this->feedback = 'Respons dan riwayat jawaban berhasil dihapus. Akun dan lamaran kandidat tetap tersedia.';
+            if (! $cleaned) {
+                $this->addError('deletion', 'Sebagian file belum berhasil dibersihkan dari penyimpanan. Aksesnya sudah dicabut. Periksa log server dan audit penghapusan untuk membersihkan file yang tersisa.');
+            }
+
+            return;
+        }
         app(CandidateFormService::class)->deleteUnused($actor, $this->deletion['type'], $this->deletion['id'], $this->deletion);
         $this->feedback = $this->deletion['type'] === 'form'
             ? 'Formulir, seluruh versi, dan tautan kosongnya berhasil dihapus.'
@@ -310,6 +348,7 @@ class CandidateForms extends Page
     public function inspect(int $id): void
     {
         $this->actor();
+        $this->cancelDelete();
         FormResponse::whereNotNull('submitted_at')->findOrFail($id);
         $this->tab = 'responses';
         $this->responseId = $id;

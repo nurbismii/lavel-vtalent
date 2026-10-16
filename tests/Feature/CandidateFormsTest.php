@@ -10,6 +10,7 @@ use App\Jobs\SendCandidateAccess;
 use App\Jobs\SendFormAccess;
 use App\Models\AccessDelivery;
 use App\Models\AppSetting;
+use App\Models\CandidateForm;
 use App\Models\FormAccessToken;
 use App\Models\FormAccountDispatch;
 use App\Models\FormIntake;
@@ -23,9 +24,11 @@ use App\Services\CandidateFormService;
 use App\Services\FormAccountBulkService;
 use App\Services\FormDocumentService;
 use App\Services\FormResponseExportService;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
@@ -38,6 +41,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use OpenSpout\Reader\XLSX\Reader;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class CandidateFormsTest extends TestCase
@@ -123,6 +127,119 @@ class CandidateFormsTest extends TestCase
         return ['portfolio_deadline' => now()->addDays(7)->toDateTimeString(), 'test_deadline' => now()->addDays(8)->toDateTimeString(), 'task_label' => 'Tes kandidat'];
     }
 
+    private function conditionalFields(): array
+    {
+        $choice = [...$this->field('radio'), 'label' => 'Memiliki pengalaman kerja?', 'options' => ['Ya', 'Tidak']];
+        $section = [...$this->field('section', false), 'label' => 'Pengalaman kerja', 'condition' => ['field_id' => $choice['id'], 'value' => 'Ya']];
+
+        return [$choice, $section, [...$this->field(), 'label' => 'Nama perusahaan'], [...$this->field('file'), 'label' => 'Surat pengalaman'], $this->field('section', false), [...$this->field(), 'label' => 'Domisili']];
+    }
+
+    public function test_conditional_section_ignores_hidden_answers_and_required_documents_in_review_and_submission(): void
+    {
+        [$choice, , $company, $file, , $city] = $fields = $this->conditionalFields();
+        [, , $intake] = $this->setupForm($fields);
+        $response = $this->response($intake);
+        $document = $response->documents()->create(['field_id' => $file['id'], 'path' => 'private/experience.pdf', 'original_name' => 'experience.pdf', 'mime' => 'application/pdf', 'size' => 10, 'scan_status' => 'pending']);
+        $response->update(['answers' => [$choice['id'] => 'Ya', $company['id'] => 'Perusahaan lama']]);
+        $answers = [$choice['id'] => 'Tidak', $company['id'] => ['invalid hidden input'], $city['id'] => 'Makassar'];
+
+        $this->grant($response)->post(route('forms.save', $response->reference), ['lock_version' => $response->lock_version, 'name' => $response->name, 'answers' => $answers, 'consent' => true, 'action' => 'review'])
+            ->assertOk()->assertSessionHasNoErrors()->assertSee('Periksa sebelum dikirim')->assertDontSee('Nama perusahaan')->assertDontSee('Surat pengalaman')->assertSee('Makassar');
+        $response->refresh();
+        $this->assertSame([$choice['id'] => 'Tidak', $city['id'] => 'Makassar'], $response->answers);
+        $this->post(route('forms.submit', $response->reference), ['lock_version' => $response->lock_version, 'consent' => true])->assertRedirect();
+        $response->refresh();
+        $this->assertSame('submitted', $response->status);
+        $this->assertSame([], $response->latestRevision->document_ids);
+        $this->assertTrue($document->fresh()->selected);
+    }
+
+    public function test_conditional_section_requires_visible_answers_and_documents(): void
+    {
+        [$choice, , $company, $file, , $city] = $fields = $this->conditionalFields();
+        [, , $intake] = $this->setupForm($fields);
+        $response = $this->response($intake);
+        $this->grant($response)->post(route('forms.save', $response->reference), ['lock_version' => $response->lock_version, 'name' => $response->name, 'answers' => [$choice['id'] => 'Ya', $city['id'] => 'Makassar'], 'consent' => true, 'action' => 'review'])
+            ->assertSessionHasErrors('answers.'.$company['id']);
+        $this->post(route('forms.save', $response->reference), ['lock_version' => $response->lock_version, 'name' => $response->name, 'answers' => [$choice['id'] => 'Ya', $company['id'] => 'PT Contoh', $city['id'] => 'Makassar'], 'consent' => true, 'action' => 'review'])
+            ->assertSessionHasErrors('files.'.$file['id']);
+        $this->assertSame([], $response->fresh()->answers);
+        $this->assertNull($response->fresh()->submitted_at);
+    }
+
+    #[TestWith(['radio', 'Ya'])]
+    #[TestWith(['select', 'Ya'])]
+    #[TestWith(['checkbox', ['Ya']])]
+    public function test_conditional_fields_support_choice_types_and_ignore_hidden_trigger_answers(string $type, string|array $answer): void
+    {
+        $choice = [...$this->field($type), 'options' => ['Ya', 'Tidak']];
+        $followup = [...$this->field('select', false), 'condition' => ['field_id' => $choice['id'], 'value' => 'Ya']];
+        $detail = [...$this->field(), 'condition' => ['field_id' => $followup['id'], 'value' => 'Satu']];
+        $service = app(CandidateFormService::class);
+        $fields = [$choice, $followup, $detail];
+        $valid = $service->validateAnswers($fields, ['name' => 'Kandidat', 'consent' => true, 'answers' => [$choice['id'] => $answer, $followup['id'] => 'Satu', $detail['id'] => 'Detail']], true);
+        $this->assertSame('Detail', $valid['answers'][$detail['id']]);
+        $hidden = $service->validateAnswers($fields, ['name' => 'Kandidat', 'consent' => true, 'answers' => [$choice['id'] => $type === 'checkbox' ? ['Tidak'] : 'Tidak', $followup['id'] => 'Satu', $detail['id'] => 'Stale']], true);
+        $this->assertArrayNotHasKey($followup['id'], $hidden['answers']);
+        $this->assertArrayNotHasKey($detail['id'], $hidden['answers']);
+    }
+
+    #[TestWith(['missing'])]
+    #[TestWith(['self'])]
+    #[TestWith(['forward'])]
+    #[TestWith(['nonchoice'])]
+    #[TestWith(['option'])]
+    public function test_form_schema_rejects_invalid_conditional_rules(string $case): void
+    {
+        $source = $this->field($case === 'nonchoice' ? 'text' : 'radio');
+        $dependent = [...$this->field(), 'condition' => ['field_id' => $source['id'], 'value' => 'Satu']];
+        if ($case === 'missing') {
+            $dependent['condition']['field_id'] = (string) Str::uuid();
+        } elseif ($case === 'self') {
+            $dependent['condition']['field_id'] = $dependent['id'];
+        } elseif ($case === 'option') {
+            $dependent['condition']['value'] = 'Tidak tersedia';
+        }
+        $fields = $case === 'forward' ? [$dependent, $source] : [$source, $dependent];
+        $this->expectException(ValidationException::class);
+        app(CandidateFormService::class)->schema(['title' => 'Form bersyarat', 'fields' => $fields]);
+    }
+
+    public function test_duplicate_form_remaps_conditional_sources_and_blocks_deleting_a_used_trigger(): void
+    {
+        $fields = $this->conditionalFields();
+        [$admin, $template] = $this->setupForm($fields);
+        Livewire::actingAs($admin)->test(CandidateForms::class)->call('duplicate', $template->id)->assertHasNoErrors();
+        $copy = CandidateForm::latest('id')->firstOrFail();
+        $this->assertNotSame($fields[0]['id'], $copy->fields[0]['id']);
+        $this->assertSame($copy->fields[0]['id'], $copy->fields[1]['condition']['field_id']);
+        Livewire::actingAs($admin)->test(CandidateForms::class)->call('edit', $copy->id)->call('removeField', 0)->assertHasErrors('fields')->assertCount('fields', 6);
+    }
+
+    public function test_editor_saves_and_previews_conditional_rules_and_resets_the_value_when_source_changes(): void
+    {
+        $choice = [...$this->field('radio'), 'options' => ['Ya', 'Tidak']];
+        $other = $this->field('select');
+        $detail = $this->field();
+        [$admin, $template] = $this->setupForm([$choice, $other, $detail]);
+        $page = Livewire::actingAs($admin)->test(CandidateForms::class)->call('edit', $template->id)
+            ->set('fields.2.condition.field_id', $choice['id'])->set('fields.2.condition.value', 'Ya')
+            ->call('save')->assertHasNoErrors()->call('showPreview')->assertHasNoErrors()->assertSet('preview', true)->assertSee('candidate-form-fields', false);
+        $this->assertSame(['field_id' => $choice['id'], 'value' => 'Ya'], $template->fresh()->fields[2]['condition']);
+        $page->set('fields.2.condition.field_id', $other['id'])->assertSet('fields.2.condition.value', '')->assertSet('preview', false);
+    }
+
+    public function test_upload_rejects_a_hidden_conditional_document(): void
+    {
+        [$choice, , , $file] = $fields = $this->conditionalFields();
+        [, , $intake] = $this->setupForm($fields);
+        $response = $this->response($intake);
+        $response->update(['answers' => [$choice['id'] => 'Tidak']]);
+        $this->grant($response)->post(route('forms.upload', $response->reference), ['field_id' => $file['id'], 'upload' => UploadedFile::fake()->create('experience.pdf', 10, 'application/pdf')])->assertStatus(422);
+        $this->assertDatabaseCount('form_documents', 0);
+    }
+
     public function test_public_form_renders_without_login_and_creates_no_account(): void
     {
         [, , $intake] = $this->setupForm([$this->field('date'), $this->field('file')]);
@@ -131,9 +248,10 @@ class CandidateFormsTest extends TestCase
         $this->assertDatabaseCount('form_responses', 0);
     }
 
-    public function test_email_access_is_single_use_keeps_draft_and_never_creates_an_account(): void
+    public function test_email_access_can_be_reused_keeps_draft_and_never_creates_an_account(): void
     {
-        Queue::fake();
+        Queue::fake([SendFormAccess::class]);
+        $this->freezeSecond();
         $field = $this->field();
         [, , $intake] = $this->setupForm([$field]);
         $this->post(route('forms.access', $intake->slug), ['email' => 'Person@Example.com', 'name' => 'Nama Awal', 'answers' => [$field['id'] => 'Draf awal']])->assertSessionHasNoErrors();
@@ -146,8 +264,96 @@ class CandidateFormsTest extends TestCase
         $response = FormResponse::firstOrFail();
         $this->assertSame('Draf awal', $response->answers[$field['id']]);
         $this->get(route('forms.response', $response->reference))->assertOk()->assertSee('Draf awal');
-        $this->post(route('forms.consume', $job->rawToken))->assertStatus(410);
+        $token = FormAccessToken::sole();
+        $verifiedAt = $token->used_at;
+        $this->app['session']->flush();
+        $this->travel(1)->day();
+        $this->get(route('forms.verify', $job->rawToken))->assertSee('Buka formulir kandidat');
+        $this->post(route('forms.consume', $job->rawToken))->assertRedirect(route('forms.response', $response->reference));
+        $this->get(route('forms.response', $response->reference))->assertSee('Draf awal');
+        $this->assertTrue($token->fresh()->used_at->equalTo($verifiedAt));
+        $this->assertDatabaseCount('form_responses', 1);
+        Queue::assertPushed(SendFormAccess::class, 1);
         $this->assertDatabaseCount('users', 1);
+    }
+
+    public function test_reopened_email_access_shows_final_answers_but_rejects_all_edits(): void
+    {
+        Queue::fake([SendFormAccess::class, ScanFormDocument::class]);
+        Storage::fake('private');
+        $this->freezeSecond();
+        $field = $this->field();
+        $fileField = $this->field('file', false);
+        [, , $intake] = $this->setupForm([$field, $fileField]);
+        $this->post(route('forms.access', $intake->slug), ['email' => 'readonly@example.com', 'name' => 'Kandidat Final', 'answers' => [$field['id'] => 'Jawaban final saya']])->assertRedirect();
+        $job = Queue::pushed(SendFormAccess::class)->sole();
+        $this->post(route('forms.consume', $job->rawToken))->assertRedirect();
+        $response = FormResponse::sole();
+        $document = $response->documents()->create(['field_id' => $fileField['id'], 'path' => 'candidate-forms/final.pdf', 'original_name' => 'final.pdf', 'mime' => 'application/pdf', 'size' => 10, 'scan_status' => 'clean']);
+        Storage::disk('private')->put($document->path, '%PDF-1.4');
+        $response = $this->finalized($response, [$field['id'] => 'Jawaban final saya']);
+        $before = $response->getRawOriginal();
+        $this->app['session']->flush();
+        $this->travel(2)->days();
+        $intake->update(['active' => false]);
+
+        $this->get(route('forms.verify', $job->rawToken))->assertOk();
+        $this->post(route('forms.consume', $job->rawToken))->assertRedirect(route('forms.response', $response->reference))
+            ->assertSessionHas('status', 'Respons sudah dikirim. Anda dapat melihat jawaban dan dokumen tanpa mengubahnya.');
+        $this->get(route('forms.response', $response->reference))->assertSee('Jawaban final saya')->assertSee('final.pdf')
+            ->assertDontSee('Simpan draf')->assertDontSee('candidate-answer-form')->assertDontSee('data-upload-form');
+        $this->get(route('forms.document.download', $document))->assertOk();
+        $this->post(route('forms.save', $response->reference), ['lock_version' => $response->lock_version, 'name' => 'Diubah', 'action' => 'save'])->assertStatus(422);
+        $this->post(route('forms.upload', $response->reference), ['field_id' => $fileField['id'], 'upload' => UploadedFile::fake()->create('new.pdf', 5, 'application/pdf')])->assertStatus(422);
+        $this->post(route('forms.document.action', $document), ['action' => 'remove'])->assertStatus(422);
+        $this->post(route('forms.document.action', $document), ['action' => 'retry'])->assertStatus(422);
+        $this->post(route('forms.submit', $response->reference), ['lock_version' => $response->lock_version, 'consent' => 1])->assertRedirect();
+
+        $this->assertSame($before, $response->fresh()->getRawOriginal());
+        $this->assertDatabaseCount('form_response_revisions', 1);
+        $this->assertTrue($document->fresh()->selected);
+        Storage::disk('private')->assertExists($document->path);
+        Queue::assertPushed(SendFormAccess::class, 1);
+        Queue::assertNotPushed(ScanFormDocument::class);
+    }
+
+    #[TestWith([false])]
+    #[TestWith([true])]
+    public function test_email_link_expires_after_thirty_days_without_being_extended_by_reuse(bool $previouslyUsed): void
+    {
+        Queue::fake([SendFormAccess::class]);
+        $this->freezeSecond();
+        [, , $intake] = $this->setupForm();
+        $this->post(route('forms.access', $intake->slug), ['email' => 'expires@example.com'])->assertRedirect();
+        $job = Queue::pushed(SendFormAccess::class)->sole();
+        $token = FormAccessToken::sole();
+        $this->assertTrue($token->expires_at->equalTo(now()->addDays(30)));
+        if ($previouslyUsed) {
+            $this->post(route('forms.consume', $job->rawToken))->assertRedirect();
+        }
+        $this->travel(30)->days();
+
+        $this->get(route('forms.verify', $job->rawToken))->assertStatus(410);
+        $this->post(route('forms.consume', $job->rawToken))->assertStatus(410);
+
+        $this->assertTrue($token->fresh()->expires_at->equalTo($token->expires_at));
+        $this->assertDatabaseCount('form_responses', $previouslyUsed ? 1 : 0);
+    }
+
+    public function test_reused_email_link_redirects_to_login_after_response_is_linked_to_account(): void
+    {
+        Queue::fake([SendFormAccess::class]);
+        [$admin, , $intake] = $this->setupForm();
+        $this->post(route('forms.access', $intake->slug), ['email' => 'linked@example.com', 'name' => 'Kandidat'])->assertRedirect();
+        $job = Queue::pushed(SendFormAccess::class)->sole();
+        $this->post(route('forms.consume', $job->rawToken))->assertRedirect();
+        $response = $this->finalized(FormResponse::sole());
+        app(CandidateFormService::class)->link($admin, $response, $this->applicationData());
+        $this->app['session']->flush();
+
+        $this->get(route('forms.verify', $job->rawToken))->assertOk();
+        $this->post(route('forms.consume', $job->rawToken))->assertRedirect(route('login'));
+        $this->get(route('forms.response', $response->reference))->assertNotFound();
     }
 
     public function test_verified_public_form_can_be_completed_in_browser_logged_in_as_admin(): void
@@ -304,6 +510,154 @@ class CandidateFormsTest extends TestCase
         $this->assertDatabaseHas('candidate_forms', ['id' => $template->id]);
         $page->call('cancelDelete')->assertSet('deletion', []);
         Livewire::actingAs(User::factory()->create())->test(CandidateForms::class)->assertForbidden();
+    }
+
+    public function test_hr_can_delete_response_history_documents_and_tokens_without_deleting_linked_account(): void
+    {
+        Storage::fake('private');
+        [$admin, $template, $intake] = $this->setupForm();
+        $response = $this->finalized($this->response($intake));
+        $response = app(CandidateFormService::class)->link($admin, $response, $this->applicationData());
+        $other = $this->response($intake, 'other@example.com');
+        $document = $response->documents()->create(['field_id' => (string) Str::uuid(), 'path' => 'candidate-forms/delete.pdf', 'original_name' => 'delete.pdf', 'mime' => 'application/pdf', 'size' => 10, 'scan_status' => 'clean', 'selected' => false]);
+        Storage::disk('private')->put($document->path, '%PDF-1.4');
+        $token = FormAccessToken::create(['form_intake_id' => $intake->id, 'email' => $response->email, 'token_hash' => hash('sha256', Str::random(64)), 'expires_at' => now()->addMinutes(30)]);
+        $otherToken = FormAccessToken::create(['form_intake_id' => $intake->id, 'email' => $other->email, 'token_hash' => hash('sha256', Str::random(64)), 'expires_at' => now()->addMinutes(30)]);
+        $dispatch = FormAccountDispatch::create(['form_response_id' => $response->id, 'actor_id' => $admin->id, 'application_data' => [], 'status' => 'sent']);
+
+        Livewire::actingAs($admin)->test(CandidateForms::class)->call('inspect', $response->id)
+            ->assertSee('Hapus respons')->call('confirmDelete', 'response', $response->id)
+            ->assertSee('Konfirmasi hapus respons')->assertSee('1 riwayat pengiriman')->assertSee('1 dokumen')
+            ->call('deleteConfirmed')->assertHasNoErrors()->assertSet('responseId', null)->assertSet('deletion', [])
+            ->assertSee('Respons dan riwayat jawaban berhasil dihapus');
+
+        $this->assertModelMissing($response);
+        $this->assertModelMissing($document);
+        $this->assertModelMissing($token);
+        $this->assertModelMissing($dispatch);
+        $this->assertDatabaseMissing('form_response_revisions', ['form_response_id' => $response->id]);
+        Storage::disk('private')->assertMissing($document->path);
+        $this->assertModelExists($other);
+        $this->assertModelExists($otherToken);
+        $this->assertModelExists($template);
+        $this->assertModelExists($intake);
+        $this->assertDatabaseHas('users', ['id' => $response->user_id]);
+        $this->assertDatabaseHas('recruitment_applications', ['id' => $response->recruitment_application_id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'form.response_deleted', 'target_id' => $response->id, 'actor_id' => $admin->id]);
+        $this->grant($response)->get(route('forms.response', $response->reference))->assertNotFound();
+        $this->get(route('forms.document.download', $document))->assertNotFound();
+    }
+
+    public function test_hr_can_cancel_then_delete_private_draft_without_seeing_its_answers(): void
+    {
+        [$admin, , $intake] = $this->setupForm();
+        $response = $this->response($intake);
+        $response->update(['name' => 'Nama rahasia draf', 'answers' => ['private' => 'Jawaban rahasia draf']]);
+        $page = Livewire::actingAs($admin)->test(CandidateForms::class)->call('navigate', 'responses')
+            ->assertSee('Hapus respons '.$response->email)->call('confirmDelete', 'response', $response->id)
+            ->assertSee('Draf privat')->assertDontSee('Nama rahasia draf')->assertDontSee('Jawaban rahasia draf');
+
+        $page->call('cancelDelete')->assertSet('deletion', []);
+        $this->assertModelExists($response);
+        $page->call('deleteConfirmed')->assertStatus(422);
+        Livewire::actingAs($admin)->test(CandidateForms::class)->call('confirmDelete', 'response', $response->id)
+            ->call('deleteConfirmed')->assertHasNoErrors();
+        $this->assertModelMissing($response);
+    }
+
+    public function test_response_deletion_rechecks_new_documents_and_account_links_after_confirmation(): void
+    {
+        [$admin, , $intake] = $this->setupForm();
+        $response = $this->finalized($this->response($intake));
+        $page = Livewire::actingAs($admin)->test(CandidateForms::class)->call('confirmDelete', 'response', $response->id);
+        $document = $response->documents()->create(['field_id' => (string) Str::uuid(), 'path' => 'candidate-forms/new.pdf', 'original_name' => 'new.pdf', 'mime' => 'application/pdf', 'size' => 10, 'scan_status' => 'clean']);
+
+        $page->call('deleteConfirmed')->assertHasErrors('deletion')->assertSee('Respons berubah sejak konfirmasi dibuka');
+        $this->assertModelExists($document);
+        $page->call('confirmDelete', 'response', $response->id);
+        app(CandidateFormService::class)->link($admin, $response, $this->applicationData());
+        $page->call('deleteConfirmed')->assertHasErrors('deletion');
+        $this->assertModelExists($response);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'form.response_deleted']);
+    }
+
+    #[TestWith(['pending'])]
+    #[TestWith(['linked'])]
+    public function test_response_deletion_is_blocked_while_account_linking_is_in_progress(string $status): void
+    {
+        [$admin, , $intake] = $this->setupForm();
+        $response = $this->finalized($this->response($intake));
+        $dispatch = FormAccountDispatch::create(['form_response_id' => $response->id, 'actor_id' => $admin->id, 'application_data' => [], 'status' => $status]);
+
+        Livewire::actingAs($admin)->test(CandidateForms::class)->call('confirmDelete', 'response', $response->id)
+            ->call('deleteConfirmed')->assertHasErrors('deletion')->assertSee('Penghubungan akun masih diproses');
+
+        $this->assertModelExists($response);
+        $this->assertModelExists($dispatch);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'form.response_deleted']);
+    }
+
+    public function test_response_deletion_rechecks_admin_permission_on_confirmation(): void
+    {
+        [$admin, , $intake] = $this->setupForm();
+        $response = $this->response($intake);
+        $page = Livewire::actingAs($admin)->test(CandidateForms::class)->call('confirmDelete', 'response', $response->id);
+        $admin->update(['role' => Role::Candidate]);
+
+        $page->call('deleteConfirmed')->assertForbidden();
+
+        $this->assertModelExists($response);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'form.response_deleted']);
+    }
+
+    public function test_response_deletion_preserves_files_and_records_when_database_deletion_fails(): void
+    {
+        Storage::fake('private');
+        [$admin, , $intake] = $this->setupForm();
+        $response = $this->finalized($this->response($intake));
+        $document = $response->documents()->create(['field_id' => (string) Str::uuid(), 'path' => 'candidate-forms/keep.pdf', 'original_name' => 'keep.pdf', 'mime' => 'application/pdf', 'size' => 10]);
+        Storage::disk('private')->put($document->path, '%PDF-1.4');
+        $service = app(CandidateFormService::class);
+        $confirmed = $service->deletionSummary($admin, 'response', $response->id);
+        FormResponse::deleting(function (): void {
+            throw new \RuntimeException('Database deletion failed');
+        });
+
+        try {
+            $service->deleteResponse($admin, $response->id, $confirmed);
+            $this->fail('Kegagalan penghapusan database harus diteruskan.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Database deletion failed', $exception->getMessage());
+        } finally {
+            FormResponse::flushEventListeners();
+        }
+
+        $this->assertModelExists($response);
+        $this->assertModelExists($document);
+        $this->assertDatabaseHas('form_response_revisions', ['form_response_id' => $response->id]);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'form.response_deleted']);
+        Storage::disk('private')->assertExists($document->path);
+    }
+
+    public function test_response_deletion_reports_failed_file_cleanup_without_restoring_broken_records(): void
+    {
+        [$admin, , $intake] = $this->setupForm();
+        $response = $this->response($intake);
+        $document = $response->documents()->create(['field_id' => (string) Str::uuid(), 'path' => 'candidate-forms/failed.pdf', 'original_name' => 'failed.pdf', 'mime' => 'application/pdf', 'size' => 10]);
+        $disk = \Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('exists')->once()->with($document->path)->andReturnTrue();
+        $disk->shouldReceive('delete')->once()->with($document->path)->andReturnFalse();
+        Storage::shouldReceive('disk')->with('private')->andReturn($disk);
+        Exceptions::fake();
+
+        Livewire::actingAs($admin)->test(CandidateForms::class)->call('confirmDelete', 'response', $response->id)
+            ->call('deleteConfirmed')->assertHasErrors('deletion')->assertSet('deletion', [])
+            ->assertSee('Sebagian file belum berhasil dibersihkan')->assertSee('Respons dan riwayat jawaban berhasil dihapus');
+
+        $this->assertModelMissing($response);
+        $this->assertModelMissing($document);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'form.response_deleted', 'target_id' => $response->id]);
+        Exceptions::assertReported(fn (\RuntimeException $exception): bool => str_contains($exception->getMessage(), $document->path));
     }
 
     public function test_validation_required_unknown_options_dates_and_stale_tabs(): void
@@ -540,12 +894,20 @@ class CandidateFormsTest extends TestCase
 
     public function test_access_email_job_sends_private_link(): void
     {
+        config(['mail.default' => 'array']);
+        $this->freezeSecond();
         [, , $intake] = $this->setupForm();
         $raw = Str::random(64);
         $token = FormAccessToken::create(['form_intake_id' => $intake->id, 'email' => 'mail@example.com', 'token_hash' => hash('sha256', $raw), 'expires_at' => now()->addMinutes(30)]);
-        Mail::shouldReceive('send')->once()->with('emails.form-access', \Mockery::on(fn ($data) => $data['url'] === route('forms.verify', $raw)), \Mockery::type('Closure'));
+        $this->travel(5)->minutes();
         (new SendFormAccess($token->id, $raw))->handle();
-        $this->assertNotNull($token->fresh());
+        $this->assertTrue($token->fresh()->expires_at->equalTo(now()->addDays(30)));
+        $message = Mail::mailer()->getSymfonyTransport()->messages()->sole()->getOriginalMessage();
+        $html = $message->getHtmlBody();
+        $this->assertStringContainsString(route('forms.verify', $raw), $html);
+        $this->assertStringContainsString('Tautan dapat dibuka berkali-kali', $html);
+        $this->assertStringContainsString('tidak dapat diubah', $html);
+        $this->assertStringNotContainsString('hanya dapat digunakan sekali', $html);
     }
 
     public function test_every_supported_field_renders_and_validates(): void
@@ -559,13 +921,60 @@ class CandidateFormsTest extends TestCase
                 continue;
             }
             $answers[$field['id']] = match ($field['type']) {
-                'email' => 'test@example.com', 'phone' => '+62 812 345', 'number' => '1.5', 'date' => '2026-01-02',
+                'email' => 'test@example.com', 'phone' => '+62 812 345', 'number' => '1.5', 'numeric_text' => '0012345678901234', 'date' => '2026-01-02',
                 'radio', 'select' => 'Satu', 'checkbox' => ['Satu', 'Dua'], 'url' => 'https://example.com', 'consent' => 1, default => 'Jawaban',
             };
         }
         $response = $this->finalized($this->response($intake), $answers);
         $this->assertSame(count($answers), count($response->answers));
         $this->grant($response)->get(route('forms.response', $response->reference))->assertOk()->assertSeeInOrder(['<li>Satu</li>', '<li>Dua</li>'], false);
+    }
+
+    #[TestWith(['0012345678901234'])]
+    #[TestWith(['123'])]
+    #[TestWith(['0'])]
+    public function test_numeric_text_preserves_digits_and_limits_length_instead_of_numeric_value(string $value): void
+    {
+        $field = [...$this->field('numeric_text'), 'label' => 'No KTP', 'max_length' => 16];
+        [, , $intake] = $this->setupForm([$field]);
+        $response = $this->response($intake);
+        $this->get(route('forms.show', $intake->slug))->assertOk()
+            ->assertSee('type="text" name="answers['.$field['id'].']"', false)
+            ->assertSee('inputmode="numeric"', false)->assertSee('pattern="[0-9]*"', false)->assertSee('maxlength="16"', false);
+        $this->grant($response)->post(route('forms.save', $response->reference), ['lock_version' => 0, 'name' => $response->name, 'answers' => [$field['id'] => $value], 'action' => 'review', 'consent' => true])
+            ->assertOk()->assertSessionHasNoErrors()->assertSee($value);
+        $this->assertSame($value, $response->fresh()->answers[$field['id']]);
+    }
+
+    #[TestWith(['12345678901234567'])]
+    #[TestWith(['123abc'])]
+    #[TestWith(['12.34'])]
+    #[TestWith(['1e10'])]
+    #[TestWith(['-123'])]
+    #[TestWith(['+123'])]
+    #[TestWith(['12 34'])]
+    #[TestWith(["12\n34"])]
+    #[TestWith(['１２３'])]
+    #[TestWith([123])]
+    public function test_numeric_text_rejects_invalid_values_even_when_saving_a_draft(string|int $value): void
+    {
+        $field = [...$this->field('numeric_text'), 'max_length' => 16];
+        [, , $intake] = $this->setupForm([$field]);
+        $response = $this->response($intake);
+        $this->grant($response)->post(route('forms.save', $response->reference), ['lock_version' => 0, 'name' => $response->name, 'answers' => [$field['id'] => $value], 'action' => 'save'])
+            ->assertSessionHasErrors('answers.'.$field['id']);
+        $this->assertSame([], $response->fresh()->answers);
+        $this->assertSame(0, $response->fresh()->lock_version);
+    }
+
+    public function test_editor_can_save_a_numeric_text_field_with_a_configurable_character_limit(): void
+    {
+        [$admin, $template] = $this->setupForm([$this->field()]);
+        Livewire::actingAs($admin)->test(CandidateForms::class)->call('edit', $template->id)
+            ->set('fields.0.type', 'numeric_text')->assertSee('Maksimum karakter')
+            ->set('fields.0.max_length', 16)->call('save')->assertHasNoErrors()->call('showPreview')->assertHasNoErrors();
+        $this->assertSame('numeric_text', $template->fresh()->fields[0]['type']);
+        $this->assertSame(16, $template->fresh()->fields[0]['max_length']);
     }
 
     public function test_expired_session_other_candidate_and_disabled_module_cannot_read_response(): void
@@ -892,8 +1301,9 @@ class CandidateFormsTest extends TestCase
         $checkbox = $this->field('checkbox', false);
         $text = $this->field('text', false);
         $file = $this->field('file', false);
-        [$admin, , $intake] = $this->setupForm([$phone, $number, $date, $checkbox, $text, $file]);
-        $response = $this->finalized($this->response($intake), [$phone['id'] => '08123456789', $number['id'] => 0, $date['id'] => '2000-01-02', $checkbox['id'] => ['Satu', 'Dua'], $text['id'] => '=HYPERLINK("https://example.com")']);
+        $numericText = [...$this->field('numeric_text', false), 'max_length' => 16];
+        [$admin, , $intake] = $this->setupForm([$phone, $number, $date, $checkbox, $text, $file, $numericText]);
+        $response = $this->finalized($this->response($intake), [$phone['id'] => '08123456789', $number['id'] => 0, $date['id'] => '2000-01-02', $checkbox['id'] => ['Satu', 'Dua'], $text['id'] => '=HYPERLINK("https://example.com")', $numericText['id'] => '0012345678901234']);
         $document = $response->documents()->create(['field_id' => $file['id'], 'path' => 'secret/private-file.pdf', 'original_name' => 'CV.pdf', 'mime' => 'application/pdf', 'size' => 10, 'scan_status' => 'clean']);
         $response->latestRevision->update(['document_ids' => [$document->id]]);
         $response->update(['status' => 'revision', 'name' => 'PRIVATE DRAFT NAME', 'answers' => [$text['id'] => 'PRIVATE DRAFT ANSWER']]);
@@ -919,6 +1329,7 @@ class CandidateFormsTest extends TestCase
             $this->assertSame('=HYPERLINK("https://example.com")', $rows[1][15]);
             $this->assertSame('CV.pdf', $rows[1][16]);
             $this->assertSame(route('forms.document.download', $document), $rows[1][17]);
+            $this->assertSame('0012345678901234', $rows[1][18]);
             $zip = new \ZipArchive;
             $zip->open($path);
             $xml = $zip->getFromName('xl/worksheets/sheet1.xml');

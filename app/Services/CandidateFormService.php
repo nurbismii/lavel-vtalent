@@ -9,6 +9,7 @@ use App\Models\AuditLog;
 use App\Models\CandidateForm;
 use App\Models\CandidateFormVersion;
 use App\Models\FormAccessToken;
+use App\Models\FormAccountDispatch;
 use App\Models\FormDocument;
 use App\Models\FormIntake;
 use App\Models\FormResponse;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -32,7 +34,7 @@ class CandidateFormService
         return config('candidate_forms.enabled') && Schema::hasTable('form_access_tokens');
     }
 
-    public const TYPES = ['text' => 'Teks pendek', 'textarea' => 'Teks panjang', 'email' => 'Email', 'phone' => 'Telepon', 'number' => 'Angka', 'date' => 'Tanggal', 'radio' => 'Pilihan tunggal', 'select' => 'Dropdown', 'checkbox' => 'Multipilihan', 'url' => 'URL', 'file' => 'File', 'consent' => 'Persetujuan', 'section' => 'Bagian'];
+    public const TYPES = ['text' => 'Teks pendek', 'textarea' => 'Teks panjang', 'numeric_text' => 'Teks angka', 'email' => 'Email', 'phone' => 'Telepon', 'number' => 'Angka', 'date' => 'Tanggal', 'radio' => 'Pilihan tunggal', 'select' => 'Dropdown', 'checkbox' => 'Multipilihan', 'url' => 'URL', 'file' => 'File', 'consent' => 'Persetujuan', 'section' => 'Bagian'];
 
     public function admin(User $actor): void
     {
@@ -54,6 +56,9 @@ class CandidateFormService
             'fields.*.max_files' => 'nullable|integer|min:1|max:'.config('candidate_forms.max_files'),
             'fields.*.extensions' => 'present|array',
             'fields.*.extensions.*' => [Rule::in(config('candidate_forms.extensions'))],
+            'fields.*.condition' => 'nullable|array:field_id,value',
+            'fields.*.condition.field_id' => 'nullable|uuid',
+            'fields.*.condition.value' => 'nullable|string|max:255',
         ])->validate();
         foreach ($valid['fields'] as $i => &$field) {
             $field = array_replace(['help' => '', 'placeholder' => '', 'max_length' => null, 'min' => '', 'max' => '', 'max_mb' => null, 'max_files' => null], $field);
@@ -79,7 +84,47 @@ class CandidateFormService
         }
         unset($field);
 
+        $previous = [];
+        foreach ($valid['fields'] as $i => &$field) {
+            if (! empty($field['condition']['field_id'])) {
+                $source = $previous[$field['condition']['field_id']] ?? null;
+                if (! $source || ! in_array($source['type'], ['radio', 'select', 'checkbox'], true)) {
+                    throw ValidationException::withMessages(["fields.$i.condition.field_id" => 'Pilih pertanyaan pilihan yang berada sebelum field ini.']);
+                }
+                if (! in_array($field['condition']['value'] ?? null, $source['options'], true)) {
+                    throw ValidationException::withMessages(["fields.$i.condition.value" => 'Pilih jawaban pemicu yang tersedia pada pertanyaan sumber.']);
+                }
+            } else {
+                unset($field['condition']);
+            }
+            $previous[$field['id']] = $field;
+        }
+        unset($field);
+
         return $valid;
+    }
+
+    public function visibleFields(array $fields, array $answers): array
+    {
+        $visible = [];
+        $sectionVisible = true;
+        foreach ($fields as $field) {
+            $condition = $field['condition'] ?? null;
+            $matches = true;
+            if (! empty($condition['field_id'])) {
+                $answer = $answers[$condition['field_id']] ?? null;
+                $matches = isset($visible[$condition['field_id']])
+                    && (is_array($answer) ? in_array($condition['value'], $answer, true) : $answer === $condition['value']);
+            }
+            if ($field['type'] === 'section') {
+                $sectionVisible = $matches;
+            }
+            if ($sectionVisible && $matches) {
+                $visible[$field['id']] = $field;
+            }
+        }
+
+        return array_values($visible);
     }
 
     public function saveTemplate(User $actor, ?int $id, int $expected, array $data): CandidateForm
@@ -157,7 +202,20 @@ class CandidateFormService
     public function deletionSummary(User $actor, string $type, int $id): array
     {
         $this->admin($actor);
-        abort_unless(in_array($type, ['form', 'intake'], true), 422);
+        abort_unless(in_array($type, ['form', 'intake', 'response'], true), 422);
+        if ($type === 'response') {
+            $response = FormResponse::with('intake.version', 'intake.position', 'intake.period')->findOrFail($id);
+
+            return [
+                'type' => $type, 'id' => $id,
+                'title' => $response->intake->version->title.' · '.$response->intake->position->name.' · '.$response->intake->period->name,
+                'email' => $response->email, 'status' => $response->status,
+                'lock_version' => $response->lock_version,
+                'user_id' => $response->user_id, 'application_id' => $response->recruitment_application_id,
+                'document_ids' => $response->documents()->orderBy('id')->pluck('id')->all(),
+                'revision_ids' => $response->revisions()->orderBy('id')->pluck('id')->all(),
+            ];
+        }
         $target = $type === 'form' ? CandidateForm::findOrFail($id) : FormIntake::with('version', 'position', 'period')->findOrFail($id);
         $intakeIds = $type === 'form'
             ? FormIntake::whereIn('candidate_form_version_id', $target->versions()->select('id'))->orderBy('id')->pluck('id')->all()
@@ -209,18 +267,61 @@ class CandidateFormService
         }, 5);
     }
 
+    public function deleteResponse(User $actor, int $id, array $confirmed): bool
+    {
+        $this->admin($actor);
+        $paths = DB::transaction(function () use ($actor, $id, $confirmed) {
+            if (FormAccountBulkService::available()) {
+                $dispatch = FormAccountDispatch::where('form_response_id', $id)->lockForUpdate()->first();
+                if ($dispatch && in_array($dispatch->status, ['pending', 'linked'], true)) {
+                    throw ValidationException::withMessages(['deletion' => 'Penghubungan akun masih diproses. Tunggu proses selesai sebelum menghapus respons.']);
+                }
+            }
+            $response = FormResponse::lockForUpdate()->findOrFail($id);
+            $summary = $this->deletionSummary($actor, 'response', $id);
+            if ($summary !== $confirmed) {
+                throw ValidationException::withMessages(['deletion' => 'Respons berubah sejak konfirmasi dibuka. Batalkan lalu buka konfirmasi kembali untuk melihat dampak terbaru.']);
+            }
+            $paths = $response->documents()->pluck('path')->all();
+            AuditLog::record('form.response_deleted', $response, $actor, metadata: [...$summary, 'document_paths' => $paths]);
+            $response->documents()->delete();
+            $response->revisions()->delete();
+            FormAccessToken::where('form_intake_id', $response->form_intake_id)->where('email', $response->email)->delete();
+            $response->delete();
+
+            return $paths;
+        }, 5);
+
+        // Delete physical files only after the database changes succeed.
+        $cleaned = true;
+        foreach ($paths as $path) {
+            try {
+                if (Storage::disk('private')->exists($path) && ! Storage::disk('private')->delete($path)) {
+                    throw new \RuntimeException('Gagal menghapus dokumen respons formulir.');
+                }
+            } catch (\Throwable $exception) {
+                report(new \RuntimeException('Gagal membersihkan dokumen respons #'.$id.': '.$path, previous: $exception));
+                $cleaned = false;
+            }
+        }
+
+        return $cleaned;
+    }
+
     public function consumeToken(string $raw): FormResponse
     {
         return DB::transaction(function () use ($raw) {
             $token = FormAccessToken::where('token_hash', hash('sha256', $raw))->lockForUpdate()->first();
-            abort_unless($token && ! $token->used_at && $token->expires_at->gt(now()), 410, 'Tautan sudah dipakai atau kedaluwarsa. Minta tautan baru.');
+            abort_unless($token && $token->expires_at->gt(now()), 410, 'Tautan tidak valid atau kedaluwarsa. Minta tautan baru.');
             $intake = FormIntake::lockForUpdate()->findOrFail($token->form_intake_id);
             $response = $intake->responses()->where('email', $token->email)->lockForUpdate()->first();
             if (! $response) {
                 abort_unless($intake->open(), 410, 'Penerimaan formulir sudah ditutup.');
                 $response = $intake->responses()->create(['reference' => (string) Str::uuid(), 'email' => $token->email, 'email_verified_at' => now(), 'answers' => []]);
             }
-            $token->update(['used_at' => now()]);
+            if (! $token->used_at) {
+                $token->update(['used_at' => now()]);
+            }
 
             return $response;
         }, 5);
@@ -264,10 +365,13 @@ class CandidateFormService
     public function validateAnswers(array $fields, array $data, bool $final): array
     {
         $data['answers'] ??= [];
+        Validator::make($data, ['answers' => 'array'])->validate();
         $known = collect($fields)->reject(fn ($f) => in_array($f['type'], ['section', 'file'], true))->pluck('id')->all();
         if (array_diff(array_keys($data['answers']), $known)) {
             throw ValidationException::withMessages(['answers' => 'Terdapat pertanyaan yang tidak dikenal. Muat ulang formulir.']);
         }
+        $fields = $this->visibleFields($fields, $data['answers']);
+        $data['answers'] = array_intersect_key($data['answers'], array_flip(array_column($fields, 'id')));
         $rules = ['name' => [$final ? 'required' : 'nullable', 'string', 'max:255'], 'answers' => 'array', 'consent' => [$final ? 'accepted' : 'nullable']];
         $labels = ['name' => 'Nama lengkap', 'consent' => 'Persetujuan pemrosesan data'];
         foreach ($fields as $field) {
@@ -319,17 +423,20 @@ class CandidateFormService
                 if ($type === 'phone') {
                     $rules[$key][] = 'regex:/^[+0-9() .-]+$/';
                 }
+                if ($type === 'numeric_text') {
+                    $rules[$key][] = 'regex:/\A[0-9]+\z/';
+                }
             }
         }
 
         return Validator::make($data, $rules, ['required' => ':attribute wajib diisi.', 'accepted' => ':attribute wajib disetujui.'], $labels)->validate();
     }
 
-    public function validateDocuments(FormResponse $response): void
+    public function validateDocuments(FormResponse $response, ?array $answers = null): void
     {
         $documents = $response->documents()->where('selected', true)->get();
         $errors = [];
-        foreach ($response->intake->version->fields as $field) {
+        foreach ($this->visibleFields($response->intake->version->fields, $answers ?? $response->answers) as $field) {
             if ($field['type'] !== 'file') {
                 continue;
             }
@@ -356,12 +463,13 @@ class CandidateFormService
                 throw ValidationException::withMessages(['conflict' => 'Data berubah di tab lain. Salin perubahan Anda lalu muat ulang sebelum menyimpan.']);
             }
             $valid = $this->validateAnswers($intake->version->fields, $data, $final);
-            $documents = $response->documents()->where('selected', true)->get();
+            $visibleIds = array_column($this->visibleFields($intake->version->fields, $valid['answers'] ?? []), 'id');
+            $documents = $response->documents()->where('selected', true)->whereIn('field_id', $visibleIds)->get();
             if ($final) {
                 if (! $response->submitted_at && $intake->max_responses && $intake->responses()->whereNotNull('submitted_at')->count() >= $intake->max_responses) {
                     throw ValidationException::withMessages(['quota' => 'Batas penerimaan respons sudah tercapai.']);
                 }
-                $this->validateDocuments($response);
+                $this->validateDocuments($response, $valid['answers'] ?? []);
             }
             $response->fill(['name' => $valid['name'] ?? '', 'answers' => $valid['answers'] ?? [], 'lock_version' => $expected + 1]);
             if ($final) {

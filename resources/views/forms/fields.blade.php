@@ -1,11 +1,14 @@
+@php($visibleIds = array_column(app(App\Services\CandidateFormService::class)->visibleFields($fields, old('answers', $answers)), 'id'))
+<candidate-form-fields wire:key="preview-fields-{{ md5(json_encode($fields)) }}">
 @foreach($fields as $field)
+    <div data-form-field data-field-id="{{ $field['id'] }}" data-field-type="{{ $field['type'] }}" data-condition="{{ json_encode($field['condition'] ?? null) }}" @if(!in_array($field['id'], $visibleIds, true)) hidden @endif>
     @php($value = old('answers.'.$field['id'], $answers[$field['id']] ?? ($field['type'] === 'checkbox' ? [] : '')))
     @if($field['type'] === 'section')
-        <div class="form-section"><span class="eyebrow">Bagian formulir</span><h2>{{ $field['label'] }}</h2><p class="muted">{{ $field['help'] ?? '' }}</p></div>
+        <div class="form-section"><span class="eyebrow">Bagian formulir</span><h2>{{ $field['label'] }}</h2><p class="muted break-words">{!! nl2br(e($field['help'] ?? '')) !!}</p></div>
     @elseif($field['type'] !== 'file')
         <fieldset class="dynamic-field" data-required="{{ $field['required'] ? 'true' : 'false' }}" data-field-label="{{ $field['label'] }}" @disabled($disabled ?? false)>
             <legend>{{ $field['label'] }} @if($field['required'])<span aria-label="wajib" class="field-error">*</span>@endif</legend>
-            @if(!empty($field['help']))<p class="muted" id="help-{{ $field['id'] }}">{{ $field['help'] }}</p>@endif
+            @if(!empty($field['help']))<p class="muted break-words" id="help-{{ $field['id'] }}">{!! nl2br(e($field['help'])) !!}</p>@endif
             @if($field['type'] === 'textarea')
                 <label class="field"><span class="sr-only">{{ $field['label'] }}</span><textarea name="answers[{{ $field['id'] }}]" maxlength="{{ $field['max_length'] ?: 5000 }}" placeholder="{{ $field['placeholder'] ?? '' }}">{{ $value }}</textarea></label>
             @elseif(in_array($field['type'], ['select','radio','checkbox']))
@@ -17,11 +20,13 @@
             @elseif($field['type'] === 'consent')
                 <label class="form-check"><input type="checkbox" name="answers[{{ $field['id'] }}]" value="1" @checked($value)> Saya menyetujui pernyataan ini.</label>
             @else
-                <label class="field"><span class="sr-only">{{ $field['label'] }}</span><input type="{{ match($field['type']) { 'phone' => 'tel', 'number','date','email','url' => $field['type'], default => 'text' } }}" name="answers[{{ $field['id'] }}]" value="{{ $value }}" placeholder="{{ $field['placeholder'] ?? '' }}" @if(in_array($field['type'], ['number','date'])) @if(!empty($field['min'])) min="{{ $field['min'] }}" @endif @if(!empty($field['max'])) max="{{ $field['max'] }}" @endif @if($field['type'] === 'number') step="any" @endif @else maxlength="{{ $field['max_length'] ?: 255 }}" @endif></label>
+                <label class="field"><span class="sr-only">{{ $field['label'] }}</span><input type="{{ match($field['type']) { 'phone' => 'tel', 'number','date','email','url' => $field['type'], default => 'text' } }}" name="answers[{{ $field['id'] }}]" value="{{ $value }}" placeholder="{{ $field['placeholder'] ?? '' }}" @if($field['type'] === 'numeric_text') inputmode="numeric" pattern="[0-9]*" title="Gunakan hanya digit 0–9." @endif @if(in_array($field['type'], ['number','date'])) @if(!empty($field['min'])) min="{{ $field['min'] }}" @endif @if(!empty($field['max'])) max="{{ $field['max'] }}" @endif @if($field['type'] === 'number') step="any" @endif @else maxlength="{{ $field['max_length'] ?: 255 }}" @endif></label>
             @endif
             @error('answers.'.$field['id'])<span class="field-error" role="alert">{{ $message }}</span>@enderror
         </fieldset>
     @else
-        <div class="dynamic-field"><strong>{{ $field['label'] }}{{ $field['required'] ? ' *' : '' }}</strong><p class="muted">{{ $field['help'] ?? '' }}</p><small>{{ strtoupper(implode(', ', $field['extensions'])) }} · Maks. {{ $field['max_mb'] }} MB/file · {{ $field['max_files'] }} file</small><p class="muted">Unggah pada bagian Dokumen setelah email diverifikasi.</p></div>
+        <div class="dynamic-field"><strong>{{ $field['label'] }}{{ $field['required'] ? ' *' : '' }}</strong><p class="muted break-words">{!! nl2br(e($field['help'] ?? '')) !!}</p><small>{{ strtoupper(implode(', ', $field['extensions'])) }} · Maks. {{ $field['max_mb'] }} MB/file · {{ $field['max_files'] }} file</small><p class="muted">Unggah pada bagian Dokumen setelah email diverifikasi.</p></div>
     @endif
+    </div>
 @endforeach
+</candidate-form-fields>

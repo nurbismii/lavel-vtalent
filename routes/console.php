@@ -14,3 +14,4 @@ Schedule::call(function (): void {
 })->name('portal:expire-access-emails')->hourly()->withoutOverlapping();
 
 Schedule::command('psychometrics:finalize')->everyMinute()->withoutOverlapping();
+Schedule::command('technical-assessments:finalize')->everyMinute()->withoutOverlapping();

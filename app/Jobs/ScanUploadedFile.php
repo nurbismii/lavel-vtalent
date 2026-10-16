@@ -27,7 +27,7 @@ class ScanUploadedFile implements ShouldQueue
             return;
         }
         if (! config('submissions.scan_enabled')) {
-            $file->update(['scan_status' => ScanStatus::Skipped, 'scan_message' => null]);
+            UploadedFile::whereKey($file->id)->where('scan_status', ScanStatus::Pending)->update(['scan_status' => ScanStatus::Skipped, 'scan_message' => null]);
 
             return;
         }
@@ -44,7 +44,7 @@ class ScanUploadedFile implements ShouldQueue
             $status = match ($process->getExitCode()) {
                 0 => ScanStatus::Clean,1 => ScanStatus::Rejected,default => ScanStatus::Failed
             };
-            $file->update(['scan_status' => $status, 'scan_message' => match ($status) {
+            UploadedFile::whereKey($file->id)->where('scan_status', ScanStatus::Pending)->update(['scan_status' => $status, 'scan_message' => match ($status) {
                 ScanStatus::Clean => null,ScanStatus::Rejected => 'File ditolak pemeriksaan keamanan. Unggah file lain.',default => 'Layanan pemeriksaan belum tersedia. Coba lagi atau hubungi HR.'
             }]);
         } catch (\Throwable) {

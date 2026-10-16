@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import './candidate-forms.css';
+@import './technical-assessments.css';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @theme { --font-sans: 'Segoe UI', ui-sans-serif, system-ui, sans-serif; }

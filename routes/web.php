@@ -6,13 +6,18 @@ use App\Http\Controllers\FileController;
 use App\Http\Controllers\PortfolioExportController;
 use App\Http\Controllers\PsychometricController;
 use App\Http\Controllers\PublicFormController;
+use App\Http\Controllers\TechnicalAssessmentController;
 use App\Http\Controllers\TechnicalTaskController;
 use App\Http\Middleware\EnsurePortalAccess;
 use App\Http\Middleware\FormHeaders;
 use App\Livewire\Candidate\SubmissionForm;
 use App\Models\FormResponse;
+use App\Models\PsychometricAttempt;
 use App\Models\SubmissionVersion;
+use App\Models\TechnicalAssessmentAttempt;
 use App\Services\CandidateFormService;
+use App\Services\PsychometricService;
+use App\Services\TechnicalAssessmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -44,6 +49,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 Route::middleware(['auth', EnsurePortalAccess::class])->group(function () {
     Route::get('/portal/portfolio-exports/{export}/download', PortfolioExportController::class)->whereNumber('export')->name('portfolio-exports.download');
     Route::get('/portal/psychometrics', [PsychometricController::class, 'index'])->name('candidate.psychometrics');
+    Route::get('/portal/technical-assessments', [TechnicalAssessmentController::class, 'index'])->name('candidate.technical-assessments');
+    Route::get('/portal/technical-assessments/{attempt}', [TechnicalAssessmentController::class, 'show'])->whereNumber('attempt')->name('candidate.technical-assessments.show');
+    Route::post('/portal/technical-assessments/{attempt}', [TechnicalAssessmentController::class, 'update'])->whereNumber('attempt')->middleware('throttle:120,1')->name('candidate.technical-assessments.update');
+    Route::post('/portal/technical-assessments/{attempt}/activity', [TechnicalAssessmentController::class, 'activity'])->whereNumber('attempt')->middleware('throttle:60,1')->name('candidate.technical-assessments.activity');
     Route::post('/portal/psychometrics/{attempt}/activity', [PsychometricController::class, 'activity'])->whereNumber('attempt')->middleware('throttle:60,1')->name('candidate.psychometrics.activity');
     Route::get('/portal/psychometrics/{attempt}', [PsychometricController::class, 'show'])->whereNumber('attempt')->name('candidate.psychometrics.show');
     Route::post('/portal/psychometrics/{attempt}', [PsychometricController::class, 'update'])->whereNumber('attempt')->middleware('throttle:120,1')->name('candidate.psychometrics.update');
@@ -67,7 +76,14 @@ Route::middleware(['auth', EnsurePortalAccess::class])->group(function () {
             ? FormResponse::where('user_id', $request->user()->id)->whereHas('application', fn ($q) => $q->whereNull('archived_at')->whereNull('purged_at'))->with('intake.version.form', 'intake.position', 'intake.period', 'application')->latest()->limit(6)->get()
             : collect();
 
-        return view('candidate.dashboard', compact('application', 'candidateForms'));
+        $technicalAttempts = $application && TechnicalAssessmentService::available()
+            ? TechnicalAssessmentAttempt::where('recruitment_application_id', $application->id)->orderBy('deadline')->get(['form', 'deadline'])
+            : collect();
+        $psychometricAttempts = $application && PsychometricService::available()
+            ? PsychometricAttempt::where('recruitment_application_id', $application->id)->with('test:id,title')->orderBy('deadline')->get(['psychometric_test_id', 'deadline'])
+            : collect();
+
+        return view('candidate.dashboard', compact('application', 'candidateForms', 'technicalAttempts', 'psychometricAttempts'));
     })->name('candidate.dashboard');
     Route::get('/portal/submissions/{submission}', SubmissionForm::class)->name('candidate.submission');
     Route::get('/portal/history', function (Request $request) {

@@ -240,6 +240,57 @@ class Recruitment extends Page
 
     public string $feedback = '';
 
+    #[Locked]
+    public array $candidateDeactivation = [];
+
+    #[Locked]
+    public ?int $cleanupAuditId = null;
+
+    public string $deactivationEmail = '';
+
+    public function confirmCandidateDeactivation(int $userId): void
+    {
+        $this->candidateDeactivation = app(RecruitmentService::class)->candidateDeactivationSummary($this->authorizeAdmin(), $userId);
+        $this->reset('deactivationEmail', 'reason', 'action');
+        $this->resetValidation();
+    }
+
+    public function cancelCandidateDeactivation(): void
+    {
+        $this->reset('candidateDeactivation', 'deactivationEmail');
+        $this->resetValidation();
+    }
+
+    public function deactivateCandidate(): void
+    {
+        $actor = $this->authorizeAdmin();
+        abort_unless($this->candidateDeactivation, 422);
+        $this->validate([
+            'deactivationEmail' => ['required', 'email', Rule::in([$this->candidateDeactivation['email']])],
+            'reason' => 'required|string|min:5|max:2000',
+        ], ['deactivationEmail.in' => 'Email konfirmasi harus sama dengan email kandidat.']);
+        $audit = app(RecruitmentService::class)->deactivateCandidate($actor, $this->candidateDeactivation['user_id'], $this->candidateDeactivation, $this->reason);
+        $pending = $audit->fresh()->metadata['cleanup_status'] === 'pending';
+        $this->navigate('applications');
+        $this->reset('existingCandidateIds', 'recipientIds');
+        $this->cleanupAuditId = $pending ? $audit->id : null;
+        $this->feedback = $pending
+            ? 'Akun kandidat sudah dinonaktifkan. Sebagian file belum berhasil dibersihkan. Histori tetap tersimpan.'
+            : 'Akun kandidat dinonaktifkan dan seluruh file terkait berhasil dihapus. Profil, lamaran, respons form, dan histori tetap tersimpan.';
+    }
+
+    public function retryCandidateCleanup(): void
+    {
+        $this->authorizeAdmin();
+        abort_unless($this->cleanupAuditId, 422);
+        if (app(RecruitmentService::class)->cleanupCandidateFiles($this->cleanupAuditId)) {
+            $this->cleanupAuditId = null;
+            $this->feedback = 'Seluruh file terkait berhasil dibersihkan. Histori kandidat tetap tersimpan.';
+        } else {
+            $this->addError('candidateCleanup', 'Sebagian file masih gagal dihapus. Periksa izin penyimpanan dan log server, lalu coba kembali.');
+        }
+    }
+
     public array $catalog = ['name' => '', 'starts_at' => '', 'ends_at' => '', 'active' => true];
 
     public ?int $catalogId = null;
@@ -250,12 +301,13 @@ class Recruitment extends Page
     {
         $this->authorizeAdmin();
         $this->navigate(request()->query('section', 'dashboard'));
+        $this->cleanupAuditId = AuditLog::where('action', 'candidate.deactivated')->where('metadata->cleanup_status', 'pending')->latest('id')->value('id');
     }
 
     private function authorizeAdmin(): User
     {
-        $user = auth()->user();
-        abort_unless($user && $user->fresh()->active && $user->role === Role::Admin && $user->getAppAuthenticationSecret(), 403);
+        $user = auth()->user()?->fresh();
+        abort_unless($user && $user->active && ! $user->must_change_password && $user->role === Role::Admin && $user->getAppAuthenticationSecret(), 403);
 
         return $user;
     }
@@ -289,6 +341,7 @@ class Recruitment extends Page
         $this->section = $section;
         $this->resetPage();
         $this->applicationId = null;
+        $this->reset('candidateDeactivation', 'deactivationEmail');
         $this->resetValidation();
         $this->feedback = '';
         $this->action = '';
@@ -348,6 +401,7 @@ class Recruitment extends Page
     public function openApplication(int $id): void
     {
         $this->authorizeAdmin();
+        $this->reset('candidateDeactivation', 'deactivationEmail');
         $application = RecruitmentApplication::with('user')->findOrFail($id);
         $this->applicationId = $id;
         $this->section = 'detail';
@@ -362,6 +416,7 @@ class Recruitment extends Page
     public function selectTab(string $tab): void
     {
         $this->authorizeAdmin();
+        $this->reset('candidateDeactivation', 'deactivationEmail');
         abort_unless(in_array($tab, ['Profil', 'Portofolio', 'Tes Teknis', 'Riwayat'], true), 404);
         $this->tab = $tab;
         $this->versionId = null;
@@ -382,6 +437,7 @@ class Recruitment extends Page
     public function prepareAction(string $action): void
     {
         $this->authorizeAdmin();
+        $this->reset('candidateDeactivation', 'deactivationEmail');
         abort_unless(in_array($action, ['revision', 'deadline', 'exempt', 'archive', 'reset', 'edit'], true), 422);
         $this->action = $action;
         $this->reason = '';

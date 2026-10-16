@@ -8,6 +8,7 @@ use App\Models\PsychometricAttempt;
 use App\Models\RecruitmentApplication;
 use App\Models\UploadedFile;
 use App\Services\PsychometricService;
+use App\Services\RecruitmentService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -21,6 +22,14 @@ class CleanupPortalFiles extends Command
     public function handle(): int
     {
         $count = 0;
+        AuditLog::where('action', 'candidate.deactivated')->where('metadata->cleanup_status', 'pending')->chunkById(100, function ($audits) use (&$count): void {
+            foreach ($audits as $audit) {
+                $count += count($audit->metadata['remaining_files'] ?? []);
+                if (! $this->option('dry-run')) {
+                    app(RecruitmentService::class)->cleanupCandidateFiles($audit->id);
+                }
+            }
+        });
         $disk = Storage::disk('private');
         $cutoff = now()->subHours(config('submissions.temporary_hours'))->timestamp;
         foreach (['quarantine', 'livewire-tmp'] as $directory) {

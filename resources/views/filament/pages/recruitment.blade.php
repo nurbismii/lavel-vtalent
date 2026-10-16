@@ -8,6 +8,21 @@
         </div>
 
         <x-errors />@if($feedback)<div class="success" role="status">{{ $feedback }}</div>@endif<div wire:loading.delay role="status">Memproses…</div>
+        @if($cleanupAuditId)<div class="notice" role="status"><p>Pembersihan sebagian file tertunda. Akses file sudah dicabut. Proses cleanup terjadwal akan mencoba ulang, atau gunakan tombol berikut.</p><button type="button" class="button" wire:click="retryCandidateCleanup" wire:loading.attr="disabled">Coba bersihkan file kembali</button></div>@endif
+        @if($candidateDeactivation)
+            <section class="panel" role="region" aria-labelledby="candidate-deactivation-heading" wire:key="candidate-deactivation-{{ $candidateDeactivation['user_id'] }}" x-data x-init="$nextTick(() => { $el.scrollIntoView({ behavior: 'smooth', block: 'center' }); $el.querySelector('input').focus({ preventScroll: true }); })">
+                <h2 id="candidate-deactivation-heading">Konfirmasi nonaktifkan kandidat & hapus file</h2>
+                <p><strong>{{ $candidateDeactivation['name'] }}</strong><br>{{ $candidateDeactivation['email'] }}</p>
+                <p>{{ count($candidateDeactivation['uploads']) + count($candidateDeactivation['documents']) }} file unggahan (termasuk versi lama dan file yang dilepas) · {{ number_format($candidateDeactivation['bytes'] / 1048576, 2) }} MB · {{ count($candidateDeactivation['exports']) }} ZIP ekspor terkait.</p>
+                <p>Profil, {{ count($candidateDeactivation['applications']) }} lamaran, {{ count($candidateDeactivation['responses']) }} respons form, hasil tes, dan histori tetap disimpan. Akun dinonaktifkan, sesi dan akses lama dicabut. ZIP yang memuat kandidat ini juga dicabut dan harus dibuat ulang bila diperlukan.</p>
+                <p class="field-error">File yang dihapus tidak dapat dipulihkan melalui aplikasi. Mengaktifkan kembali akun tidak mengembalikan file tersebut.</p>
+                <label class="field">Ketik email kandidat untuk konfirmasi<input type="email" wire:model="deactivationEmail" autocomplete="off" maxlength="255"></label>
+                @error('deactivationEmail')<span class="field-error" role="alert">{{ $message }}</span>@enderror
+                <label class="field">Alasan · Wajib<textarea wire:model="reason" minlength="5" maxlength="2000"></textarea></label>
+                @error('reason')<span class="field-error" role="alert">{{ $message }}</span>@enderror
+                <div class="form-actions"><button type="button" class="button" wire:click="cancelCandidateDeactivation" wire:loading.attr="disabled">Batal</button><button type="button" class="button danger" wire:click="deactivateCandidate" wire:loading.attr="disabled">Ya, nonaktifkan & hapus file</button></div>
+            </section>
+        @endif
         @if($section !== 'tools')<div class="row"><a class="button" href="{{ route('filament.admin.pages.recruitment', ['section' => 'tools']) }}">Pengelolaan massal</a></div>@endif
         @if($section === 'tools')
         @include('filament.pages.recruitment-tools')
@@ -218,6 +233,7 @@
                     </div>
                     <small>Pilih maksimal 100 kandidat aktif tanpa lamaran aktif. Pencarian menampilkan maksimal 50 hasil. Semua kandidat mendapat posisi, periode, tenggat, dan penugasan yang sama.</small>
                     @error('existingCandidateIds')<span class="field-error">{{ $message }}</span>@enderror
+                    <button type="button" class="button danger" x-show="$wire.existingCandidateIds.length === 1" x-cloak x-on:click="$wire.confirmCandidateDeactivation($wire.existingCandidateIds[0])" wire:loading.attr="disabled">Nonaktifkan & hapus file kandidat terpilih</button>
                 </div>@else
                 <div class="two-col" wire:key="new-candidate-fields"><label class="field">Nama kandidat<input wire:model="candidate.name" required maxlength="255"></label><label class="field">Email<input wire:model="candidate.email" type="email" required></label></div>
                 <small>Email terdaftar menggunakan akun lama tanpa mengubah identitasnya.</small>
@@ -244,6 +260,7 @@
                 <p><small>Penonaktifan atau perubahan email membatalkan sesi lama.</small></p><button class="button" wire:click="prepareAction('edit')">Simpan perubahan akun</button>
                 <hr>
                 <div class="row"><button class="button" wire:click="prepareAction('reset')">Reset akses</button>@if(!$application->archived_at)<button class="button danger" wire:click="prepareAction('archive')">Arsipkan lamaran</button>@endif</div>
+                <button type="button" class="button danger" wire:click="confirmCandidateDeactivation({{ $application->user_id }})" wire:loading.attr="disabled">Nonaktifkan & hapus file</button>
             </section>
             <section class="panel">
                 <h2>Ubah penugasan</h2><small>Tersedia sebelum hasil tes pertama dikirim final.</small><label class="field">Posisi<select wire:model="candidate.position_id">

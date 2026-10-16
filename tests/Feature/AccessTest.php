@@ -5,13 +5,17 @@ namespace Tests\Feature;
 use App\Enums\Role;
 use App\Filament\Pages\Recruitment;
 use App\Livewire\Candidate\SubmissionForm;
+use App\Models\AppSetting;
+use App\Models\PsychometricAttempt;
 use App\Models\Submission;
+use App\Models\TechnicalAssessmentAttempt;
 use App\Models\UploadedFile;
 use App\Models\User;
 use App\Services\RecruitmentService;
 use App\Services\SubmissionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -48,6 +52,82 @@ class AccessTest extends TestCase
         $submission = Submission::factory()->create();
         $other = User::factory()->create();
         $this->actingAs($other)->withSession(['portal_session_version' => 1])->get(route('candidate.submission', $submission))->assertForbidden();
+    }
+
+    public function test_dashboard_links_to_online_technical_test_instead_of_legacy_submission(): void
+    {
+        $portfolio = Submission::factory()->create();
+        $technicalSubmission = Submission::factory()->create([
+            'recruitment_application_id' => $portfolio->recruitment_application_id,
+            'type' => 'technical_test',
+            'status' => 'draft',
+            'deadline' => now()->subDay(),
+        ]);
+        $user = $portfolio->application->user;
+
+        $this->actingAs($user)->withSession(['portal_session_version' => $user->session_version])
+            ->get(route('candidate.dashboard'))
+            ->assertOk()
+            ->assertSeeInOrder(['<h2>Portofolio</h2>', '<h2>Tes Teknis</h2>', '<h2>Tes Psikotes</h2>'], false)
+            ->assertSee('href="'.route('candidate.submission', $portfolio).'"', false)
+            ->assertSee('href="'.route('candidate.technical-assessments').'"', false)
+            ->assertDontSee('href="'.route('candidate.submission', $technicalSubmission).'"', false)
+            ->assertDontSee('Lihat draf')
+            ->assertDontSee('Tenggat terlewati')
+            ->assertSee('Belum ditetapkan.')
+            ->assertDontSee('Soal tes teknis');
+
+        $this->get(route('candidate.technical-assessments'))
+            ->assertOk()
+            ->assertSee('Belum ada penugasan tes online')
+            ->assertDontSee('Tugas unggah dokumen');
+        $this->assertModelExists($technicalSubmission);
+    }
+
+    public function test_dashboard_shows_all_assigned_test_deadlines_in_portal_timezone(): void
+    {
+        AppSetting::factory()->create(['key' => 'timezone', 'value' => 'Asia/Makassar']);
+        $portfolio = Submission::factory()->create();
+        $user = $portfolio->application->user;
+        TechnicalAssessmentAttempt::factory()->create([
+            'recruitment_application_id' => $portfolio->recruitment_application_id,
+            'deadline' => '2026-10-20 02:30:00',
+        ]);
+        TechnicalAssessmentAttempt::factory()->create([
+            'recruitment_application_id' => $portfolio->recruitment_application_id,
+            'form' => 'B',
+            'deadline' => '2026-10-21 06:15:00',
+        ]);
+        $psychometricAttempt = PsychometricAttempt::factory()->create([
+            'recruitment_application_id' => $portfolio->recruitment_application_id,
+            'deadline' => '2026-10-22 08:45:00',
+        ]);
+        TechnicalAssessmentAttempt::factory()->create(['deadline' => '2026-10-23 01:00:00']);
+        $otherPsychometricAttempt = PsychometricAttempt::factory()->create(['deadline' => '2026-10-24 01:00:00']);
+
+        $this->actingAs($user)->withSession(['portal_session_version' => $user->session_version])
+            ->get(route('candidate.dashboard'))
+            ->assertOk()
+            ->assertSeeInOrder(['Tes Teknis', 'Form A', '20 Oct 2026 10:30 WITA', 'Form B', '21 Oct 2026 14:15 WITA', 'Tes Psikotes', $psychometricAttempt->test->title, '22 Oct 2026 16:45 WITA'])
+            ->assertDontSee('23 Oct 2026 09:00 WITA')
+            ->assertDontSee('24 Oct 2026 09:00 WITA')
+            ->assertDontSee($otherPsychometricAttempt->test->title)
+            ->assertDontSee('Belum ditetapkan.');
+    }
+
+    public function test_dashboard_handles_unavailable_online_test_tables(): void
+    {
+        $portfolio = Submission::factory()->create();
+        $user = $portfolio->application->user;
+        Schema::drop('technical_assessment_attempts');
+        Schema::drop('psychometric_attempts');
+
+        $this->actingAs($user)->withSession(['portal_session_version' => $user->session_version])
+            ->get(route('candidate.dashboard'))
+            ->assertOk()
+            ->assertSee('Belum ditetapkan.')
+            ->assertSee('Tes teknis online belum tersedia.')
+            ->assertSee('Psikotes belum tersedia.');
     }
 
     public function test_reset_invalidates_existing_session(): void

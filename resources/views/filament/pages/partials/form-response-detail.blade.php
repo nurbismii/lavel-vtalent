@@ -43,5 +43,6 @@
                 <form wire:submit="requestRevision" class="response-disclosure-body"><label class="field">Catatan untuk kandidat<textarea wire:model="revisionNote" required minlength="5" placeholder="Jelaskan data yang perlu diperbaiki"></textarea></label><label class="field">Tenggat revisi baru<input type="datetime-local" wire:model="revisionDeadline" required></label><button class="button response-full-button" wire:loading.attr="disabled">Buka revisi</button></form>
             </details>
         @endif
+        <section class="panel stack"><h2>Hapus respons</h2><p class="muted">Hapus jawaban, riwayat, dan dokumen formulir ini secara permanen.</p><button class="button danger response-full-button" wire:click="confirmDelete('response', {{ $selectedResponse->id }})" wire:loading.attr="disabled"><x-heroicon-o-trash />Hapus respons</button></section>
     </aside>
 </div>

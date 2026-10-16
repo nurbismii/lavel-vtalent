@@ -4,7 +4,8 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const source = readFileSync(new URL('../resources/js/app.js', import.meta.url), 'utf8')
-    .replace("import Swal from 'sweetalert2';", '');
+    .replace("import Swal from 'sweetalert2';", '')
+    .replace("import './technical-assessments';", '');
 
 test('activity tracks hidden pages, lost focus and fullscreen exits without saving answers', async () => {
     const listeners = {};

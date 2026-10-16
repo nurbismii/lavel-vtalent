@@ -122,7 +122,7 @@ class PublicFormController extends Controller
     public function verify(string $token): mixed
     {
         $record = FormAccessToken::where('token_hash', hash('sha256', $token))->first();
-        abort_unless($record && ! $record->used_at && $record->expires_at->gt(now()), 410, 'Tautan kedaluwarsa atau sudah dipakai. Minta tautan baru dari formulir.');
+        abort_unless($record && $record->expires_at->gt(now()), 410, 'Tautan tidak valid atau kedaluwarsa. Minta tautan baru dari formulir.');
 
         return view('forms.verify', compact('token'));
     }
@@ -140,7 +140,9 @@ class PublicFormController extends Controller
             $this->forms->save($response, 0, $draft['data']);
         }
 
-        return redirect()->route('forms.response', $response->reference)->with('status', 'Email terverifikasi. Anda dapat mengunggah dokumen dan menyimpan draf.');
+        return redirect()->route('forms.response', $response->reference)->with('status', $response->status === 'submitted'
+            ? 'Respons sudah dikirim. Anda dapat melihat jawaban dan dokumen tanpa mengubahnya.'
+            : 'Email terverifikasi. Anda dapat mengunggah dokumen dan menyimpan draf.');
     }
 
     public function response(Request $request, FormResponse $response): mixed
@@ -158,8 +160,8 @@ class PublicFormController extends Controller
         $this->forms->authorizeWrite($request, $response);
         $data = $request->validate(['lock_version' => 'required|integer|min:0', 'name' => 'nullable|string|max:255', 'answers' => 'sometimes|array|max:100', 'consent' => 'nullable', 'action' => 'required|in:save,review']);
         if ($data['action'] === 'review') {
-            $this->forms->validateAnswers($response->intake->version->fields, $data, true);
-            $this->forms->validateDocuments($response);
+            $valid = $this->forms->validateAnswers($response->intake->version->fields, $data, true);
+            $this->forms->validateDocuments($response, $valid['answers'] ?? []);
         }
         $response = $this->forms->save($response, (int) $data['lock_version'], $data);
         if ($data['action'] === 'review') {

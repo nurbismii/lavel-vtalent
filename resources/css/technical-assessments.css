@@ -1,0 +1,184 @@
+.assessment-toolbar{display:flex;align-items:center;justify-content:space-between;gap:20px;position:sticky;top:10px;z-index:10;box-shadow:0 6px 20px #18263b0d}.assessment-toolbar h2{margin-top:10px}.assessment-timer{font-variant-numeric:tabular-nums;font-size:30px;letter-spacing:1px}.assessment-time-low{color:#a12836}.assessment-option{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;margin:8px 0;border:1px solid var(--line);border-radius:9px;cursor:pointer}.assessment-option:has(input:checked){background:#edf2fa;border-color:var(--brand)}.assessment-option input{flex-shrink:0;margin-top:6px;accent-color:var(--brand)}.assessment-question legend{font-weight:650;padding:0 8px}.assessment-material-text{white-space:pre-wrap;overflow-wrap:anywhere}.assessment-table-scroll{overflow-x:auto;margin:16px 0}.assessment-table{width:100%;border-collapse:collapse;font-size:13px;text-align:left}.assessment-table th{background:#edf2fa;font-weight:650}.assessment-table th,.assessment-table td{padding:12px;border:1px solid var(--line);vertical-align:top;min-width:100px;overflow-wrap:anywhere}.assessment-material summary,details>summary{cursor:pointer;font-weight:600;padding:12px 0}.assessment-scores{display:flex;flex-wrap:wrap;gap:16px}.assessment-scores>div{background:var(--surface);padding:14px 20px;border-radius:10px}.assessment-scores dt{font-size:12px;color:var(--muted)}.assessment-scores dd{margin:0;font-size:22px;font-weight:650}@media(max-width:640px){.assessment-toolbar{top:0;padding:16px;align-items:flex-start}.assessment-timer{font-size:24px}.assessment-toolbar h2{font-size:16px}.assessment-table{min-width:480px}}
+.technical-admin {
+    display: grid;
+    gap: 24px;
+    min-width: 0;
+}
+.technical-admin svg { width: 19px; height: 19px; flex-shrink: 0; }
+.technical-admin .panel { min-width: 0; margin: 0; border-color: #e1e7ef; box-shadow: none; }
+.technical-admin h2 { font-size: 20px; margin: 0; }
+.technical-admin h3 { font-size: 14px; margin: 0; }
+.technical-admin .field { margin: 0; font-size: 12px; color: #4e5f77; }
+.technical-admin .field input,
+.technical-admin .field select,
+.technical-admin .field textarea { min-height: 44px; margin-top: 8px; font-size: 14px; max-width: 100%; }
+.technical-admin .field small { display: block; margin-top: 7px; font-size: 11px; font-weight: 400; line-height: 1.6; }
+.technical-admin .field textarea { resize: vertical; line-height: 1.7; }
+.technical-heading-note { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #5f7189; white-space: nowrap; }
+.technical-heading-note svg { color: #54856a; }
+.technical-admin .hr-psych-nav { flex-wrap: wrap; }
+.technical-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.technical-section-heading p { margin: 7px 0 0; color: var(--muted); font-size: 12px; line-height: 1.8; }
+.technical-admin .technical-assignment { padding: 0; }
+.technical-assignment > .technical-section-heading { padding: 24px 28px; border-bottom: 1px solid var(--line); }
+.technical-assignment-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+.technical-form-section { display: flex; flex-direction: column; gap: 22px; min-width: 0; padding: 26px 28px; }
+.technical-form-section + .technical-form-section { border-left: 1px solid var(--line); background: #fcfdff; }
+.technical-step-heading { display: flex; align-items: flex-start; gap: 12px; }
+.technical-step { display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; color: var(--brand); background: #edf2fa; border-radius: 9px; font-size: 12px; font-weight: 650; }
+.technical-step-heading p { font-size: 12px; line-height: 1.6; margin: 5px 0 0; color: var(--muted); }
+.technical-package-summary { display: flex; align-items: flex-start; gap: 12px; background: #f3f6fc; border: 1px solid #e3eaf5; padding: 16px; border-radius: 10px; }
+.technical-package-icon { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; background: #fff; color: var(--brand); border-radius: 9px; }
+.technical-package-summary strong { font-size: 13px; }
+.technical-package-summary p { color: #60718a; margin: 5px 0 12px; font-size: 12px; line-height: 1.8; }
+.technical-package-meta { display: flex; gap: 12px; flex-wrap: wrap; color: #4a6082; font-size: 11px; }
+.technical-package-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.technical-package-meta svg { width: 14px; height: 14px; }
+.technical-duration-heading { display: grid; gap: 4px; }
+.technical-duration-heading small { font-size: 11px; }
+.technical-duration-list { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 10px; }
+.technical-duration-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) 108px; align-items: center; gap: 12px; padding: 14px; }
+.technical-duration-row + .technical-duration-row { border-top: 1px solid #e9edf4; }
+.technical-stage-number { font-size: 11px; color: #8190a4; font-variant-numeric: tabular-nums; text-align: center; }
+.technical-duration-row strong { display: block; font-size: 12px; font-weight: 550; line-height: 1.6; }
+.technical-duration-row small { display: block; margin-top: 3px; font-size: 10px; }
+.technical-duration-input { position: relative; }
+.technical-admin .technical-duration-input input { margin: 0; padding: 9px 39px 9px 10px; font-size: 13px; appearance: textfield; -moz-appearance: textfield; }
+.technical-duration-input input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.technical-duration-input > span:last-child { position: absolute; top: 13px; right: 10px; font-size: 10px; color: var(--muted); pointer-events: none; }
+.technical-admin .candidate-picker { margin: 0; }
+.technical-admin .candidate-picker-panel { text-align: left; }
+.technical-admin .candidate-picker-option strong { font-size: 12px; }
+.technical-admin .candidate-picker-option small { font-size: 10px; line-height: 1.6; margin-top: 3px; }
+.technical-admin .candidate-picker-panel > small { display: block; margin-top: 8px; font-size: 10px; line-height: 1.7; }
+.technical-admin .candidate-picker-options p { margin: 12px 0; font-size: 12px; color: var(--muted); }
+.technical-schedule { display: grid; gap: 20px; }
+.technical-help { display: flex; align-items: flex-start; gap: 7px; margin: 0; font-size: 11px; line-height: 1.8; color: #65758d; }
+.technical-help svg { width: 15px; height: 15px; margin-top: 3px; }
+.technical-inline-note { border-left: 3px solid #c7d6ed; padding: 4px 0 4px 14px; }
+.technical-inline-note strong { font-size: 12px; font-weight: 550; color: #536984; }
+.technical-inline-note p { margin: 5px 0 0; font-size: 11px; line-height: 1.8; color: var(--muted); }
+.technical-disclosure { border: 1px solid #e3e9f1; border-radius: 10px; background: #fff; min-width: 0; }
+.technical-disclosure > summary { display: flex; align-items: center; gap: 10px; list-style: none; padding: 16px 18px; font-size: 12px; color: #3f5473; }
+.technical-disclosure > summary::-webkit-details-marker { display: none; }
+.technical-disclosure > summary::after { content: '+'; font-size: 19px; font-weight: 400; margin-left: auto; flex-shrink: 0; color: #7e8fa6; }
+.technical-disclosure[open] > summary::after { content: '−'; }
+.technical-disclosure > summary > span { min-width: 0; }
+.technical-disclosure > summary small { display: block; font-size: 10px; line-height: 1.6; margin-top: 3px; font-weight: 400; color: var(--muted); }
+.technical-disclosure-body { border-top: 1px solid #e8edf4; padding: 20px; min-width: 0; font-size: 12px; }
+.technical-disclosure-body > h3 { margin: 20px 0 14px; }
+.technical-disclosure-body > h3:first-child { margin-top: 0; }
+.technical-admin .technical-preview { margin: 0 28px 24px; background: #fbfcfe; }
+.technical-preview-content { display: grid; gap: 10px; padding: 0 16px 16px; max-height: min(70vh, 640px); overflow: auto; }
+.technical-preview-content .technical-disclosure > summary { font-size: 12px; }
+.technical-answer { padding: 16px 0; }
+.technical-answer + .technical-answer { border-top: 1px solid #e8edf4; }
+.technical-answer strong { font-size: 11px; color: var(--brand); }
+.technical-answer p { margin: 7px 0; font-size: 12px; line-height: 1.8; }
+.technical-answer-value { border-radius: 8px; background: #f4f7fb; padding: 12px 14px; font-size: 12px; line-height: 1.8; color: #43546d; margin-top: 10px; }
+.technical-assignment-footer { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 24px 28px; border-top: 1px solid var(--line); background: #fbfcfe; border-radius: 0 0 14px 14px; }
+.technical-confirm { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; line-height: 1.8; cursor: pointer; }
+.technical-confirm input { flex-shrink: 0; width: 17px; height: 17px; margin-top: 3px; accent-color: var(--brand); }
+.technical-confirm strong { font-size: 12px; font-weight: 550; display: block; }
+.technical-confirm small { display: block; font-size: 11px; line-height: 1.8; margin-top: 3px; }
+.technical-assignment-footer > .button { flex-shrink: 0; min-width: 170px; }
+.technical-results { display: grid; gap: 24px; min-width: 0; }
+.technical-results-panel { padding: 26px 28px; }
+.technical-results-toolbar { display: flex; align-items: flex-end; gap: 16px; justify-content: space-between; margin-top: 24px; }
+.technical-results-toolbar .field { width: min(100%, 380px); }
+.technical-results-table { min-width: 820px; }
+.technical-table-hint { display: none; }
+.technical-admin .assessment-table th { background: #f7f9fc; color: #64758a; font-size: 10px; font-weight: 600; letter-spacing: .3px; white-space: nowrap; }
+.technical-admin .assessment-table th,
+.technical-admin .assessment-table td { border: 0; border-bottom: 1px solid #e5ebf3; padding: 14px 12px; min-width: 0; }
+.technical-results-table td { font-size: 12px; }
+.technical-results-table td:first-child { min-width: 185px; }
+.technical-results-table td:nth-child(4) { min-width: 170px; }
+.technical-results-table td small { display: block; margin-top: 5px; font-size: 10px; line-height: 1.6; }
+.technical-results-table td strong { font-weight: 600; }
+.technical-results-table tr.is-selected td { background: #f3f6fc; }
+.technical-results-table tbody tr:hover td { background: #f8faff; }
+.technical-results-table .button { white-space: nowrap; font-size: 11px; }
+.technical-review-status { font-size: 11px; color: #596d87; }
+.technical-empty { display: grid; justify-items: center; text-align: center; padding: 40px 20px; white-space: normal; }
+.technical-empty > svg { width: 34px; height: 34px; color: #99a9bf; margin-bottom: 14px; }
+.technical-empty p { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+.technical-admin .technical-session { padding: 0; scroll-margin-top: 90px; }
+.technical-session > .technical-section-heading { padding: 26px 28px; border-bottom: 1px solid var(--line); }
+.technical-session h2 { margin-top: 7px; }
+.technical-session-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; padding: 22px 28px; background: #fbfcfe; border-bottom: 1px solid var(--line); gap: 20px; }
+.technical-session-meta dt { font-size: 10px; color: var(--muted); }
+.technical-session-meta dd { margin: 7px 0 0; font-size: 12px; font-weight: 550; line-height: 1.7; }
+.technical-session-control { display: grid; gap: 18px; margin: 24px 28px; padding: 20px; border: 1px solid #dce6f5; border-radius: 10px; background: #f6f9fe; }
+.technical-session-control h3 { margin: 12px 0 6px; font-size: 16px; }
+.technical-session-control p { margin: 0; color: #64758c; font-size: 12px; }
+.technical-control-form { display: grid; gap: 16px; padding-top: 18px; border-top: 1px solid #dfe7f2; }
+.technical-control-form > .button { justify-self: start; }
+.technical-session > .technical-disclosure { margin: 0 28px 24px; }
+.technical-extension-form { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 18px; }
+.technical-extension-form > .technical-help,
+.technical-extension-form > .button { grid-column: 1 / -1; }
+.technical-extension-form > .button { justify-self: start; }
+.technical-score-section { padding: 26px 28px 0; }
+.technical-score-section > .technical-help { margin: 8px 0 18px; }
+.technical-admin .assessment-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 0; }
+.technical-admin .assessment-scores > div { background: #f5f8fc; border: 1px solid #e4ebf5; padding: 16px; }
+.technical-admin .assessment-scores dd { font-size: 22px; margin-top: 7px; line-height: 1.5; overflow-wrap: anywhere; }
+.technical-admin .assessment-scores dt { font-size: 11px; }
+.technical-review-form { display: grid; gap: 20px; margin: 26px 28px; padding-top: 24px; border-top: 1px solid var(--line); }
+.technical-review-form > div > .technical-help { margin-top: 7px; }
+.technical-rating-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.technical-review-form > .button { justify-self: end; }
+.technical-session-evidence { display: grid; gap: 12px; padding: 24px 28px; border-top: 1px solid var(--line); }
+.technical-session-evidence .technical-disclosure-body { max-height: min(70vh, 680px); overflow: auto; }
+.technical-log-table { min-width: 550px; }
+.technical-log-table td { font-size: 11px; }
+.technical-log-table td small { display: block; margin-top: 3px; font-size: 10px; }
+@media (max-width: 1100px) {
+    .technical-assignment-grid { grid-template-columns: 1fr; }
+    .technical-form-section + .technical-form-section { border-left: 0; border-top: 1px solid var(--line); }
+    .technical-schedule { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .technical-heading-note { display: none; }
+}
+@media (max-width: 640px) {
+    .technical-admin { gap: 18px; }
+    .technical-table-hint { display: flex; align-items: flex-start; gap: 6px; margin: 16px 0 0; font-size: 11px; line-height: 1.7; color: var(--muted); }
+    .technical-table-hint svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 2px; }
+    .technical-admin .hr-psych-heading h1 { font-size: 26px; }
+    .technical-admin .hr-psych-heading p { font-size: 12px; }
+    .technical-admin .hr-psych-nav { flex-wrap: nowrap; gap: 0; }
+    .technical-admin .hr-psych-nav button { font-size: 11px; gap: 6px; padding: 12px 8px; flex: 1; justify-content: center; }
+    .technical-admin .hr-psych-nav svg { width: 16px; height: 16px; }
+    .technical-admin .field input,
+    .technical-admin .field select,
+    .technical-admin .field textarea { font-size: 16px; }
+    .technical-assignment > .technical-section-heading,
+    .technical-session > .technical-section-heading,
+    .technical-form-section,
+    .technical-results-panel { padding: 20px; }
+    .technical-section-heading { flex-wrap: wrap; gap: 12px; }
+    .technical-section-heading .badge { font-size: 10px; }
+    .technical-section-heading h2 { font-size: 18px; }
+    .technical-duration-row { grid-template-columns: 16px minmax(0, 1fr) 100px; padding: 12px 10px; gap: 8px; }
+    .technical-admin .technical-duration-input input { font-size: 16px; }
+    .technical-schedule { grid-template-columns: 1fr; }
+    .technical-admin .technical-preview { margin: 0 20px 20px; }
+    .technical-disclosure > summary { padding: 14px; font-size: 11px; }
+    .technical-disclosure-body { padding: 16px; }
+    .technical-preview-content { padding: 0 10px 10px; }
+    .technical-assignment-footer { flex-direction: column; align-items: stretch; padding: 20px; gap: 18px; }
+    .technical-results-toolbar { flex-direction: column; align-items: stretch; gap: 12px; }
+    .technical-results-toolbar .field { width: 100%; }
+    .technical-session-meta { grid-template-columns: 1fr; padding: 20px; gap: 16px; }
+    .technical-session-meta > div { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+    .technical-session-meta dd { margin: 0; text-align: right; }
+    .technical-session-control { margin: 20px; padding: 16px; }
+    .technical-control-form > .button { justify-self: stretch; }
+    .technical-session > .technical-disclosure { margin: 0 20px 20px; }
+    .technical-extension-form { grid-template-columns: 1fr; }
+    .technical-score-section { padding: 20px 20px 0; }
+    .technical-review-form { margin: 20px; }
+    .technical-rating-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .technical-review-form > .button { justify-self: stretch; }
+    .technical-session-evidence { padding: 20px; }
+}

@@ -1,3 +1,4 @@
+@php($fields = app(App\Services\CandidateFormService::class)->visibleFields($fields, $answers))
 <section class="panel form-answer-summary">
     <div class="answer-heading"><div><span class="eyebrow">Data formulir</span><h2>Ringkasan jawaban</h2></div><span class="badge">{{ collect($fields)->where('type', '!=', 'section')->count() }} pertanyaan</span></div>
     <dl class="answer-grid">

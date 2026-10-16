@@ -26,7 +26,7 @@ class ScanFormDocument implements ShouldQueue
             return;
         }
         if (! config('submissions.scan_enabled')) {
-            $file->update(['scan_status' => 'skipped']);
+            FormDocument::whereKey($file->id)->where('scan_status', 'pending')->update(['scan_status' => 'skipped']);
 
             return;
         }
@@ -43,7 +43,7 @@ class ScanFormDocument implements ShouldQueue
             $status = match ($process->getExitCode()) {
                 0 => 'clean', 1 => 'rejected', default => 'failed'
             };
-            $file->update(['scan_status' => $status, 'scan_message' => match ($status) {
+            FormDocument::whereKey($file->id)->where('scan_status', 'pending')->update(['scan_status' => $status, 'scan_message' => match ($status) {
                 'clean' => null, 'rejected' => 'File ditolak. Unggah dokumen lain.', default => 'Pemeriksaan gagal. Coba kembali atau hubungi HR.'
             }]);
         } catch (\Throwable) {

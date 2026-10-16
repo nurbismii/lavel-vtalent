@@ -1,4 +1,5 @@
 import Swal from 'sweetalert2';
+import './technical-assessments';
 
 document.addEventListener('click', (event) => {
     const button = event.target.closest('[data-password-toggle]');
@@ -34,6 +35,7 @@ if (answerForm) {
             const name = answerForm.elements.namedItem('name');
             if (!name.value.trim()) markMissing(name.closest('label'), 'Nama lengkap wajib diisi.');
             answerForm.querySelectorAll('[data-required="true"]').forEach((group) => {
+                if (group.closest('[hidden]')) return;
                 const inputs = [...group.querySelectorAll('input, select, textarea')];
                 const filled = inputs.some((input) => ['checkbox', 'radio'].includes(input.type) ? input.checked : input.value.trim());
                 if (!filled) {
@@ -42,6 +44,7 @@ if (answerForm) {
                 }
             });
             document.querySelectorAll('[data-required-document="true"][data-document-ready="false"]').forEach((group) => {
+                if (group.closest('[hidden]')) return;
                 markMissing(group, `Unggah ${group.dataset.fieldLabel} dan tunggu pemeriksaan file selesai.`);
             });
             const consent = answerForm.elements.namedItem('consent');

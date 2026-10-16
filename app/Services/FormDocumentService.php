@@ -56,6 +56,7 @@ class FormDocumentService
                 $file = DB::transaction(function () use ($response, $field, $upload, &$path) {
                     $response = FormResponse::lockForUpdate()->findOrFail($response->id);
                     abort_unless($response->editable(), 422, 'Pengisian sudah terkunci.');
+                    abort_unless(in_array($field['id'], array_column(app(CandidateFormService::class)->visibleFields($response->intake->version->fields, $response->answers), 'id'), true), 422, 'Simpan jawaban pemicu sebelum mengunggah dokumen ini.');
                     $used = $response->documents()->sum('size');
                     if ($response->recruitment_application_id) {
                         RecruitmentApplication::whereKey($response->recruitment_application_id)->lockForUpdate()->firstOrFail();

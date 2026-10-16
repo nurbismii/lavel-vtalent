@@ -33,8 +33,10 @@ class SendFormAccess implements ShouldBeEncrypted, ShouldQueue
         if (! $token || $token->used_at || $token->expires_at->isPast()) {
             return;
         }
-        Mail::send('emails.form-access', ['url' => route('forms.verify', $this->rawToken), 'expires' => $token->expires_at], function ($message) use ($token) {
+        $expires = now()->addMinutes(config('candidate_forms.access_minutes'));
+        Mail::send('emails.form-access', ['url' => route('forms.verify', $this->rawToken), 'expires' => $expires], function ($message) use ($token) {
             $message->to($token->email)->subject('Verifikasi email dan lanjutkan formulir kandidat');
         });
+        $token->update(['expires_at' => $expires]);
     }
 }
