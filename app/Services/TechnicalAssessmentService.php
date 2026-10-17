@@ -100,6 +100,7 @@ class TechnicalAssessmentService
             }
             abort_if(now()->lt($attempt->opens_at), 403, 'Jadwal tes belum dibuka.');
             if ($action === 'consent') {
+                abort_if($attempt->isWaitingForFormA(), 422, 'Selesaikan Form A terlebih dahulu sebelum memulai Form B atau Form A2.');
                 Validator::make($payload, ['consent' => ['accepted']])->validate();
                 if (! $attempt->consented_at) {
                     $attempt->update(['consented_at' => now()]);
@@ -169,6 +170,7 @@ class TechnicalAssessmentService
         if ($attempt->section_started_at) {
             return;
         }
+        abort_if($attempt->isWaitingForFormA(), 422, 'Selesaikan Form A terlebih dahulu sebelum memulai Form B atau Form A2.');
         $seconds = $attempt->package['sections'][$attempt->section_index]['seconds'];
         $attempt->update(['section_started_at' => now(), 'section_expires_at' => now()->addSeconds($seconds)->min($attempt->deadline), 'revision' => $attempt->revision + 1]);
         AuditLog::record('technical_assessment.section_started', $attempt, $actor, metadata: ['section' => $attempt->section_index, 'expires_at' => $attempt->section_expires_at->toIso8601String()]);

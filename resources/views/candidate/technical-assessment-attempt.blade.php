@@ -9,6 +9,8 @@
             <label><input type="checkbox" name="confirmation" value="1" required> Saya mengonfirmasi bahwa tes dikerjakan sendiri sesuai aturan dan kondisi yang saya laporkan.</label>
             <button class="button primary">Simpan catatan dan konfirmasi</button>
         </form>
+    @elseif($attempt->isWaitingForFormA())
+        <section class="panel"><h2>Tes terkunci</h2><p>Selesaikan Form A terlebih dahulu sebelum memulai Form B atau Form A2.</p><a class="button primary" href="{{ route('candidate.technical-assessments') }}">Kembali ke daftar tes</a></section>
     @elseif(now()->lt($attempt->opens_at))
         <section class="panel"><h2>Jadwal belum dibuka</h2><p>Tes dibuka pada {{ $attempt->opens_at->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}.</p></section>
     @elseif(!$attempt->consented_at)

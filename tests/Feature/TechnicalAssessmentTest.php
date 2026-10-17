@@ -40,6 +40,11 @@ class TechnicalAssessmentTest extends TestCase
         return ['action' => $action, 'section' => $attempt->section_index, 'revision' => $attempt->revision, 'answers' => $answers];
     }
 
+    private function completeFormAFor(TechnicalAssessmentAttempt $attempt): void
+    {
+        $this->attempt('A', ['recruitment_application_id' => $attempt->recruitment_application_id, 'completed_at' => now()]);
+    }
+
     public function test_admin_assigns_versioned_package_and_duplicate_assignment_preserves_existing_work(): void
     {
         $this->freezeTime();
@@ -281,6 +286,9 @@ class TechnicalAssessmentTest extends TestCase
     {
         $this->freezeTime();
         $attempt = $this->attempt($form);
+        if ($form !== 'A') {
+            $this->completeFormAFor($attempt);
+        }
         $this->loginFor($attempt);
         $url = route('candidate.technical-assessments.update', $attempt);
         $this->postJson($url, $this->payload($attempt, 'start'))->assertUnprocessable();
@@ -375,6 +383,7 @@ class TechnicalAssessmentTest extends TestCase
     {
         $this->freezeTime();
         $attempt = $this->attempt('B', ['consented_at' => now(), 'section_index' => 2]);
+        $this->completeFormAFor($attempt);
         $this->loginFor($attempt);
         $url = route('candidate.technical-assessments.update', $attempt);
         $this->postJson($url, $this->payload($attempt, 'start'))->assertJsonPath('active', true);
@@ -395,6 +404,7 @@ class TechnicalAssessmentTest extends TestCase
         $first = $this->attempt('B', ['consented_at' => now()]);
         $second = $this->attempt('B', ['consented_at' => now()]);
         foreach ([$first, $second] as $attempt) {
+            $this->completeFormAFor($attempt);
             $this->loginFor($attempt);
             $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'start'))->assertJsonPath('active', true);
         }
@@ -515,6 +525,9 @@ class TechnicalAssessmentTest extends TestCase
     public function test_test_schedule_and_purged_application_cannot_be_bypassed(string $form): void
     {
         $attempt = $this->attempt($form, ['consented_at' => now(), 'opens_at' => now()->addHour()]);
+        if ($form !== 'A') {
+            $this->completeFormAFor($attempt);
+        }
         $this->loginFor($attempt);
         $url = route('candidate.technical-assessments.update', $attempt);
         $this->postJson($url, $this->payload($attempt, 'start'))->assertForbidden();
@@ -522,5 +535,108 @@ class TechnicalAssessmentTest extends TestCase
         $attempt->application->update(['purged_at' => now()]);
         $this->postJson($url, $this->payload($attempt, 'start'))->assertNotFound();
         $this->assertNull($attempt->fresh()->section_started_at);
+    }
+
+    #[TestWith(['B'])]
+    #[TestWith(['A2'])]
+    public function test_followup_forms_are_locked_when_form_a_is_missing(string $form): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt($form);
+        $this->loginFor($attempt);
+        $url = route('candidate.technical-assessments.update', $attempt);
+
+        $this->get(route('candidate.technical-assessments'))->assertSee('Selesaikan Form A terlebih dahulu')->assertDontSee(route('candidate.technical-assessments.show', $attempt));
+        $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('Tes terkunci')->assertDontSee('data-assessment-start', false);
+        $this->postJson($url, ['action' => 'consent', 'consent' => true])->assertUnprocessable()->assertJsonPath('message', 'Selesaikan Form A terlebih dahulu sebelum memulai Form B atau Form A2.');
+
+        $this->assertNull($attempt->fresh()->consented_at);
+        $this->assertNull($attempt->fresh()->section_started_at);
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    #[TestWith(['B'])]
+    #[TestWith(['A2'])]
+    public function test_unfinished_form_a_and_another_applications_completed_form_a_do_not_unlock_followup_forms(string $form): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt($form, ['consented_at' => now()]);
+        $this->attempt('A', ['recruitment_application_id' => $attempt->recruitment_application_id]);
+        $otherApplication = RecruitmentApplication::factory()->create(['user_id' => $attempt->application->user_id, 'active_user_id' => null]);
+        $this->attempt('A', ['recruitment_application_id' => $otherApplication->id, 'completed_at' => now()]);
+        $this->loginFor($attempt);
+
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'start'))->assertUnprocessable()->assertJsonPath('message', 'Selesaikan Form A terlebih dahulu sebelum memulai Form B atau Form A2.');
+        $this->get(route('candidate.technical-assessments'))->assertSee('Selesaikan Form A terlebih dahulu')->assertDontSee(route('candidate.technical-assessments.show', $attempt));
+
+        $this->assertNull($attempt->fresh()->section_started_at);
+        $this->assertNull($attempt->fresh()->section_expires_at);
+        $this->assertSame(0, $attempt->fresh()->revision);
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_finishing_form_a_unlocks_form_b_and_form_a2_without_requiring_form_b_first(): void
+    {
+        $this->freezeTime();
+        $formA = $this->attempt('A', ['consented_at' => now(), 'section_index' => 3, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(10)]);
+        $formB = $this->attempt('B', ['recruitment_application_id' => $formA->recruitment_application_id]);
+        $formA2 = $this->attempt('A2', ['recruitment_application_id' => $formA->recruitment_application_id]);
+        $this->loginFor($formA);
+
+        $this->postJson(route('candidate.technical-assessments.update', $formA), $this->payload($formA, 'finish'))->assertJsonPath('completed', true);
+        $this->get(route('candidate.technical-assessments'))->assertDontSee('Selesaikan Form A terlebih dahulu')->assertSee(route('candidate.technical-assessments.show', $formB))->assertSee(route('candidate.technical-assessments.show', $formA2));
+        foreach ([$formA2, $formB] as $attempt) {
+            $url = route('candidate.technical-assessments.update', $attempt);
+            $this->postJson($url, ['action' => 'consent', 'consent' => true])->assertOk();
+            $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('data-assessment-start', false)->assertDontSee('Tes terkunci');
+            $this->postJson($url, $this->payload($attempt, 'start'))->assertJsonPath('active', true);
+            $this->assertNotNull($attempt->fresh()->section_started_at);
+        }
+    }
+
+    public function test_assessor_cannot_bypass_form_a_requirement_when_starting_form_b(): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt('B', ['consented_at' => now()]);
+        $admin = User::factory()->create(['role' => Role::Admin]);
+
+        Livewire::actingAs($admin)->test(TechnicalAssessments::class)->call('selectAttempt', $attempt->id)
+            ->assertSee('Kandidat harus menyelesaikan Form A terlebih dahulu')->assertDontSee('Mulai tahap untuk kandidat')
+            ->set('confirmStageAction', true)->call('control', 0, 0, 'start')->assertUnprocessable();
+
+        $this->assertNull($attempt->fresh()->section_started_at);
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_existing_active_form_b_stage_can_be_saved_and_finished_but_next_stage_requires_form_a(): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_index' => 2, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(10)]);
+        $this->loginFor($attempt);
+        $url = route('candidate.technical-assessments.update', $attempt);
+        $answers = ['priority_1' => 'Tahan pembayaran dan verifikasi independen.'];
+
+        $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('data-assessment-form', false)->assertDontSee('Tes terkunci');
+        $this->postJson($url, $this->payload($attempt, 'save', $answers))->assertOk();
+        $this->postJson($url, $this->payload($attempt, 'finish', $answers))->assertJsonPath('section', 3)->assertJsonPath('active', false);
+        $this->postJson($url, $this->payload($attempt, 'start'))->assertUnprocessable();
+        $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('Tes terkunci');
+
+        $this->assertSame($answers, $attempt->fresh()->answers[2]);
+        $this->assertNull($attempt->fresh()->section_started_at);
+    }
+
+    #[TestWith(['B'])]
+    #[TestWith(['A2'])]
+    public function test_completed_followup_forms_keep_condition_notes_accessible_without_form_a(string $form): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt($form, ['completed_at' => now()]);
+        $this->loginFor($attempt);
+
+        $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('Catatan kondisi dan konfirmasi')->assertDontSee('Tes terkunci');
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), ['action' => 'conditions', 'conditions' => ['technical_conditions' => 'Koneksi stabil.'], 'confirmation' => true])->assertOk();
+
+        $this->assertSame('Koneksi stabil.', $attempt->fresh()->conditions['technical_conditions']);
     }
 }

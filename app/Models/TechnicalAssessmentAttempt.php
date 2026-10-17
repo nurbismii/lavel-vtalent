@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class TechnicalAssessmentAttempt extends Model
 {
@@ -30,5 +31,16 @@ class TechnicalAssessmentAttempt extends Model
     public function activityLogs(): HasMany
     {
         return $this->hasMany(AuditLog::class, 'target_id')->where('target_type', $this->getMorphClass())->where('action', 'like', 'technical_assessment.%');
+    }
+
+    public function completedFormA(): HasOne
+    {
+        return $this->hasOne(self::class, 'recruitment_application_id', 'recruitment_application_id')->where('form', 'A')->whereNotNull('completed_at');
+    }
+
+    public function isWaitingForFormA(): bool
+    {
+        return $this->form !== 'A' && ! $this->completed_at && ! $this->section_started_at
+            && ! ($this->completed_form_a_exists ?? $this->completedFormA()->exists());
     }
 }

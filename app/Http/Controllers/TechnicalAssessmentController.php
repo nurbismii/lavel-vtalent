@@ -16,7 +16,7 @@ class TechnicalAssessmentController extends Controller
     {
         abort_unless(TechnicalAssessmentService::available(), 404);
         abort_unless($request->user()->role === Role::Candidate, 403);
-        $attempts = TechnicalAssessmentAttempt::whereHas('application', fn ($query) => $query->where('user_id', $request->user()->id)->whereNull('archived_at')->whereNull('purged_at'))->latest()->paginate(10);
+        $attempts = TechnicalAssessmentAttempt::whereHas('application', fn ($query) => $query->where('user_id', $request->user()->id)->whereNull('archived_at')->whereNull('purged_at'))->withExists('completedFormA')->latest()->paginate(10);
 
         return response()->view('candidate.technical-assessments', compact('attempts'))->header('Cache-Control', 'private, no-store');
     }
