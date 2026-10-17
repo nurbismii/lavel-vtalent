@@ -1112,11 +1112,7 @@
       {
         "title": "Probe konsistensi",
         "seconds": 300,
-        "material": [
-          {
-            "text": "Jawab secara lisan kepada assessor; catatan singkat dapat diisi di bawah. Penilaian didasarkan pada isi dan bukti, bukan gaya bicara."
-          }
-        ],
+        "material": [],
         "questions": [
           {
             "id": "probe_1",
