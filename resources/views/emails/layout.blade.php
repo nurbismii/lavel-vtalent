@@ -16,7 +16,7 @@
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
                     <tr>
                         <td style="padding:0 8px 24px;">
-                            <img src="{{ isset($message) ? $message->embed(public_path('images/VDNI-logo.png')) : asset('images/VDNI-logo.png') }}" alt="VDNI" width="110" style="display:block;width:110px;height:auto;border:0;">
+                            <img src="{{ isset($message) ? $message->embed(public_path('images/vdni-logo.png')) : asset('images/vdni-logo.png') }}" alt="VDNI" width="110" style="display:block;width:110px;height:auto;border:0;">
                             <p style="margin:12px 0 0;color:#637187;font-size:11px;letter-spacing:1.8px;">V TALENT · PORTAL REKRUTMEN</p>
                         </td>
                     </tr>

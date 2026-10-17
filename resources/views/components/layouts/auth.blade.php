@@ -9,13 +9,13 @@
 
 <body>
     <main class="auth-wrap">
-        <section class="auth-intro"><img src="{{ asset('images/VDNI-logo.png') }}" alt="VDNI">
+        <section class="auth-intro"><img src="{{ asset('images/vdni-logo.png') }}" alt="VDNI">
             <div class="eyebrow">Talent portal</div>
             <h1>Langkah berikutnya<br>dimulai dari<br>karya Anda.</h1>
             <p class="muted">Satu tempat untuk portofolio dan hasil tes teknis Anda.</p><small>Portal privat · Akses diberikan oleh tim HR</small>
         </section>
         <section class="panel auth-form">
-            <div class="brand"><img src="{{ asset('images/VDNI-logo.png') }}" alt="VDNI"></div>@if(session('status'))<div class="success" role="status">{{ session('status') }}</div>@endif<x-errors />{{ $slot }}
+            <div class="brand"><img src="{{ asset('images/vdni-logo.png') }}" alt="VDNI"></div>@if(session('status'))<div class="success" role="status">{{ session('status') }}</div>@endif<x-errors />{{ $slot }}
             <hr><small><a href="{{ route('privacy') }}">Privasi & bantuan</a></small>
         </section>
     </main>

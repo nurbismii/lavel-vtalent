@@ -11,7 +11,7 @@
 
 <body><a class="sr-only focus:not-sr-only" href="#main">Lewati ke konten</a>
     <header class="portal-header">
-        <div class="header-inner"><a class="brand" href="{{ route('login') }}"><img src="{{ asset('images/VDNI-logo.png') }}" alt="VDNI"><span class="brand-label">TALENT PORTAL<br>Langkah awal perjalanan Anda</span></a>
+        <div class="header-inner"><a class="brand" href="{{ route('login') }}"><img src="{{ asset('images/vdni-logo.png') }}" alt="VDNI"><span class="brand-label">TALENT PORTAL<br>Langkah awal perjalanan Anda</span></a>
             <nav class="portal-nav">@auth<a href="{{ route('candidate.forms') }}">Formulir saya</a>@else<a href="{{ route('login') }}">Sudah punya akun?</a>@endauth</nav>
         </div>
     </header>
