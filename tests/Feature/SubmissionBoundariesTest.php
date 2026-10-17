@@ -4,14 +4,19 @@ namespace Tests\Feature;
 
 use App\Enums\Role;
 use App\Enums\SubmissionStatus;
+use App\Filament\Pages\Recruitment;
 use App\Models\Submission;
 use App\Models\UploadedFile;
 use App\Models\User;
 use App\Services\SubmissionService;
+use App\Services\UploadService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile as HttpFile;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
@@ -19,16 +24,13 @@ class SubmissionBoundariesTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function fixture(string $type = 'portfolio', bool $portfolioSubmitted = false): array
+    private function fixture(): array
     {
         Queue::fake();
-        $s = Submission::factory()->create(['type' => $type]);
+        $s = Submission::factory()->create();
         $u = $s->application->user;
-        if ($type === 'technical_test' && $portfolioSubmitted) {
-            Submission::factory()->create(['recruitment_application_id' => $s->recruitment_application_id, 'status' => SubmissionStatus::Submitted]);
-        }
         $v = app(SubmissionService::class)->draft($s, $u);
-        $f = UploadedFile::factory()->create(['submission_id' => $s->id, 'recruitment_application_id' => $s->recruitment_application_id, 'uploader_id' => $u->id, 'purpose' => $type === 'portfolio' ? 'portfolio_main' : 'technical_result']);
+        $f = UploadedFile::factory()->create(['submission_id' => $s->id, 'recruitment_application_id' => $s->recruitment_application_id, 'uploader_id' => $u->id, 'purpose' => 'portfolio_main']);
 
         return [$s, $u, $v, $f];
     }
@@ -43,32 +45,46 @@ class SubmissionBoundariesTest extends TestCase
         app(SubmissionService::class)->save($s, $u, $v->id, ['attachments' => [['id' => $f->id], ['id' => $g->id]]], true);
     }
 
-    public function test_technical_test_requires_a_file_and_accepts_valid_result(): void
+    public function test_legacy_technical_upload_is_rejected_without_creating_a_draft_or_file(): void
     {
-        [$s, $u, $v, $f] = $this->fixture('technical_test', true);
+        Storage::fake('private');
+        $submission = Submission::factory()->create(['type' => 'technical_test']);
+        $user = $submission->application->user;
+        Submission::factory()->create(['recruitment_application_id' => $submission->recruitment_application_id, 'status' => SubmissionStatus::Submitted]);
+
+        $this->actingAs($user)->withSession(['portal_session_version' => $user->session_version])
+            ->get(route('candidate.submission', $submission))->assertNotFound();
+        $this->assertFalse($submission->fresh()->editable());
         try {
-            app(SubmissionService::class)->save($s, $u, $v->id, ['attachments' => []], true);
-            $this->fail('Empty results accepted');
-        } catch (ValidationException) {
+            app(UploadService::class)->store($submission, $user, HttpFile::fake()->create('result.pdf', 10, 'application/pdf'), 'technical_result');
+            $this->fail('Unggahan tes teknis lama harus ditolak.');
+        } catch (AuthorizationException) {
+            $this->assertDatabaseCount('uploaded_files', 0);
+            $this->assertSame([], Storage::disk('private')->allFiles());
         }
-        $final = app(SubmissionService::class)->save($s, $u, $v->id, ['attachments' => [['id' => $f->id]]], true);
-        $this->assertNotNull($final->receipt);
+        $this->assertDatabaseCount('submission_versions', 0);
     }
 
-    public function test_technical_test_is_locked_until_portfolio_is_submitted(): void
+    public function test_legacy_technical_final_remains_read_only_and_cannot_be_revised(): void
     {
-        $technicalTest = Submission::factory()->create(['type' => 'technical_test']);
-
-        $this->assertTrue($technicalTest->lockedUntilPortfolioSubmitted());
-        $this->assertFalse($technicalTest->editable());
-
-        Submission::factory()->create([
-            'recruitment_application_id' => $technicalTest->recruitment_application_id,
-            'status' => SubmissionStatus::Submitted,
-        ]);
-
-        $this->assertFalse($technicalTest->fresh()->lockedUntilPortfolioSubmitted());
-        $this->assertTrue($technicalTest->fresh()->editable());
+        $submission = Submission::factory()->create(['type' => 'technical_test', 'status' => SubmissionStatus::Submitted]);
+        $version = $submission->versions()->create(['number' => 1, 'status' => 'final', 'submitted_at' => now(), 'receipt' => 'LEGACY-RECEIPT', 'links' => []]);
+        $submission->update(['current_version_id' => $version->id]);
+        $user = $submission->application->user;
+        $this->actingAs($user)->withSession(['portal_session_version' => $user->session_version])
+            ->get(route('candidate.submission', $submission))->assertSee('LEGACY-RECEIPT')->assertDontSee('type="file"', false)->assertDontSee('Simpan draf');
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $admin->saveAppAuthenticationSecret('TESTSECRET');
+        Livewire::actingAs($admin)->test(Recruitment::class)->call('openApplication', $submission->recruitment_application_id)
+            ->call('selectTab', 'Arsip Tes Upload')->assertSee('LEGACY-RECEIPT')->assertDontSee('Buka revisi')->assertDontSee('Perpanjang tenggat');
+        try {
+            app(SubmissionService::class)->revise($submission, $admin, 'Revisi arsip tidak diizinkan', now()->addDay()->toDateTimeString());
+            $this->fail('Arsip tes teknis tidak boleh dibuka ulang.');
+        } catch (HttpException $exception) {
+            $this->assertSame(422, $exception->getStatusCode());
+        }
+        $this->assertDatabaseCount('submission_versions', 1);
+        $this->assertSame(SubmissionStatus::Submitted, $submission->fresh()->status);
     }
 
     public function test_exact_deadline_is_accepted_but_later_is_rejected(): void

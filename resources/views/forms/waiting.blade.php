@@ -2,6 +2,7 @@
     <section class="panel">
         <span class="eyebrow">Verifikasi email</span>
         <h1>Periksa inbox Anda</h1>
+        <div class="notice" role="status">Satu email hanya dapat mengirim satu respons untuk formulir ini. Jika sudah mengirim, buka tautan email sebelumnya untuk melihat jawaban. Pengisian ulang tidak membuat pengiriman kedua.</div>
         <p>Permintaan akses untuk <strong>{{ $email }}</strong> sudah diterima. Jika memenuhi syarat, tautan verifikasi akan dikirim ke alamat tersebut.</p>
         <div class="notice">Periksa folder spam atau promosi. Tautan dapat dibuka berkali-kali sampai batas waktu yang tercantum di email. Setelah respons dikirim, Anda tetap dapat melihat isian tanpa mengubahnya. Refresh halaman ini tidak mengirim email baru.</div>
         <p class="muted">Jika akun Anda sudah terhubung, masuk melalui portal. Jangan meminta email berulang kali saat pengiriman sedang tertunda.</p>

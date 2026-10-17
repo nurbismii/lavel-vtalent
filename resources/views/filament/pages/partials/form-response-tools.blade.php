@@ -7,16 +7,12 @@
         <p class="muted">Lamaran aktif pada posisi dan periode yang sama tetap memakai tenggat sebelumnya.</p>
         <div class="two-col">
             <label class="field">Tenggat portofolio<input type="datetime-local" wire:model="application.portfolio_deadline"></label>
-            <label class="field">Tenggat tes teknis<input type="datetime-local" wire:model="application.test_deadline"></label>
-            <label class="field">Label tes<input wire:model="application.task_label" maxlength="255"></label>
-            <label class="field">Instruksi tes<textarea wire:model="application.instructions" maxlength="5000"></textarea></label>
         </div>
         <div class="form-actions"><button class="button primary" wire:click="previewBulkAccounts" wire:loading.attr="disabled">Pratinjau semua penerima sesuai filter<x-heroicon-o-arrow-right /></button></div>
         @if($bulkResponseIds)
             <div class="notice response-bulk-confirmation">
                 <h3>Konfirmasi {{ count($bulkResponseIds) }} respons</h3>
-                <dl class="response-confirmation-dates"><div><dt>Tenggat portofolio</dt><dd>{{ \Carbon\Carbon::parse($bulkApplication['portfolio_deadline'])->format('d M Y, H:i') }}</dd></div><div><dt>Tenggat tes</dt><dd>{{ \Carbon\Carbon::parse($bulkApplication['test_deadline'])->format('d M Y, H:i') }}</dd></div><div><dt>Label tes</dt><dd>{{ $bulkApplication['task_label'] }}</dd></div></dl>
-                <p>{{ $bulkApplication['instructions'] ?? '' }}</p>
+                <dl class="response-confirmation-dates"><div><dt>Tenggat portofolio</dt><dd>{{ \Carbon\Carbon::parse($bulkApplication['portfolio_deadline'])->format('d M Y, H:i') }}</dd></div></dl>
                 <p>Daftar penerima dan tenggat dikunci saat pratinjau. Buat pratinjau ulang jika Anda mengubah pengaturan. {{ count($bulkResponseIds) > 20 ? 'Berikut 20 penerima pertama.' : '' }}</p>
                 <div class="table-wrap response-table-wrap"><table class="portal-table response-table"><thead><tr><th>Kandidat</th><th>Tujuan</th></tr></thead><tbody>
                     @foreach($bulkPreview as $recipient)<tr><td data-label="Kandidat"><strong>{{ $recipient->name }}</strong><small>{{ $recipient->email }}</small></td><td data-label="Tujuan">{{ $recipient->intake->position->name }}<small>{{ $recipient->intake->period->name }}</small></td></tr>@endforeach

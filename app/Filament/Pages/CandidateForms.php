@@ -76,7 +76,7 @@ class CandidateForms extends Page
 
     public array $intake = ['candidate_form_version_id' => '', 'position_id' => '', 'recruitment_period_id' => '', 'starts_at' => '', 'deadline' => '', 'max_responses' => ''];
 
-    public array $application = ['portfolio_deadline' => '', 'test_deadline' => '', 'task_label' => 'Tes teknis', 'instructions' => ''];
+    public array $application = ['portfolio_deadline' => ''];
 
     public bool $confirmLink = false;
 

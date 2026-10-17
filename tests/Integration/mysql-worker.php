@@ -30,7 +30,7 @@ try {
         $version = app(SubmissionService::class)->save($submission, $user, (int) $versionId, ['attachments' => [['id' => (int) $fileId]]], true);
         echo json_encode(['receipt' => $version->receipt]);
     } elseif ($action === 'upload') {
-        $file = app(UploadService::class)->store($submission, $user, UploadedFile::fake()->create('result.pdf', 600, 'application/pdf'), 'technical_result');
+        $file = app(UploadService::class)->store($submission, $user, UploadedFile::fake()->create('result.pdf', 600, 'application/pdf'), 'portfolio_evidence');
         echo json_encode(['status' => 'accepted']);
     } else {
         throw new RuntimeException('Unknown test action.');

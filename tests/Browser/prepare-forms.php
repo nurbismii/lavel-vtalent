@@ -29,7 +29,7 @@ foreach (['text' => 'Domisili saat ini', 'date' => 'Tanggal lahir', 'select' => 
     $fields[] = ['id' => (string) Str::uuid(), 'type' => $type, 'label' => $label, 'help' => $type === 'file' ? 'Unggah CV terbaru dalam format PDF.' : '', 'placeholder' => '', 'required' => true, 'options' => ['Diploma', 'Sarjana'], 'max_length' => 255, 'min' => '', 'max' => '', 'max_mb' => 10, 'max_files' => 1, 'extensions' => ['pdf']];
 }
 $service = app(CandidateFormService::class);
-$form = $service->saveTemplate($admin, null, 0, ['title' => 'Kenali potensi Anda', 'description' => 'Ceritakan pengalaman dan latar belakang Anda untuk bergabung dengan tim VDNi.', 'fields' => $fields]);
+$form = $service->saveTemplate($admin, null, 0, ['title' => 'Kenali potensi Anda', 'description' => 'Ceritakan pengalaman dan latar belakang Anda untuk bergabung dengan tim VDNI.', 'fields' => $fields]);
 $version = $service->publish($admin, $form, $form->lock_version);
 $intake = $service->createIntake($admin, ['candidate_form_version_id' => $version->id, 'position_id' => $position->id, 'recruitment_period_id' => $period->id, 'deadline' => now()->addDays(7)->toDateTimeString()]);
 $raw = Str::random(64);

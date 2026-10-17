@@ -10,9 +10,11 @@ use App\Models\RecruitmentApplication;
 use App\Models\TechnicalAssessmentAttempt;
 use App\Models\User;
 use App\Services\TechnicalAssessmentService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\TestWith;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class TechnicalAssessmentTest extends TestCase
@@ -114,6 +116,146 @@ class TechnicalAssessmentTest extends TestCase
             ->assertSet('paginators.page', 1)
             ->assertViewHas('attempts', fn ($attempts) => $attempts->getCollection()->modelKeys() === [$first->id])
             ->assertViewHas('applications', fn ($applications) => $applications->modelKeys() === [$second->recruitment_application_id]);
+    }
+
+    public function test_admin_can_delete_only_the_selected_technical_result_after_confirmation(): void
+    {
+        $this->freezeTime();
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $attempt = $this->attempt('A', ['completed_at' => now(), 'answers' => [1 => ['A01' => 'C']], 'scores' => ['Penalaran' => 1], 'review' => ['status' => 'Kemampuan terdemonstrasi', 'notes' => 'Bukti penilaian kandidat.']]);
+        $application = $attempt->application;
+        $otherForm = $this->attempt('B', ['recruitment_application_id' => $application->id]);
+        $otherCandidate = $this->attempt();
+        $activity = AuditLog::record('technical_assessment.answers_saved', $attempt, $application->user);
+
+        $page = Livewire::actingAs($admin)->test(TechnicalAssessments::class)
+            ->call('selectAttempt', $attempt->id)->assertSee('Hapus hasil tes')
+            ->call('confirmAttemptDeletion', $attempt->id)->assertSee('Ya, hapus hasil tes')->assertSee('dihapus permanen');
+        $this->assertModelExists($attempt);
+        $page->call('cancelAttemptDeletion')->assertSet('deletingAttemptId', null);
+        $this->assertModelExists($attempt);
+        $page->call('confirmAttemptDeletion', $attempt->id)->call('deleteAttempt')
+            ->assertHasNoErrors()->assertSet('deletingAttemptId', null)->assertSet('attemptId', null)
+            ->assertSet('ratings', [])->assertSet('reviewStatus', '')->assertSet('reviewNotes', '')
+            ->assertViewHas('selected', null)->assertSee('Hasil tes teknis berhasil dihapus');
+
+        $this->assertModelMissing($attempt);
+        $this->assertModelExists($application);
+        $this->assertModelExists($application->user);
+        $this->assertModelExists($otherForm);
+        $this->assertModelExists($otherCandidate);
+        $this->assertModelExists($activity);
+        $audit = AuditLog::where('action', 'technical_assessment.attempt_deleted')->sole();
+        $this->assertSame($admin->id, $audit->actor_id);
+        $this->assertSame($attempt->id, $audit->target_id);
+        $this->assertSame(['recruitment_application_id' => $application->id, 'form' => 'A', 'version' => $attempt->version], $audit->metadata);
+        $this->loginFor($attempt);
+        $this->getJson(route('candidate.technical-assessments.show', $attempt))->assertNotFound();
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), ['action' => 'save', 'section' => 1, 'revision' => 0, 'answers' => ['A01' => 'C']])->assertNotFound();
+    }
+
+    public function test_technical_result_deletion_requires_confirmation(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $attempt = $this->attempt();
+
+        Livewire::actingAs($admin)->test(TechnicalAssessments::class)
+            ->call('selectAttempt', $attempt->id)->call('deleteAttempt')->assertStatus(422);
+
+        $this->assertModelExists($attempt);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'technical_assessment.attempt_deleted']);
+    }
+
+    public function test_switching_technical_sessions_cancels_pending_deletion(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $first = $this->attempt();
+        $second = $this->attempt();
+
+        Livewire::actingAs($admin)->test(TechnicalAssessments::class)
+            ->call('selectAttempt', $first->id)->call('confirmAttemptDeletion', $first->id)
+            ->call('selectAttempt', $second->id)->assertSet('deletingAttemptId', null)
+            ->call('deleteAttempt')->assertStatus(422);
+
+        $this->assertModelExists($first);
+        $this->assertModelExists($second);
+    }
+
+    public function test_admin_can_delete_an_active_technical_session_and_assign_a_fresh_attempt(): void
+    {
+        $this->freezeTime();
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_index' => 1, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15), 'answers' => [1 => ['A01' => 'C']]]);
+
+        $page = Livewire::actingAs($admin)->test(TechnicalAssessments::class)
+            ->call('selectAttempt', $attempt->id)->call('confirmAttemptDeletion', $attempt->id)
+            ->assertSee('Sesi yang sedang berlangsung akan kehilangan akses.')
+            ->call('deleteAttempt')->assertHasNoErrors();
+        $this->assertModelMissing($attempt);
+        $page->set('applicationIds', [$attempt->recruitment_application_id])
+            ->set('opensAt', now()->subMinute()->timezone(AppSetting::valueFor('timezone'))->toDateTimeString())
+            ->set('deadline', now()->addHours(3)->timezone(AppSetting::valueFor('timezone'))->toDateTimeString())
+            ->set('reviewed', true)->call('assign')->assertHasNoErrors();
+
+        $fresh = TechnicalAssessmentAttempt::sole();
+        $this->assertNotSame($attempt->id, $fresh->id);
+        $this->assertSame($attempt->recruitment_application_id, $fresh->recruitment_application_id);
+        $this->assertSame([], $fresh->answers);
+        $this->assertNull($fresh->scores);
+        $this->assertNull($fresh->review);
+        $this->assertNull($fresh->section_started_at);
+    }
+
+    #[TestWith(['candidate', true, false])]
+    #[TestWith(['admin', false, false])]
+    #[TestWith(['admin', true, true])]
+    public function test_technical_result_deletion_is_forbidden_without_active_admin_access(string $role, bool $active, bool $mustChangePassword): void
+    {
+        $attempt = $this->attempt();
+        $actor = User::factory()->create(['role' => Role::from($role), 'active' => $active, 'must_change_password' => $mustChangePassword]);
+
+        try {
+            app(TechnicalAssessmentService::class)->deleteAttempt($actor, $attempt->id);
+            $this->fail('Technical result deletion must require active admin access.');
+        } catch (HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
+
+        $this->assertModelExists($attempt);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'technical_assessment.attempt_deleted']);
+    }
+
+    public function test_admin_access_revoked_after_confirmation_cannot_delete_a_technical_result(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $attempt = $this->attempt();
+        $page = Livewire::actingAs($admin)->test(TechnicalAssessments::class)
+            ->call('selectAttempt', $attempt->id)->call('confirmAttemptDeletion', $attempt->id);
+        $admin->update(['active' => false]);
+
+        $page->call('deleteAttempt')->assertForbidden();
+
+        $this->assertModelExists($attempt);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'technical_assessment.attempt_deleted']);
+    }
+
+    public function test_purged_application_results_cannot_be_deleted_through_technical_assessments(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $attempt = $this->attempt();
+        $attempt->application->update(['purged_at' => now()]);
+
+        try {
+            app(TechnicalAssessmentService::class)->deleteAttempt($admin, $attempt->id);
+            $this->fail('Purged application results must be unavailable.');
+        } catch (HttpException $exception) {
+            $this->assertSame(404, $exception->getStatusCode());
+        }
+
+        $this->assertModelExists($attempt);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'technical_assessment.attempt_deleted']);
+        $this->expectException(ModelNotFoundException::class);
+        Livewire::actingAs($admin)->test(TechnicalAssessments::class)->call('confirmAttemptDeletion', $attempt->id);
     }
 
     public function test_candidate_only_sees_own_current_stage_and_no_secret_data_in_html_or_json(): void
@@ -291,6 +433,39 @@ class TechnicalAssessmentTest extends TestCase
         $this->postJson(route('candidate.technical-assessments.update', $attempt), ['action' => 'conditions', 'conditions' => ['technical_conditions' => '<script>alert(1)</script>'], 'confirmation' => true])->assertOk();
         $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false)->assertDontSee('<script>alert(1)</script>', false);
         Livewire::actingAs(User::factory()->create(['role' => Role::Admin]))->test(TechnicalAssessments::class)->call('selectAttempt', $attempt->id)->assertSee('Riwayat aktivitas sesi')->assertSee('bukan bukti kecurangan')->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false);
+    }
+
+    public function test_activity_summary_counts_all_events_per_candidate_beyond_the_latest_history(): void
+    {
+        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15)]);
+        $other = $this->attempt();
+        $this->loginFor($attempt);
+        foreach (['tab_hidden', 'tab_hidden', 'window_blur', 'fullscreen_exit'] as $event) {
+            $this->postJson(route('candidate.technical-assessments.activity', $attempt), ['event' => $event, 'section' => 0])->assertNoContent();
+        }
+        AuditLog::record('technical_assessment.activity.tab_hidden', $other, $other->application->user);
+        for ($index = 0; $index < 101; $index++) {
+            AuditLog::record('technical_assessment.answers_saved', $attempt, $attempt->application->user);
+        }
+
+        Livewire::actingAs(User::factory()->create(['role' => Role::Admin]))->test(TechnicalAssessments::class)
+            ->assertSee('Catatan aktivitas')->assertSee('Beralih tab')->assertSee('Kehilangan fokus')->assertSee('Keluar layar penuh')
+            ->assertViewHas('attempts', function ($attempts) use ($attempt, $other): bool {
+                $summary = $attempts->getCollection()->firstWhere('id', $attempt->id);
+                $otherSummary = $attempts->getCollection()->firstWhere('id', $other->id);
+
+                return $summary->tab_hidden_count === 2 && $summary->window_blur_count === 1 && $summary->fullscreen_exit_count === 1 && $otherSummary->tab_hidden_count === 1;
+            });
+    }
+
+    public function test_activity_from_another_candidate_is_rejected_without_a_log(): void
+    {
+        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_started_at' => now(), 'section_expires_at' => now()->addMinute()]);
+        $this->loginFor($this->attempt());
+
+        $this->postJson(route('candidate.technical-assessments.activity', $attempt), ['event' => 'tab_hidden', 'section' => 0])->assertNotFound();
+
+        $this->assertDatabaseCount('audit_logs', 0);
     }
 
     public function test_admin_extension_preserves_answers_and_revision_and_cannot_reopen_expired_stage(): void

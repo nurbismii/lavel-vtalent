@@ -33,7 +33,7 @@ if ($action === 'unique') {
     $result = $service->save($response, 0, ['name' => 'Kandidat', 'answers' => [], 'consent' => true], true);
     echo json_encode(['reference' => $result->reference]);
 } elseif ($action === 'link') {
-    $result = $service->link(User::findOrFail($adminId), $response, ['portfolio_deadline' => now()->addDays(3)->toDateTimeString(), 'test_deadline' => now()->addDays(4)->toDateTimeString(), 'task_label' => 'Tes']);
+    $result = $service->link(User::findOrFail($adminId), $response, ['portfolio_deadline' => now()->addDays(3)->toDateTimeString()]);
     echo json_encode(['user_id' => $result->user_id, 'application_id' => $result->recruitment_application_id]);
 } else {
     throw new RuntimeException('Unknown action.');

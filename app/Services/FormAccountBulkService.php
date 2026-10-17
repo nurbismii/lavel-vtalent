@@ -27,13 +27,10 @@ class FormAccountBulkService
     public function validateApplication(array $data): array
     {
         $data = Validator::make($data, [
-            'portfolio_deadline' => 'required|date', 'test_deadline' => 'required|date',
-            'task_label' => 'required|string|max:255', 'instructions' => 'nullable|string|max:5000',
+            'portfolio_deadline' => 'required|date',
         ])->validate();
-        foreach (['portfolio_deadline', 'test_deadline'] as $key) {
-            if (Carbon::parse($data[$key], AppSetting::valueFor('timezone'))->lte(now())) {
-                throw ValidationException::withMessages([$key => 'Tenggat harus berada di masa depan pada zona waktu portal.']);
-            }
+        if (Carbon::parse($data['portfolio_deadline'], AppSetting::valueFor('timezone'))->lte(now())) {
+            throw ValidationException::withMessages(['portfolio_deadline' => 'Tenggat harus berada di masa depan pada zona waktu portal.']);
         }
 
         return $data;

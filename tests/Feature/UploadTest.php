@@ -24,19 +24,15 @@ class UploadTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_upload_names_use_candidate_identity_for_portfolio_evidence_and_technical_results(): void
+    public function test_upload_names_use_candidate_identity_for_portfolio_and_evidence(): void
     {
         config(['submissions.scan_enabled' => false]);
         Storage::fake('private');
         $portfolio = Submission::factory()->create();
         $user = $portfolio->application->user;
         $user->update(['name' => 'Andi / Putra']);
-        foreach (['portfolio_main' => 'portofolio', 'portfolio_evidence' => 'lampiran_portofolio', 'technical_result' => 'tes_teknis'] as $purpose => $label) {
+        foreach (['portfolio_main' => 'portofolio', 'portfolio_evidence' => 'lampiran_portofolio'] as $purpose => $label) {
             $submission = $portfolio;
-            if ($purpose === 'technical_result') {
-                $portfolio->update(['status' => 'exempt']);
-                $submission = Submission::factory()->create(['recruitment_application_id' => $portfolio->recruitment_application_id, 'type' => 'technical_test']);
-            }
             $file = app(UploadService::class)->store($submission, $user, HttpFile::fake()->create('unrelated.pdf', 1, 'application/pdf'), $purpose);
             $this->assertStringStartsWith('andi_putra_'.$label.'_', $file->original_name);
             $this->assertStringEndsWith('.pdf', $file->original_name);

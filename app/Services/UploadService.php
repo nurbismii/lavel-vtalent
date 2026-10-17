@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\ScanStatus;
-use App\Enums\SubmissionType;
 use App\Jobs\ScanUploadedFile;
 use App\Models\AppSetting;
 use App\Models\FormDocument;
@@ -25,7 +24,7 @@ class UploadService
     public function store(Submission $submission, User $actor, HttpFile $upload, string $purpose): UploadedFile
     {
         Gate::forUser($actor)->authorize('update', $submission);
-        $allowed = $submission->type === SubmissionType::Portfolio ? ['portfolio_main', 'portfolio_evidence'] : ['technical_result'];
+        $allowed = ['portfolio_main', 'portfolio_evidence'];
         abort_unless(in_array($purpose, $allowed, true), 422);
         $limits = AppSetting::valueFor('uploads')[$purpose];
         Validator::make(['upload' => $upload], ['upload' => ['required', 'file', 'max:'.($limits['max_mb'] * 1024), 'extensions:'.implode(',', $limits['extensions']), 'mimes:'.implode(',', $limits['extensions'])]])->validate();
@@ -34,7 +33,6 @@ class UploadService
         $documentType = match ($purpose) {
             'portfolio_main' => 'portofolio',
             'portfolio_evidence' => 'lampiran_portofolio',
-            'technical_result' => 'tes_teknis',
         };
         $filename = $candidateName.'_'.$documentType.'_'.Str::uuid().'.'.strtolower($upload->getClientOriginalExtension());
         try {

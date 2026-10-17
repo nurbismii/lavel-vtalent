@@ -26,6 +26,5 @@ $position = Position::create(['name' => 'Frontend Developer']);
 $period = RecruitmentPeriod::create(['name' => 'September 2026', 'starts_at' => now(), 'ends_at' => now()->addMonth()]);
 $application = RecruitmentApplication::create(['user_id' => $user->id, 'active_user_id' => $user->id, 'position_id' => $position->id, 'recruitment_period_id' => $period->id]);
 $portfolio = $application->submissions()->create(['type' => 'portfolio', 'deadline' => now()->addDays(3)]);
-$application->submissions()->create(['type' => 'technical_test', 'deadline' => now()->addDays(5), 'task_label' => 'Implementasi antarmuka web', 'instructions' => 'Unggah hasil pekerjaan sesuai brief yang diberikan HR.']);
 file_put_contents(storage_path('framework/testing/browser-credentials.json'), json_encode(['candidate' => $user->email, 'admin' => $admin->email, 'password' => $password, 'secret' => $secret, 'submission' => $portfolio->id, 'application' => $application->id]));
 echo "Isolated browser fixtures ready.\n";

@@ -179,8 +179,7 @@ class RecruitmentService
         Validator::make($data, [
             'name' => 'required|string|max:255', 'email' => 'required|email|max:255',
             'position_id' => 'required|exists:positions,id', 'recruitment_period_id' => 'required|exists:recruitment_periods,id',
-            'portfolio_deadline' => 'required|date', 'test_deadline' => 'required|date',
-            'task_label' => 'required|string|max:255', 'instructions' => 'nullable|string|max:5000',
+            'portfolio_deadline' => 'required|date',
         ])->validate();
 
         return DB::transaction(function () use ($actor, $data) {
@@ -199,19 +198,11 @@ class RecruitmentService
                 throw ValidationException::withMessages(['email' => 'Kandidat masih memiliki lamaran aktif. Arsipkan lamaran sebelumnya terlebih dahulu.']);
             }
             $app = RecruitmentApplication::create(['user_id' => $user->id, 'active_user_id' => $user->id, 'position_id' => $data['position_id'], 'recruitment_period_id' => $data['recruitment_period_id']]);
-            foreach (SubmissionType::cases() as $type) {
-                $deadline = Carbon::parse($data[$type === SubmissionType::Portfolio ? 'portfolio_deadline' : 'test_deadline'], AppSetting::valueFor('timezone'))->utc();
-                if ($deadline->isPast()) {
-                    throw ValidationException::withMessages(['portfolio_deadline' => 'Tenggat harus berada di masa depan.']);
-                }
-                if ($type === SubmissionType::TechnicalTest) {
-                    $task = $app->technicalTask();
-                    if ($task && $deadline->lte($task->starts_at)) {
-                        throw ValidationException::withMessages(['test_deadline' => 'Tenggat tes harus setelah jadwal mulai soal untuk posisi dan batch ini.']);
-                    }
-                }
-                $app->submissions()->create(['type' => $type, 'deadline' => $deadline, 'task_label' => $type === SubmissionType::TechnicalTest ? $data['task_label'] : null, 'instructions' => $type === SubmissionType::TechnicalTest ? ($data['instructions'] ?? null) : null]);
+            $deadline = Carbon::parse($data['portfolio_deadline'], AppSetting::valueFor('timezone'))->utc();
+            if ($deadline->lte(now())) {
+                throw ValidationException::withMessages(['portfolio_deadline' => 'Tenggat harus berada di masa depan.']);
             }
+            $app->submissions()->create(['type' => SubmissionType::Portfolio, 'deadline' => $deadline]);
             AuditLog::record('application.created', $app, $actor);
 
             return ['application' => $app, 'password' => $password];

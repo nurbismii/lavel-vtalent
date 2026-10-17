@@ -1,11 +1,10 @@
 <div class="recruitment-tools" x-data="{ workspace: 'deadlines' }">
 <header class="tools-heading">
-    <div><div class="eyebrow">Administrasi rekrutmen</div><h1>Pengelolaan massal</h1><p>Atur tenggat, siapkan soal, dan kirim akses kandidat dari satu tempat.</p><span class="tools-timezone"><x-heroicon-o-clock/> Zona waktu {{ App\Models\AppSetting::valueFor('timezone') }}</span></div>
+    <div><div class="eyebrow">Administrasi rekrutmen</div><h1>Pengelolaan massal</h1><p>Atur tenggat portofolio dan kirim akses kandidat dari satu tempat.</p><span class="tools-timezone"><x-heroicon-o-clock/> Zona waktu {{ App\Models\AppSetting::valueFor('timezone') }}</span></div>
     <a class="button" href="{{ route('filament.admin.pages.recruitment', ['section' => 'applications']) }}"><x-heroicon-o-arrow-left/> Kembali ke lamaran</a>
 </header>
 <nav class="tools-navigation" aria-label="Pilih pengelolaan">
     <button type="button" x-on:click="workspace = 'deadlines'" x-bind:class="{ 'is-active': workspace === 'deadlines' }" x-bind:aria-pressed="workspace === 'deadlines'"><span class="tools-nav-icon"><x-heroicon-o-calendar-days/></span><span><strong>Tenggat massal</strong><small>Perpanjang jadwal satu batch</small></span><span class="tools-nav-arrow" aria-hidden="true"></span></button>
-    <button type="button" x-on:click="workspace = 'tasks'" x-bind:class="{ 'is-active': workspace === 'tasks' }" x-bind:aria-pressed="workspace === 'tasks'"><span class="tools-nav-icon"><x-heroicon-o-document-text/></span><span><strong>Soal tes teknis</strong><small>Kelola PDF dan waktu mulai</small></span><span class="tools-nav-arrow" aria-hidden="true"></span></button>
     <button type="button" x-on:click="workspace = 'email'" x-bind:class="{ 'is-active': workspace === 'email' }" x-bind:aria-pressed="workspace === 'email'"><span class="tools-nav-icon"><x-heroicon-o-envelope/></span><span><strong>Email kandidat</strong><small>Kirim akses dan pesan HR</small></span><span class="tools-nav-arrow" aria-hidden="true"></span></button>
 </nav>
 <section class="panel tools-form-panel" x-show="workspace === 'deadlines'">
@@ -14,34 +13,13 @@
     <form wire:submit="bulkDeadlines" class="tools-form-grid">
         <label class="field">Posisi<select wire:model.live="bulk.position_id" required><option value="">Pilih posisi</option>@foreach($positions as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach</select></label>
         <label class="field">Batch / periode<select wire:model.live="bulk.recruitment_period_id" required><option value="">Pilih batch</option>@foreach($periods as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach</select></label>
-        <label class="field">Jenis pengumpulan<select wire:model.live="bulk.type"><option value="technical_test">Tes teknis</option><option value="portfolio">Portofolio</option></select></label>
+        <label class="field">Jenis pengumpulan<select wire:model.live="bulk.type"><option value="portfolio">Portofolio</option></select></label>
         <div class="tools-scope" role="status"><span class="tools-scope-count">{{ $bulkCount }}</span><span><strong>pengumpulan dapat diperpanjang</strong><small>Sesuai posisi, batch, dan jenis pengumpulan yang dipilih.</small></span></div>
         <label class="field tools-full">Tenggat baru<input type="datetime-local" wire:model="bulk.deadline" required></label>
         <small class="tools-form-hint">Pilih waktu di masa depan yang lebih lama daripada seluruh tenggat sebelumnya.</small>
         <label class="field tools-full">Alasan perubahan<textarea placeholder="Contoh: tambahan waktu pengerjaan sesuai keputusan tim HR" rows="3" wire:model="bulk.reason" minlength="5" maxlength="2000" required></textarea></label>
         <div class="tools-form-footer"><small>Perubahan dicatat dalam riwayat aktivitas.</small><button class="button primary" wire:loading.attr="disabled" wire:target="bulkDeadlines"><span wire:loading.remove wire:target="bulkDeadlines">Simpan perpanjangan</span><span wire:loading wire:target="bulkDeadlines">Menyimpan…</span><x-heroicon-o-arrow-right/></button></div>
     </form>
-</section>
-<section class="panel tools-form-panel" x-show="workspace === 'tasks'" x-ref="taskEditor" x-cloak>
-    <div class="eyebrow">Penugasan kandidat</div><h2>Soal & jadwal mulai tes teknis</h2>
-    <p class="muted">Satu PDF per posisi dan batch, maksimal 10 MB. Kandidat terdaftar dapat mengunduh sejak waktu mulai. Soal yang sudah dimulai tidak dapat diubah.</p>
-    <form class="tools-form-grid" wire:submit="saveTechnicalTask" x-data="{ uploading: false }" x-on:livewire-upload-start="uploading = true" x-on:livewire-upload-finish="uploading = false" x-on:livewire-upload-error="uploading = false" x-on:livewire-upload-cancel="uploading = false">
-        <label class="field">Posisi<select wire:model="task.position_id" required><option value="">Pilih posisi</option>@foreach($positions as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach</select></label>
-        <label class="field">Batch / periode<select wire:model="task.recruitment_period_id" required><option value="">Pilih batch</option>@foreach($periods as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach</select></label>
-        <label class="field">Mulai pengerjaan<input type="datetime-local" wire:model="task.starts_at" required></label>
-        <label class="field tools-upload">File soal PDF<input type="file" wire:model="taskFile" accept=".pdf,application/pdf"></label>
-        <small class="tools-form-hint">Saat mengedit, file boleh dikosongkan untuk tetap menggunakan soal lama.</small>
-        <p x-show="uploading" x-cloak role="status">Mengunggah soal…</p>
-        <div class="tools-form-footer"><small>PDF hanya tersedia untuk kandidat pada posisi dan batch terkait.</small><button class="button primary" wire:loading.attr="disabled" x-bind:disabled="uploading"><span wire:loading.remove wire:target="saveTechnicalTask">Simpan soal & jadwal</span><span wire:loading wire:target="saveTechnicalTask">Menyimpan…</span><x-heroicon-o-arrow-right/></button></div>
-    </form>
-</section>
-<section class="panel tools-table-panel" x-show="workspace === 'tasks'" x-cloak>
-    <h2>Daftar soal teknis</h2>
-    <div class="table-wrap"><table class="portal-table"><thead><tr><th>Posisi / batch</th><th>Mulai</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
-    @forelse($technicalTasks as $item)
-        <tr><td><strong>{{ $item->position->name }}</strong><small>{{ $item->period->name }}</small></td><td>{{ $item->starts_at->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}</td><td><span class="badge {{ $item->starts_at->isFuture() ? 'draft' : 'clean' }}">{{ $item->starts_at->isFuture() ? 'Terjadwal' : 'Sudah dimulai' }}</span></td><td>@if($item->starts_at->isFuture())<button class="button small" wire:click="editTechnicalTask({{ $item->id }})" x-on:click="$refs.taskEditor.scrollIntoView({ block: 'start' })">Edit soal / jadwal</button>@endif</td></tr>
-    @empty<tr><td colspan="4" class="tools-empty"><x-heroicon-o-document-plus/><strong>Belum ada soal tes teknis</strong><p>Unggah PDF dan tentukan jadwal mulai melalui formulir di atas.</p></td></tr>@endforelse
-    </tbody></table></div>{{ $technicalTasks->links() }}
 </section>
 <section class="panel tools-email-panel" x-show="workspace === 'email'" x-cloak>
     <div class="eyebrow">Komunikasi kandidat</div><h2>Kirim akses akun & pesan HR</h2>

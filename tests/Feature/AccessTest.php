@@ -32,7 +32,7 @@ class AccessTest extends TestCase
 
     public function test_login_pages_render(): void
     {
-        $this->get('/login')->assertOk()->assertSee('VDNi');
+        $this->get('/login')->assertOk()->assertSee('VDNI');
         $this->get('/admin/login')->assertOk();
         $this->get('/privacy')->assertOk();
     }

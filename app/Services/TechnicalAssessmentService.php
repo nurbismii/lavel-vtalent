@@ -259,6 +259,21 @@ class TechnicalAssessmentService
         });
     }
 
+    public function deleteAttempt(User $actor, int $id): void
+    {
+        $this->admin($actor);
+        DB::transaction(function () use ($actor, $id): void {
+            $attempt = TechnicalAssessmentAttempt::lockForUpdate()->findOrFail($id);
+            abort_if($attempt->application->purged_at, 404);
+            AuditLog::record('technical_assessment.attempt_deleted', $attempt, $actor, metadata: [
+                'recruitment_application_id' => $attempt->recruitment_application_id,
+                'form' => $attempt->form,
+                'version' => $attempt->version,
+            ]);
+            $attempt->delete();
+        });
+    }
+
     /** @param array<string, mixed> $review */
     public function review(User $actor, int $id, array $review): void
     {

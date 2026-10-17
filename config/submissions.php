@@ -15,6 +15,5 @@ return [
     'uploads' => [
         'portfolio_main' => ['extensions' => ['pdf'], 'max_mb' => 20, 'max_files' => 1],
         'portfolio_evidence' => ['extensions' => ['pdf', 'docx', 'jpg', 'jpeg', 'png'], 'max_mb' => 10, 'max_files' => 10],
-        'technical_result' => ['extensions' => ['pdf', 'jpg', 'jpeg', 'png', 'docx', 'xlsx', 'pptx', 'zip'], 'max_mb' => 25, 'max_files' => 10],
     ],
 ];

@@ -10,6 +10,7 @@ use App\Models\PortfolioExport;
 use App\Models\RecruitmentApplication;
 use App\Models\Submission;
 use App\Models\SubmissionVersion;
+use App\Models\TechnicalAssessmentAttempt;
 use App\Models\UploadedFile;
 use App\Models\User;
 use App\Services\PortfolioExportService;
@@ -129,13 +130,13 @@ class PortfolioExportTest extends TestCase
         $application = RecruitmentApplication::factory()->create();
         $application->user->update(['name' => 'Export Match']);
         Submission::factory()->create(['recruitment_application_id' => $application->id, 'type' => 'portfolio', 'status' => 'draft', 'deadline' => now()->subDay()]);
-        Submission::factory()->create(['recruitment_application_id' => $application->id, 'type' => 'technical_test', 'status' => 'not_started']);
+        TechnicalAssessmentAttempt::factory()->create(['recruitment_application_id' => $application->id]);
         RecruitmentApplication::factory()->create();
         RecruitmentApplication::factory()->create([...$application->only('position_id', 'recruitment_period_id'), 'archived_at' => now()]);
         $page = Livewire::actingAs($this->admin())->test(Recruitment::class)
             ->set('search', 'Export Match')->set('positionFilter', (string) $application->position_id)
             ->set('periodFilter', (string) $application->recruitment_period_id)->set('portfolioFilter', 'draft')
-            ->set('testFilter', 'not_started')->set('overdue', true)
+            ->set('testFilter', 'waiting')->set('overdue', true)
             ->call('exportPortfolios')->assertHasNoErrors();
         $export = PortfolioExport::firstOrFail();
         $this->assertSame([$application->id], $export->application_ids);

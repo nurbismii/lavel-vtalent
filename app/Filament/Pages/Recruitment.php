@@ -14,13 +14,14 @@ use App\Models\Position;
 use App\Models\RecruitmentApplication;
 use App\Models\RecruitmentPeriod;
 use App\Models\Submission;
-use App\Models\TechnicalTask;
+use App\Models\TechnicalAssessmentAttempt;
 use App\Models\UploadedFile;
 use App\Models\User;
 use App\Services\CandidateImportService;
 use App\Services\RecruitmentService;
 use App\Services\RecruitmentToolsService;
 use App\Services\SubmissionService;
+use App\Services\TechnicalAssessmentService;
 use Filament\Pages\Page;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -38,11 +39,7 @@ class Recruitment extends Page
     use WithFileUploads;
     use WithPagination;
 
-    public array $bulk = ['position_id' => '', 'recruitment_period_id' => '', 'type' => 'technical_test', 'deadline' => '', 'reason' => ''];
-
-    public array $task = ['position_id' => '', 'recruitment_period_id' => '', 'starts_at' => ''];
-
-    public $taskFile;
+    public array $bulk = ['position_id' => '', 'recruitment_period_id' => '', 'type' => 'portfolio', 'deadline' => '', 'reason' => ''];
 
     public array $recipientIds = [];
 
@@ -90,24 +87,6 @@ class Recruitment extends Page
             $service->dispatchAccess($delivery->fresh());
         }
         $this->feedback = 'Email dijadwalkan ulang. Periksa status pengiriman.';
-    }
-
-    public function saveTechnicalTask(): void
-    {
-        app(RecruitmentToolsService::class)->saveTask($this->authorizeAdmin(), $this->task, $this->taskFile);
-        if ($this->taskFile instanceof TemporaryUploadedFile) {
-            $this->taskFile->delete();
-        }
-        $this->reset('taskFile');
-        $this->feedback = 'Soal dan jadwal tes teknis berhasil disimpan.';
-    }
-
-    public function editTechnicalTask(int $id): void
-    {
-        $this->authorizeAdmin();
-        $task = TechnicalTask::findOrFail($id);
-        $this->task = ['position_id' => $task->position_id, 'recruitment_period_id' => $task->recruitment_period_id, 'starts_at' => $task->starts_at->timezone(AppSetting::valueFor('timezone'))->format('Y-m-d\TH:i')];
-        $this->reset('taskFile');
     }
 
     public $importFile;
@@ -228,7 +207,7 @@ class Recruitment extends Page
 
     public ?int $versionId = null;
 
-    public array $candidate = ['name' => '', 'email' => '', 'position_id' => '', 'recruitment_period_id' => '', 'portfolio_deadline' => '', 'test_deadline' => '', 'task_label' => '', 'instructions' => ''];
+    public array $candidate = ['name' => '', 'email' => '', 'position_id' => '', 'recruitment_period_id' => '', 'portfolio_deadline' => ''];
 
     public array $edit = ['name' => '', 'email' => '', 'active' => true];
 
@@ -417,7 +396,7 @@ class Recruitment extends Page
     {
         $this->authorizeAdmin();
         $this->reset('candidateDeactivation', 'deactivationEmail');
-        abort_unless(in_array($tab, ['Profil', 'Portofolio', 'Tes Teknis', 'Riwayat'], true), 404);
+        abort_unless(in_array($tab, ['Profil', 'Portofolio', 'Tes Teknis', 'Riwayat', 'Arsip Tes Upload'], true), 404);
         $this->tab = $tab;
         $this->versionId = null;
         $this->action = '';
@@ -431,7 +410,9 @@ class Recruitment extends Page
 
     private function submission(): Submission
     {
-        return $this->application()->submissions()->where('type', $this->tab === 'Portofolio' ? 'portfolio' : 'technical_test')->firstOrFail();
+        abort_unless($this->tab === 'Portofolio', 422);
+
+        return $this->application()->submissions()->where('type', SubmissionType::Portfolio)->firstOrFail();
     }
 
     public function prepareAction(string $action): void
@@ -481,15 +462,13 @@ class Recruitment extends Page
     {
         $actor = $this->authorizeAdmin();
         app(RecruitmentService::class)->adminReason($actor, $this->reason);
-        $this->validate(['candidate.position_id' => 'required|exists:positions,id', 'candidate.task_label' => 'required|string|max:255', 'candidate.instructions' => 'nullable|string|max:5000']);
+        $this->validate(['candidate.position_id' => 'required|exists:positions,id']);
         DB::transaction(function () use ($actor) {
             $app = RecruitmentApplication::lockForUpdate()->findOrFail($this->applicationId);
             abort_if($app->archived_at, 422);
             $before = $app->position_id;
             $app->update(['position_id' => $this->candidate['position_id']]);
-            $test = $app->submissions()->where('type', 'technical_test')->lockForUpdate()->firstOrFail();
-            abort_if($test->current_version_id, 422, 'Petunjuk tes final tidak dapat diubah.');
-            $test->update(['task_label' => $this->candidate['task_label'], 'instructions' => $this->candidate['instructions']]);
+            abort_if($app->technicalAssessmentAttempts()->exists() || $app->submissions()->where('type', SubmissionType::TechnicalTest)->whereNotNull('current_version_id')->exists(), 422, 'Posisi tidak dapat diubah setelah tes ditugaskan atau hasil lama dikirim final.');
             AuditLog::record('application.assignment_changed', $app, $actor, $this->reason, ['position_before' => $before, 'position_after' => $app->position_id]);
         });
         $this->feedback = 'Penugasan diperbarui.';
@@ -540,16 +519,19 @@ class Recruitment extends Page
 
     private function filteredApplications(): Builder
     {
-        $query = RecruitmentApplication::query()->with(['user', 'position', 'period', 'submissions']);
+        $query = RecruitmentApplication::query()->with(['user', 'position', 'period', 'submissions', 'technicalAssessmentAttempts']);
         $query->when(! $this->archived, fn ($q) => $q->whereNull('archived_at'))->when($this->archived, fn ($q) => $q->whereNotNull('archived_at'));
         $query->when($this->search, fn ($q) => $q->whereHas('user', fn ($u) => $u->where(fn ($s) => $s->where('name', 'like', '%'.$this->search.'%')->orWhere('email', 'like', '%'.$this->search.'%'))));
         $query->when($this->positionFilter, fn ($q) => $q->where('position_id', $this->positionFilter))->when($this->periodFilter, fn ($q) => $q->where('recruitment_period_id', $this->periodFilter));
-        foreach (['portfolio' => $this->portfolioFilter, 'technical_test' => $this->testFilter] as $type => $status) {
-            if ($status) {
-                $query->whereHas('submissions', fn ($s) => $s->where('type', $type)->where('status', $status));
-            }
-        }
-        $query->when($this->overdue, fn ($q) => $q->whereHas('submissions', fn ($s) => $s->where('deadline', '<', now())->whereIn('status', ['not_started', 'draft', 'revision'])));
+        $query->when($this->portfolioFilter, fn ($q) => $q->whereHas('submissions', fn ($s) => $s->where('type', SubmissionType::Portfolio)->where('status', $this->portfolioFilter)));
+        $query->when($this->testFilter, fn ($q) => $q->whereHas('technicalAssessmentAttempts', function (Builder $attempts): void {
+            match ($this->testFilter) {
+                'completed' => $attempts->whereNotNull('completed_at'),
+                'in_progress' => $attempts->whereNull('completed_at')->whereNotNull('section_started_at'),
+                default => $attempts->whereNull('completed_at')->whereNull('section_started_at'),
+            };
+        }));
+        $query->when($this->overdue, fn ($q) => $q->whereHas('submissions', fn ($s) => $s->where('type', SubmissionType::Portfolio)->where('deadline', '<', now())->whereIn('status', ['not_started', 'draft', 'revision'])));
 
         return $query;
     }
@@ -591,13 +573,17 @@ class Recruitment extends Page
         $this->authorizeAdmin();
         $query = $this->filteredApplications();
         $application = $this->applicationId ? RecruitmentApplication::with(['user', 'position', 'period', 'submissions'])->findOrFail($this->applicationId) : null;
-        $submission = $application?->submissions->firstWhere('type', $this->tab === 'Portofolio' ? SubmissionType::Portfolio : SubmissionType::TechnicalTest);
+        $submission = match ($this->tab) {
+            'Portofolio' => $application?->submissions->firstWhere('type', SubmissionType::Portfolio),
+            'Arsip Tes Upload' => $application?->submissions->firstWhere('type', SubmissionType::TechnicalTest),
+            default => null,
+        };
         $versions = $submission?->versions()->where('status', 'final')->latest('number')->get() ?? collect();
         $version = $this->versionId ? $versions->firstWhere('id', $this->versionId) : $versions->first();
         if ($version) {
             $version->load('attachments.file');
         }
-        $base = Submission::whereHas('application', fn ($q) => $q->whereNull('archived_at'));
+        $base = Submission::where('type', SubmissionType::Portfolio)->whereHas('application', fn ($q) => $q->whereNull('archived_at'));
 
         $candidateOptions = collect();
         if ($this->section === 'create' && $this->candidateMode === 'existing') {
@@ -611,10 +597,9 @@ class Recruitment extends Page
             'portfolioExports' => in_array($this->section, ['dashboard', 'applications'], true) ? PortfolioExport::where('actor_id', auth()->id())->where('expires_at', '>', now())->latest()->limit(5)->get() : collect(),
             'recipients' => $this->section === 'tools' ? $this->eligibleRecipients()->when($this->recipientSearch, fn ($q) => $q->where(fn ($s) => $s->where('name', 'like', '%'.mb_substr($this->recipientSearch, 0, 255).'%')->orWhere('email', 'like', '%'.mb_substr($this->recipientSearch, 0, 255).'%')))->orderBy('name')->orderBy('id')->limit(100)->get() : collect(),
             'accessDeliveries' => $this->section === 'tools' ? AccessDelivery::latest()->paginate(15, pageName: 'accessPage') : collect(),
-            'technicalTasks' => $this->section === 'tools' ? TechnicalTask::with(['position', 'period'])->latest()->paginate(15, pageName: 'taskPage') : collect(),
             'bulkCount' => $this->section === 'tools' ? Submission::where('type', $this->bulk['type'])->whereIn('status', ['not_started', 'draft', 'revision'])->whereHas('application', fn ($q) => $q->whereNull('archived_at')->where('position_id', $this->bulk['position_id'])->where('recruitment_period_id', $this->bulk['recruitment_period_id']))->count() : 0,
             'candidateOptions' => $candidateOptions, 'statusCounts' => (clone $base)->selectRaw('type, status, count(*) as total')->groupBy('type', 'status')->get(), 'applications' => in_array($this->section, ['dashboard', 'applications'], true) ? $query->latest()->paginate(15) : null, 'positions' => Position::orderBy('name')->get(), 'periods' => RecruitmentPeriod::latest()->get(), 'application' => $application, 'submission' => $submission, 'versions' => $versions, 'version' => $version,
-            'stats' => ['active' => RecruitmentApplication::whereNull('archived_at')->count(), 'portfolio' => (clone $base)->where('type', 'portfolio')->where('status', 'submitted')->count(), 'test' => (clone $base)->where('type', 'technical_test')->where('status', 'submitted')->count(), 'overdue' => (clone $base)->where('deadline', '<', now())->whereIn('status', ['not_started', 'draft', 'revision'])->count()],
+            'stats' => ['active' => RecruitmentApplication::whereNull('archived_at')->count(), 'portfolio' => (clone $base)->where('type', 'portfolio')->where('status', 'submitted')->count(), 'test' => TechnicalAssessmentService::available() ? TechnicalAssessmentAttempt::whereNotNull('completed_at')->whereHas('application', fn ($q) => $q->whereNull('archived_at')->whereNull('purged_at'))->count() : 0, 'overdue' => (clone $base)->where('deadline', '<', now())->whereIn('status', ['not_started', 'draft', 'revision'])->count()],
             'audits' => in_array($this->section, ['audit', 'detail'], true) ? AuditLog::with('actor')->when($application, fn ($q) => $q->where(fn ($s) => $s->where(fn ($a) => $a->where('target_type', RecruitmentApplication::class)->where('target_id', $application->id))->orWhere(fn ($a) => $a->where('target_type', Submission::class)->whereIn('target_id', $application->submissions->pluck('id')))->orWhere(fn ($a) => $a->where('target_type', User::class)->where('target_id', $application->user_id))))->latest()->paginate(20, pageName: 'auditPage') : collect(),
             'deliveries' => $this->section === 'operations' ? EmailDelivery::with('submission.application.user')->latest()->paginate(20) : collect(),
             'failedScans' => $this->section === 'operations' ? UploadedFile::whereIn('scan_status', ['failed', 'pending'])->with('submission.application.user')->latest()->limit(30)->get() : collect()];

@@ -29,8 +29,8 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->brandName('VDNi · Talent Portal')
-            ->brandLogo(asset('images/vdni-logo.png'))
+            ->brandName('VDNI · Talent Portal')
+            ->brandLogo(asset('images/VDNI-logo.png'))
             ->brandLogoHeight('2.5rem')
             ->profile(EditProfile::class)
             ->darkMode(false)
@@ -42,18 +42,18 @@ class AdminPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->homeUrl(fn () => route('filament.admin.pages.recruitment'))
-            ->navigationItems(array_map(fn ($key, $label, $icon) => NavigationItem::make($label)
-                ->icon($icon)
-                ->url(fn () => route('filament.admin.pages.recruitment', ['section' => $key]))
-                ->isActiveWhen(fn () => request()->routeIs('filament.admin.pages.recruitment') && request()->query('section', 'dashboard') === $key),
+            ->navigationItems(array_map(
+                fn ($key, $label, $icon) => NavigationItem::make($label)
+                    ->icon($icon)
+                    ->url(fn () => route('filament.admin.pages.recruitment', ['section' => $key]))
+                    ->isActiveWhen(fn () => request()->routeIs('filament.admin.pages.recruitment') && request()->query('section', 'dashboard') === $key),
                 ['dashboard', 'applications', 'tools', 'positions', 'periods', 'audit', 'operations', 'settings'],
                 ['Ringkasan', 'Kandidat & lamaran', 'Pengelolaan massal', 'Posisi', 'Periode rekrutmen', 'Riwayat aktivitas', 'Operasional', 'Pengaturan'],
-                ['heroicon-o-squares-2x2', 'heroicon-o-users', 'heroicon-o-adjustments-horizontal', 'heroicon-o-briefcase', 'heroicon-o-calendar-days', 'heroicon-o-clock', 'heroicon-o-server', 'heroicon-o-cog-6-tooth']))
-            ->pages([
-            ])
+                ['heroicon-o-squares-2x2', 'heroicon-o-users', 'heroicon-o-adjustments-horizontal', 'heroicon-o-briefcase', 'heroicon-o-calendar-days', 'heroicon-o-clock', 'heroicon-o-server', 'heroicon-o-cog-6-tooth']
+            ))
+            ->pages([])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
-            ->widgets([
-            ])
+            ->widgets([])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

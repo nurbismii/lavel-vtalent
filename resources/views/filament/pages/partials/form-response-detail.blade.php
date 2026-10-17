@@ -30,9 +30,6 @@
             @php($existingUser = App\Models\User::whereRaw('LOWER(email) = ?', [$selectedResponse->email])->first())
             <form wire:submit="link" class="panel response-link-panel"><h2>{{ $existingUser ? 'Hubungkan akun' : 'Buat akun & hubungkan data' }}</h2><p class="muted">{{ $existingUser ? 'Akun tersedia. Profil dan password lama tetap digunakan.' : 'Akun baru dan email akses akan dibuat untuk kandidat ini.' }}</p><div class="response-aside-note">Tenggat berlaku untuk lamaran baru. Jika lamaran pada posisi dan periode ini sudah aktif, tenggat sebelumnya dipertahankan.</div>
                 <label class="field">Tenggat portofolio<input type="datetime-local" wire:model="application.portfolio_deadline"></label>
-                <label class="field">Tenggat tes teknis<input type="datetime-local" wire:model="application.test_deadline"></label>
-                <label class="field">Label tes<input wire:model="application.task_label"></label>
-                <label class="field">Instruksi tes<textarea wire:model="application.instructions" rows="3"></textarea></label>
                 <small>Zona waktu: {{ $timezone }}</small>
                 <label class="form-check"><input type="checkbox" wire:model="confirmLink"> Saya sudah memeriksa email, posisi, dan periode tujuan penghubungan.</label>
                 <button class="button primary response-full-button" wire:loading.attr="disabled">{{ $existingUser ? 'Hubungkan respons' : 'Buat akun & hubungkan' }}</button>

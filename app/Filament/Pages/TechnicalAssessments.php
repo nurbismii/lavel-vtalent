@@ -46,6 +46,9 @@ class TechnicalAssessments extends Page
     #[Locked]
     public ?int $attemptId = null;
 
+    #[Locked]
+    public ?int $deletingAttemptId = null;
+
     public array $ratings = [];
 
     public string $reviewStatus = '';
@@ -79,6 +82,7 @@ class TechnicalAssessments extends Page
     {
         $this->actor();
         $this->updatedForm();
+        $this->resultSearch = mb_substr((string) request()->query('candidate', ''), 0, 255);
     }
 
     public function updatedForm(): void
@@ -148,7 +152,36 @@ class TechnicalAssessments extends Page
         $this->reviewNotes = $attempt->review['notes'] ?? '';
         $this->extensionReason = '';
         $this->confirmStageAction = false;
+        $this->reset('deletingAttemptId');
         $this->resetValidation();
+    }
+
+    public function confirmAttemptDeletion(int $id): void
+    {
+        $this->actor();
+        $this->deletingAttemptId = TechnicalAssessmentAttempt::whereHas('application', fn ($query) => $query->whereNull('purged_at'))->findOrFail($id)->id;
+        $this->reset('feedback');
+        $this->resetValidation();
+    }
+
+    public function cancelAttemptDeletion(): void
+    {
+        $this->actor();
+        $this->reset('deletingAttemptId');
+    }
+
+    public function deleteAttempt(): void
+    {
+        $this->actor();
+        abort_unless($this->deletingAttemptId, 422);
+        app(TechnicalAssessmentService::class)->deleteAttempt(auth()->user(), $this->deletingAttemptId);
+        if ($this->attemptId === $this->deletingAttemptId) {
+            $this->reset('attemptId', 'ratings', 'reviewStatus', 'reviewNotes', 'extraMinutes', 'extensionReason', 'confirmStageAction');
+        }
+        $this->reset('deletingAttemptId');
+        $this->resetValidation();
+        $this->resetPage();
+        $this->feedback = 'Hasil tes teknis berhasil dihapus beserta penugasan, jawaban, dan penilaiannya. Akun dan lamaran tetap tersedia.';
     }
 
     public function control(int $section, int $revision, string $action): void
@@ -188,7 +221,11 @@ class TechnicalAssessments extends Page
         return [
             'packages' => app(TechnicalAssessmentService::class)->packages(),
             'applications' => $this->eligibleApplications()->whereHas('user', fn ($query) => $query->where(fn ($query) => $query->where('name', 'like', '%'.$this->search.'%')->orWhere('email', 'like', '%'.$this->search.'%')))->with(['user', 'position', 'period'])->latest()->limit(30)->get(),
-            'attempts' => TechnicalAssessmentAttempt::whereHas('application', fn ($query) => $query->whereNull('purged_at')->whereHas('user', fn ($query) => $query->where(fn ($query) => $query->where('name', 'like', '%'.$this->resultSearch.'%')->orWhere('email', 'like', '%'.$this->resultSearch.'%'))))->with(['application.user', 'application.position'])->latest()->paginate(15),
+            'attempts' => TechnicalAssessmentAttempt::whereHas('application', fn ($query) => $query->whereNull('purged_at')->whereHas('user', fn ($query) => $query->where(fn ($query) => $query->where('name', 'like', '%'.$this->resultSearch.'%')->orWhere('email', 'like', '%'.$this->resultSearch.'%'))))->with(['application.user', 'application.position'])->withCount([
+                'activityLogs as tab_hidden_count' => fn ($query) => $query->where('action', 'technical_assessment.activity.tab_hidden'),
+                'activityLogs as window_blur_count' => fn ($query) => $query->where('action', 'technical_assessment.activity.window_blur'),
+                'activityLogs as fullscreen_exit_count' => fn ($query) => $query->where('action', 'technical_assessment.activity.fullscreen_exit'),
+            ])->latest()->paginate(15),
             'selected' => $this->attemptId ? TechnicalAssessmentAttempt::whereHas('application', fn ($query) => $query->whereNull('purged_at'))->with('application.user')->findOrFail($this->attemptId) : null,
             'logs' => $this->attemptId ? TechnicalAssessmentAttempt::findOrFail($this->attemptId)->activityLogs()->with('actor')->latest('id')->limit(100)->get() : collect(),
         ];

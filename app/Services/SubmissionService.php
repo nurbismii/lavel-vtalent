@@ -61,9 +61,13 @@ class SubmissionService
             Gate::forUser($actor)->authorize('update', $submission);
             abort_unless($version->status === 'draft', 409);
             Validator::make($data, [
-                'notes' => 'nullable|string|max:5000', 'links' => 'array|max:5', 'links.*.label' => 'required|string|max:120',
-                'links.*.url' => 'required|url:http,https|max:2048', 'attachments' => 'array|max:11',
-                'attachments.*.id' => 'required|integer|distinct', 'attachments.*.description' => 'nullable|string|max:500',
+                'notes' => 'nullable|string|max:5000',
+                'links' => 'array|max:5',
+                'links.*.label' => 'required|string|max:120',
+                'links.*.url' => 'required|url:http,https|max:2048',
+                'attachments' => 'array|max:11',
+                'attachments.*.id' => 'required|integer|distinct',
+                'attachments.*.description' => 'nullable|string|max:500',
             ])->validate();
             $attachments = $data['attachments'] ?? [];
             $ids = array_column($attachments, 'id');
@@ -72,7 +76,7 @@ class SubmissionService
             foreach ($attachments as $item) {
                 $file = $files->get($item['id']);
                 abort_unless($file && $file->submission_id === $submission->id && $file->uploader_id === $actor->id, 404);
-                $allowed = $submission->type === SubmissionType::Portfolio ? ['portfolio_main', 'portfolio_evidence'] : ['technical_result'];
+                $allowed = ['portfolio_main', 'portfolio_evidence'];
                 abort_unless(in_array($file->purpose, $allowed, true), 422);
                 $counts[$file->purpose] = ($counts[$file->purpose] ?? 0) + 1;
                 $limits = AppSetting::valueFor('uploads')[$file->purpose];
@@ -86,9 +90,8 @@ class SubmissionService
                     throw ValidationException::withMessages(['attachments' => 'Isi keterangan untuk setiap bukti tambahan.']);
                 }
             }
-            $mainRequired = $submission->type === SubmissionType::Portfolio ? 'portfolio_main' : 'technical_result';
-            if ($final && ($counts[$mainRequired] ?? 0) < 1) {
-                throw ValidationException::withMessages(['attachments' => 'Dokumen utama portofolio atau minimal satu file hasil tes wajib diunggah.']);
+            if ($final && ($counts['portfolio_main'] ?? 0) < 1) {
+                throw ValidationException::withMessages(['attachments' => 'Dokumen utama portofolio wajib diunggah.']);
             }
             // Keep the old main document until the replacement has passed scanning.
             $oldMain = $version->attachments()->where('purpose', 'portfolio_main')->first();
@@ -110,7 +113,6 @@ class SubmissionService
                 $version->update(['status' => 'final', 'submitted_at' => now(), 'receipt' => 'VDNI-'.Str::upper(Str::ulid())]);
                 $submission->update(['status' => SubmissionStatus::Submitted, 'current_version_id' => $version->id]);
                 AuditLog::record('submission.finalized', $submission, $actor, null, ['version' => $version->number, 'receipt' => $version->receipt]);
-
             } elseif ($submission->status !== SubmissionStatus::Revision) {
                 $submission->update(['status' => SubmissionStatus::Draft]);
             }
@@ -128,7 +130,7 @@ class SubmissionService
         }
         DB::transaction(function () use ($submission, $actor, $reason, $date) {
             $submission = $this->locked($submission);
-            abort_unless(! $submission->application->archived_at && $submission->status === SubmissionStatus::Submitted, 422);
+            abort_unless($submission->type === SubmissionType::Portfolio && ! $submission->application->archived_at && $submission->status === SubmissionStatus::Submitted, 422);
             $old = $submission->currentVersion;
             $draft = $this->draftFor($submission);
             $draft->update(['notes' => $old->notes, 'links' => $old->links]);
@@ -137,7 +139,6 @@ class SubmissionService
             }
             $submission->update(['status' => SubmissionStatus::Revision, 'deadline' => $date, 'administrative_reason' => $reason]);
             AuditLog::record('submission.revision_opened', $submission, $actor, $reason, ['deadline' => $date->toIso8601String(), 'version' => $draft->number]);
-
         });
     }
 
@@ -147,7 +148,7 @@ class SubmissionService
         $date = Carbon::parse($deadline, AppSetting::valueFor('timezone'))->utc();
         DB::transaction(function () use ($submission, $actor, $reason, $date) {
             $submission = $this->locked($submission);
-            if ($submission->application->archived_at || ! in_array($submission->status, [SubmissionStatus::NotStarted, SubmissionStatus::Draft, SubmissionStatus::Revision], true) || ! $date->gt($submission->deadline) || ! $date->isFuture()) {
+            if ($submission->type !== SubmissionType::Portfolio || $submission->application->archived_at || ! in_array($submission->status, [SubmissionStatus::NotStarted, SubmissionStatus::Draft, SubmissionStatus::Revision], true) || ! $date->gt($submission->deadline) || ! $date->isFuture()) {
                 throw ValidationException::withMessages(['deadline' => 'Perpanjangan harus melewati tenggat lama, di masa depan, dan pengumpulan belum final.']);
             }
             $before = $submission->deadline->toIso8601String();

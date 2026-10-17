@@ -3,7 +3,7 @@
         $package = $packages[$form];
         $zone = App\Models\AppSetting::valueFor('timezone');
     @endphp
-    <div class="portal-admin technical-admin" x-data="{ workspace: 'assignment' }">
+    <div class="portal-admin technical-admin" x-data="{ workspace: @js(request()->filled('candidate') ? 'results' : 'assignment') }">
         <header class="hr-psych-heading">
             <div>
                 <div class="eyebrow">Asesmen rekrutmen</div>
@@ -122,7 +122,7 @@
                 <p class="technical-table-hint"><x-heroicon-o-arrows-right-left /> Geser tabel untuk melihat jadwal dan tombol aksi.</p>
                 <div class="assessment-table-scroll" role="region" aria-label="Penugasan dan hasil kandidat" tabindex="0">
                     <table class="assessment-table technical-results-table">
-                        <thead><tr><th scope="col">Kandidat</th><th scope="col">Paket</th><th scope="col">Pengerjaan</th><th scope="col">Jadwal</th><th scope="col">Penilaian assessor</th><th scope="col">Aksi</th></tr></thead>
+                        <thead><tr><th scope="col">Kandidat</th><th scope="col">Paket</th><th scope="col">Pengerjaan</th><th scope="col">Jadwal</th><th scope="col">Aktivitas browser</th><th scope="col">Penilaian assessor</th><th scope="col">Aksi</th></tr></thead>
                         <tbody>
                             @forelse($attempts as $attempt)
                                 <tr wire:key="result-{{ $attempt->id }}" @class(['is-selected' => $attemptId === $attempt->id])>
@@ -130,11 +130,12 @@
                                     <td><span class="badge">Form {{ $attempt->form }}</span><small>Versi {{ $attempt->version }}</small></td>
                                     <td><span class="badge {{ $attempt->completed_at ? 'clean' : 'pending' }}">{{ $attempt->completed_at ? 'Selesai' : (now()->gte($attempt->deadline) ? 'Tenggat berakhir' : ($attempt->section_started_at ? 'Berlangsung' : 'Menunggu mulai')) }}</span>@unless($attempt->completed_at)<small>Tahap {{ $attempt->section_index + 1 }} / {{ count($attempt->package['sections']) }}</small>@endunless</td>
                                     <td><small>Dibuka {{ $attempt->opens_at->timezone($zone)->format('d M Y H:i') }}</small><small>Batas {{ $attempt->deadline->timezone($zone)->format('d M Y H:i') }}</small></td>
+                                    <td><details><summary>Catatan aktivitas</summary><dl><dt>Beralih tab</dt><dd>{{ $attempt->tab_hidden_count }} kali</dd><dt>Kehilangan fokus</dt><dd>{{ $attempt->window_blur_count }} kali</dd><dt>Keluar layar penuh</dt><dd>{{ $attempt->fullscreen_exit_count }} kali</dd></dl><small>Indikator pemeriksaan, bukan bukti kecurangan. Satu tindakan dapat memicu beberapa kejadian.</small></details></td>
                                     <td><span class="technical-review-status">{{ $attempt->review['status'] ?? 'Belum dinilai' }}</span></td>
                                     <td><button class="button small" wire:click="selectAttempt({{ $attempt->id }})" wire:loading.attr="disabled" wire:target="selectAttempt">Buka sesi / hasil <span aria-hidden="true"></span></button></td>
                                 </tr>
                             @empty
-                                <tr><td colspan="6"><div class="technical-empty"><x-heroicon-o-clipboard-document-list /><h3>{{ $resultSearch !== '' ? 'Kandidat tidak ditemukan' : 'Belum ada penugasan' }}</h3><p>{{ $resultSearch !== '' ? 'Coba cari dengan nama atau email yang lain.' : 'Buat penugasan melalui tab Pengaturan & penugasan untuk memulai.' }}</p></div></td></tr>
+                                <tr><td colspan="7"><div class="technical-empty"><x-heroicon-o-clipboard-document-list /><h3>{{ $resultSearch !== '' ? 'Kandidat tidak ditemukan' : 'Belum ada penugasan' }}</h3><p>{{ $resultSearch !== '' ? 'Coba cari dengan nama atau email yang lain.' : 'Buat penugasan melalui tab Pengaturan & penugasan untuk memulai.' }}</p></div></td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -210,6 +211,23 @@
                                 </tbody></table></div>
                             </div>
                         </details>
+                    </div>
+                    <div class="technical-session-evidence">
+                        @if($deletingAttemptId === $selected->id)
+                            <div role="alert" tabindex="-1" x-data x-init="$el.focus()">
+                                <p>Hapus hasil tes teknis <strong>{{ $selected->application->user->name }}</strong> untuk <strong>Form {{ $selected->form }} · versi {{ $selected->version }}</strong>?</p>
+                                <p class="muted">Penugasan, jawaban, skor, catatan kondisi, dan penilaian tes ini akan dihapus permanen. Sesi yang sedang berlangsung akan kehilangan akses. Akun, lamaran, tes lain, dan riwayat audit tetap tersimpan. Kandidat dapat ditugaskan ulang setelah dihapus.</p>
+                                <div class="row">
+                                    <button type="button" class="button" wire:click="cancelAttemptDeletion" wire:loading.attr="disabled">Batal</button>
+                                    <button type="button" class="button danger" wire:click="deleteAttempt" wire:loading.attr="disabled">
+                                        <span wire:loading.remove wire:target="deleteAttempt">Ya, hapus hasil tes</span>
+                                        <span wire:loading wire:target="deleteAttempt" role="status">Menghapus hasil tes…</span>
+                                    </button>
+                                </div>
+                            </div>
+                        @else
+                            <div><button type="button" class="button danger" wire:click="confirmAttemptDeletion({{ $selected->id }})" wire:loading.attr="disabled"><x-heroicon-o-trash /> Hapus hasil tes</button></div>
+                        @endif
                     </div>
                 </section>
             @endif

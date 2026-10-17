@@ -7,7 +7,6 @@ use App\Http\Controllers\PortfolioExportController;
 use App\Http\Controllers\PsychometricController;
 use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\TechnicalAssessmentController;
-use App\Http\Controllers\TechnicalTaskController;
 use App\Http\Middleware\EnsurePortalAccess;
 use App\Http\Middleware\FormHeaders;
 use App\Livewire\Candidate\SubmissionForm;
@@ -61,7 +60,6 @@ Route::middleware(['auth', EnsurePortalAccess::class])->group(function () {
     Route::get('/portal/psychometrics/{attempt}/questions/{section}/{question}/{part}', [PsychometricController::class, 'questionImage'])->whereNumber(['attempt', 'section', 'question'])->where('part', 'stem|[A-F]')->name('candidate.psychometrics.question-image');
     Route::get('/portal/psychometric-question-preview/{test}/{section}/{question}/{part}', [PsychometricController::class, 'questionPreview'])->whereNumber(['test', 'section', 'question'])->where('part', 'stem|[A-F]')->name('psychometrics.question-preview');
     Route::get('/portal/forms', [PublicFormController::class, 'mine'])->middleware(FormHeaders::class)->name('candidate.forms');
-    Route::get('/portal/technical-tasks/{task}/download', TechnicalTaskController::class)->name('candidate.task.download');
     Route::view('/change-password', 'auth.change')->name('password.initial');
     Route::post('/change-password', [AuthController::class, 'change'])->name('password.initial.store');
     Route::get('/files/{attachment}', FileController::class)->name('files.download');

@@ -49,7 +49,9 @@ class PublicFormController extends Controller
         $draft = $this->forms->validateAnswers($intake->version->fields, $data, false);
         $existing = $intake->responses()->where('email', $email)->first();
         if ($existing && $this->forms->hasPublicAccess($request, $existing)) {
-            return redirect()->route('forms.response', $existing->reference, 303);
+            return redirect()->route('forms.response', $existing->reference, 303)->with('status', $existing->status === 'submitted'
+                ? 'Formulir dengan email ini sudah dikirim. Pengiriman kedua tidak dibuat. Anda dapat melihat jawaban sebelumnya.'
+                : 'Email ini sudah memiliki draf. Silakan lanjutkan pengisian sebelumnya.');
         }
         $this->forms->validateUniqueAnswers($intake, $draft['answers'] ?? [], $existing?->id);
         $request->session()->put('form_unverified.'.$intake->id, ['email' => $email, 'data' => $draft]);
@@ -183,7 +185,7 @@ class PublicFormController extends Controller
         abort_unless($this->forms->canRead($request, $response), 404);
         abort_if($request->user()?->role === Role::Admin && ! $this->forms->hasPublicAccess($request, $response), 403);
         if ($response->status === 'submitted') {
-            return redirect()->route('forms.response', $response->reference);
+            return redirect()->route('forms.response', $response->reference)->with('status', 'Formulir dengan email ini sudah dikirim. Pengiriman kedua tidak dibuat. Anda dapat melihat jawaban sebelumnya.');
         }
         $this->forms->authorizeWrite($request, $response);
         $data = $request->validate(['lock_version' => 'required|integer', 'consent' => 'accepted']);

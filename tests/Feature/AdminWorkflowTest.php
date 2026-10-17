@@ -9,6 +9,7 @@ use App\Models\Position;
 use App\Models\RecruitmentApplication;
 use App\Models\RecruitmentPeriod;
 use App\Models\Submission;
+use App\Models\TechnicalAssessmentAttempt;
 use App\Models\UploadedFile;
 use App\Models\User;
 use App\Services\SubmissionService;
@@ -21,6 +22,41 @@ use Tests\TestCase;
 class AdminWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_admin_filters_and_summary_use_online_attempts_and_ignore_legacy_upload_deadlines(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $admin->saveAppAuthenticationSecret('TESTSECRET');
+        $waiting = TechnicalAssessmentAttempt::factory()->create();
+        $active = TechnicalAssessmentAttempt::factory()->create(['section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15)]);
+        $completed = TechnicalAssessmentAttempt::factory()->create(['completed_at' => now()]);
+        Submission::factory()->create(['recruitment_application_id' => $completed->recruitment_application_id, 'type' => 'technical_test', 'status' => 'submitted']);
+        Submission::factory()->create(['recruitment_application_id' => $waiting->recruitment_application_id, 'type' => 'technical_test', 'deadline' => now()->subDay()]);
+
+        $page = Livewire::actingAs($admin)->test(Recruitment::class)
+            ->assertViewHas('stats', fn ($stats) => $stats['test'] === 1 && $stats['overdue'] === 0);
+        foreach (['waiting' => $waiting, 'in_progress' => $active, 'completed' => $completed] as $status => $attempt) {
+            $page->set('testFilter', $status)->assertViewHas('applications', fn ($applications) => $applications->getCollection()->modelKeys() === [$attempt->recruitment_application_id]);
+        }
+        $page->set('testFilter', '')->set('overdue', true)->assertViewHas('applications', fn ($applications) => $applications->isEmpty());
+    }
+
+    public function test_position_can_change_without_an_upload_task_but_is_locked_after_online_assignment(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $admin->saveAppAuthenticationSecret('TESTSECRET');
+        $application = RecruitmentApplication::factory()->create();
+        $position = Position::factory()->create();
+        $page = Livewire::actingAs($admin)->test(Recruitment::class)->call('openApplication', $application->id)
+            ->set('candidate.position_id', $position->id)->set('reason', 'Perubahan posisi sebelum tes')
+            ->call('updateAssignment')->assertHasNoErrors();
+        $this->assertSame($position->id, $application->fresh()->position_id);
+        TechnicalAssessmentAttempt::factory()->create(['recruitment_application_id' => $application->id]);
+
+        $page->set('candidate.position_id', Position::factory()->create()->id)->call('updateAssignment')->assertStatus(422);
+
+        $this->assertSame($position->id, $application->fresh()->position_id);
+    }
 
     public function test_pasted_emails_select_candidates_without_duplicates_and_preserve_previous_selection(): void
     {
@@ -93,9 +129,9 @@ class AdminWorkflowTest extends TestCase
         $admin->saveAppAuthenticationSecret('TESTSECRET');
         $p = Position::factory()->create();
         $period = RecruitmentPeriod::factory()->create();
-        $page = Livewire::actingAs($admin)->test(Recruitment::class)->call('navigate', 'create')->set('candidate', ['name' => 'Kandidat Baru', 'email' => 'baru@example.com', 'position_id' => $p->id, 'recruitment_period_id' => $period->id, 'portfolio_deadline' => now()->addDays(3)->format('Y-m-d H:i'), 'test_deadline' => now()->addDays(4)->format('Y-m-d H:i'), 'task_label' => 'Tes web', 'instructions' => 'Unggah hasil'])->call('createCandidate')->assertHasNoErrors()->assertDispatched('access-created');
+        $page = Livewire::actingAs($admin)->test(Recruitment::class)->call('navigate', 'create')->set('candidate', ['name' => 'Kandidat Baru', 'email' => 'baru@example.com', 'position_id' => $p->id, 'recruitment_period_id' => $period->id, 'portfolio_deadline' => now()->addDays(3)->format('Y-m-d H:i')])->call('createCandidate')->assertHasNoErrors()->assertDispatched('access-created');
         $application = RecruitmentApplication::whereHas('user', fn ($q) => $q->where('email', 'baru@example.com'))->firstOrFail();
-        $this->assertSame(2, $application->submissions()->count());
+        $this->assertSame(1, $application->submissions()->count());
         $page->call('selectTab', 'Portofolio')->call('prepareAction', 'deadline')->set('reason', 'Perpanjangan sesuai permintaan')->set('deadline', now()->addWeek()->format('Y-m-d H:i'))->call('applyAction')->assertHasNoErrors();
         $this->assertTrue($application->submissions()->where('type', 'portfolio')->first()->deadline->gt(now()->addDays(3)));
         $page->call('navigate', 'audit')->assertSee('submission.deadline_changed');
@@ -119,7 +155,7 @@ class AdminWorkflowTest extends TestCase
         $data = ['name' => 'Identitas palsu', 'email' => 'palsu@example.com', 'position_id' => Position::factory()->create()->id,
             'recruitment_period_id' => RecruitmentPeriod::factory()->create()->id,
             'portfolio_deadline' => now()->addDays(3)->format('Y-m-d H:i'),
-            'test_deadline' => now()->addDays(4)->format('Y-m-d H:i'), 'task_label' => 'Tes web', 'instructions' => ''];
+        ];
 
         Livewire::actingAs($admin)->test(Recruitment::class)->call('navigate', 'create')
             ->set('candidateMode', 'existing')->set('candidateSearch', $user->email)->assertSee('Kandidat Terpilih')
@@ -157,8 +193,7 @@ class AdminWorkflowTest extends TestCase
         $users = User::factory()->count(2)->create(['role' => Role::Candidate]);
         $ids = $users->pluck('id')->map(fn ($id) => (string) $id)->all();
         $data = ['position_id' => Position::factory()->create()->id, 'recruitment_period_id' => RecruitmentPeriod::factory()->create()->id,
-            'portfolio_deadline' => now()->addDays(3)->format('Y-m-d H:i'), 'test_deadline' => now()->addDays(4)->format('Y-m-d H:i'),
-            'task_label' => 'Tes bersama', 'instructions' => 'Petunjuk bersama'];
+            'portfolio_deadline' => now()->addDays(3)->format('Y-m-d H:i')];
         $page = Livewire::actingAs($admin)->test(Recruitment::class)->call('navigate', 'create')
             ->set('candidateMode', 'existing')->set('existingCandidateIds', $ids)
             ->set('candidateSearch', 'tidak-ada-hasil')->assertSet('existingCandidateIds', $ids)
@@ -169,8 +204,8 @@ class AdminWorkflowTest extends TestCase
             $application = $user->applications()->sole();
             $this->assertEquals($data['position_id'], $application->position_id);
             $this->assertEquals($data['recruitment_period_id'], $application->recruitment_period_id);
-            $this->assertSame(2, $application->submissions()->count());
-            $this->assertSame('Tes bersama', $application->submissions()->where('type', 'technical_test')->sole()->task_label);
+            $this->assertSame(1, $application->submissions()->count());
+            $this->assertFalse($application->submissions()->where('type', 'technical_test')->exists());
         }
     }
 

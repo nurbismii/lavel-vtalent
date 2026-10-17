@@ -3,6 +3,7 @@
     @php($deadline = $response?->status === 'revision' ? $response->revision_deadline : $intake->deadline)
     @if($deadline)<p class="muted">Batas pengisian: {{ $deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i') }} ({{ App\Models\AppSetting::valueFor('timezone') }})</p>@endif
     @if($response && $response->status === 'submitted')
+        <div class="notice" role="status">Email <strong>{{ $response->email }}</strong> sudah digunakan untuk mengirim formulir ini. Pengiriman kedua dengan email yang sama tidak dibuat. Hubungi HR jika perlu memperbaiki jawaban.</div>
         <section class="panel receipt"><span class="badge submitted">Terkirim</span><h2>Terima kasih, {{ $response->name }}</h2><p>Jawaban Anda telah diterima. Pembuatan akun akan diproses oleh HR.</p><p>Jawaban dan dokumen hanya dapat dilihat dan tidak dapat diubah, kecuali HR membuka revisi. Buka kembali tautan email untuk melihat respons selama tautan masih berlaku.</p><p class="receipt-code">{{ $response->reference }}</p><small>{{ $response->submitted_at->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i') }}</small></section>
         @include('forms.answers', ['fields' => $intake->version->fields, 'answers' => $response->answers, 'documents' => $response->documents->where('selected', true), 'name' => $response->name, 'email' => $response->email])
     @elseif($response && ! $response->editable())

@@ -41,13 +41,13 @@
             <div class="panel"><small>PORTOFOLIO TERKUMPUL</small>
                 <div class="stat-value">{{ $stats['portfolio'] }} <small>/ {{ $stats['active'] }}</small></div><small>Pengumpulan final; tidak termasuk pengecualian.</small>
             </div>
-            <div class="panel"><small>TES TEKNIS TERKUMPUL</small>
-                <div class="stat-value">{{ $stats['test'] }} <small>/ {{ $stats['active'] }}</small></div>
+            <div class="panel"><small>TES TEKNIS ONLINE SELESAI</small>
+                <div class="stat-value">{{ $stats['test'] }} <small>penugasan</small></div>
             </div>
         </div>@if($stats['overdue'])<div class="notice"><strong>{{ $stats['overdue'] }} pengumpulan melewati tenggat.</strong> Gunakan filter tenggat untuk meninjau tindak lanjut.</div>@endif @endif
-        @if($section==='dashboard')<div class="two-col" style="margin:20px 0">@foreach(App\Enums\SubmissionType::cases() as $type)<section class="panel">
+        @if($section==='dashboard')<div class="two-col" style="margin:20px 0">@foreach([App\Enums\SubmissionType::Portfolio] as $type)<section class="panel">
                 <h3>{{ $type->label() }} · Semua status</h3>@foreach(App\Enums\SubmissionStatus::cases() as $status)<div class="row" style="margin-top:8px"><span class="badge {{ $status->value }}">{{ $status->label() }}</span><strong>{{ $statusCounts->first(fn($row)=>$row->type===$type && $row->status===$status)?->total ?? 0 }}</strong></div>@endforeach
-            </section>@endforeach</div>@endif<section class="panel applications-panel">
+            </section>@endforeach<section class="panel"><h3>Tes teknis online</h3><p>Penugasan, jawaban, hasil, dan aktivitas kandidat dikelola melalui halaman tes teknis online.</p>@if(App\Services\TechnicalAssessmentService::available())<a class="button" href="{{ route('filament.admin.pages.technical-assessments') }}">Kelola tes teknis online</a>@endif</section></div>@endif<section class="panel applications-panel">
             <header class="applications-header">
                 <div>
                     <div class="eyebrow">Administrasi rekrutmen</div>
@@ -73,11 +73,12 @@
                         </select></label>
                 </div>
                 <div class="applications-filter-secondary">
-                    @foreach(['portfolioFilter'=>'Status portofolio','testFilter'=>'Status tes teknis'] as $field=>$label)
+                    @foreach(['portfolioFilter'=>'Status portofolio'] as $field=>$label)
                     <label class="field">{{ $label }}<select wire:model.live="{{ $field }}">
                             <option value="">Semua status</option>@foreach(App\Enums\SubmissionStatus::cases() as $s)<option value="{{ $s->value }}">{{ $s->label() }}</option>@endforeach
                         </select></label>
                     @endforeach
+                    <label class="field">Status tes teknis online<select wire:model.live="testFilter"><option value="">Semua status</option><option value="waiting">Menunggu mulai / tahap berikutnya</option><option value="in_progress">Berlangsung</option><option value="completed">Selesai</option></select></label>
                     <div class="applications-toggles">
                         <label><input type="checkbox" wire:model.live="overdue">Tenggat terlewati</label>
                         <label><input type="checkbox" wire:model.live="archived">Lamaran diarsipkan</label>
@@ -124,7 +125,7 @@
                                 </div>
                             </td>
                             <td data-label="Posisi & periode"><strong class="applications-position">{{ $app->position->name }}</strong><small>{{ $app->period->name }}</small></td>
-                            @foreach(App\Enums\SubmissionType::cases() as $type)
+                            @foreach([App\Enums\SubmissionType::Portfolio] as $type)
                             @php($s=$app->submissions->firstWhere('type',$type))
                             <td data-label="{{ $type->label() }}">
                                 @if($s)
@@ -138,6 +139,7 @@
                                 @endif
                             </td>
                             @endforeach
+                            <td data-label="Tes teknis online">@forelse($app->technicalAssessmentAttempts as $attempt)<div><span class="badge {{ $attempt->completed_at ? 'submitted' : 'draft' }}">Form {{ $attempt->form }} · {{ $attempt->completed_at ? 'Selesai' : ($attempt->section_started_at ? 'Berlangsung' : 'Menunggu mulai / tahap berikutnya') }}</span><small>{{ $attempt->deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}</small></div>@empty<small>Belum ada penugasan</small>@endforelse</td>
                             <td class="applications-row-action"><button type="button" class="button small" wire:click="openApplication({{ $app->id }})" aria-label="Lihat detail lamaran {{ $app->user->name }}">Detail <span aria-hidden="true"></span></button></td>
                         </tr>
                         @empty
@@ -242,7 +244,7 @@
                             <option value="">Pilih posisi</option>@foreach($positions->where('active',true) as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach
                         </select></label><label class="field">Periode<select wire:model="candidate.recruitment_period_id" required>
                             <option value="">Pilih periode</option>@foreach($periods->where('active',true) as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach
-                        </select></label><label class="field">Tenggat portofolio ({{ App\Models\AppSetting::valueFor('timezone') }})<input wire:model="candidate.portfolio_deadline" type="datetime-local" required></label><label class="field">Tenggat tes teknis<input wire:model="candidate.test_deadline" type="datetime-local" required></label></div><label class="field">Label tugas teknis<input wire:model="candidate.task_label" required maxlength="255"></label><label class="field">Petunjuk pengumpulan<textarea wire:model="candidate.instructions" maxlength="5000"></textarea></label><button class="button primary full" wire:loading.attr="disabled">Buat lamaran</button>
+                        </select></label><label class="field">Tenggat portofolio ({{ App\Models\AppSetting::valueFor('timezone') }})<input wire:model="candidate.portfolio_deadline" type="datetime-local" required></label></div><p class="muted">Tes teknis ditugaskan terpisah melalui halaman Tes teknis online.</p><button class="button primary full" wire:loading.attr="disabled">Buat lamaran</button>
             </form>
         </section>
         @elseif($section==='detail' && $application)
@@ -253,7 +255,7 @@
                 @if(App\Services\CandidateFormService::available())<a class="button small" href="{{ route('filament.admin.pages.candidate-forms', ['candidate' => $application->user_id]) }}">Lihat formulir kandidat</a>@endif
             </div><span class="badge {{ $application->archived_at?'':'clean' }}">{{ $application->archived_at?'Diarsipkan':'Lamaran aktif' }}</span>
         </div>
-        <div class="tabs">@foreach(['Profil','Portofolio','Tes Teknis','Riwayat'] as $t)<button class="{{ $tab===$t?'active':'' }}" wire:click="selectTab('{{ $t }}')">{{ $t }}</button>@endforeach</div>
+        <div class="tabs">@foreach(array_merge(['Profil','Portofolio','Tes Teknis','Riwayat'], $application->submissions->contains(fn($item) => $item->type === App\Enums\SubmissionType::TechnicalTest && $item->current_version_id) ? ['Arsip Tes Upload'] : []) as $t)<button class="{{ $tab===$t?'active':'' }}" wire:click="selectTab('{{ $t }}')">{{ $t }}</button>@endforeach</div>
         @if($tab==='Profil')<div class="two-col">
             <section class="panel">
                 <h2>Profil kandidat</h2><label class="field">Nama<input wire:model="edit.name"></label><label class="field">Email<input wire:model="edit.email" type="email"></label><label class="field"><input type="checkbox" wire:model="edit.active"> Akun aktif</label>
@@ -263,12 +265,13 @@
                 <button type="button" class="button danger" wire:click="confirmCandidateDeactivation({{ $application->user_id }})" wire:loading.attr="disabled">Nonaktifkan & hapus file</button>
             </section>
             <section class="panel">
-                <h2>Ubah penugasan</h2><small>Tersedia sebelum hasil tes pertama dikirim final.</small><label class="field">Posisi<select wire:model="candidate.position_id">
+                <h2>Ubah penugasan</h2><small>Posisi dapat diubah sebelum tes online ditugaskan atau hasil tes lama dikirim final.</small><label class="field">Posisi<select wire:model="candidate.position_id">
                         <option value="">Pilih posisi baru</option>@foreach($positions as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach
-                    </select></label><label class="field">Label tugas<input wire:model="candidate.task_label"></label><label class="field">Petunjuk<textarea wire:model="candidate.instructions"></textarea></label><label class="field">Alasan perubahan<textarea wire:model="reason" minlength="5" maxlength="2000"></textarea></label><button class="button" wire:click="updateAssignment" wire:loading.attr="disabled">Perbarui penugasan</button>
+                    </select></label><label class="field">Alasan perubahan<textarea wire:model="reason" minlength="5" maxlength="2000"></textarea></label><button class="button" wire:click="updateAssignment" wire:loading.attr="disabled">Perbarui penugasan</button>
             </section>
         </div>
-        @elseif(in_array($tab,['Portofolio','Tes Teknis']) && $submission)<div class="form-grid">
+        @elseif($tab === 'Tes Teknis')<section class="panel"><h2>Tes teknis online</h2><p>Kelola penugasan, jawaban, hasil, dan riwayat aktivitas kandidat melalui halaman tes online.</p>@if(App\Services\TechnicalAssessmentService::available())<a class="button primary" href="{{ route('filament.admin.pages.technical-assessments', ['candidate' => $application->user->email]) }}">Buka tes teknis kandidat</a>@else<p>Tes teknis online belum tersedia.</p>@endif</section>
+        @elseif(in_array($tab,['Portofolio','Arsip Tes Upload']) && $submission)<div class="form-grid">
             <section class="panel">
                 <div class="row">
                     <h2>{{ $submission->type->label() }}</h2><span class="badge {{ $submission->status->value }}">{{ $submission->status->label() }}</span>
@@ -283,7 +286,7 @@
             </section>
             <aside class="panel">
                 <h3>Pengaturan pengumpulan</h3><small>Tenggat</small>
-                <p>{{ $submission->localDeadline() }}</p>@if(!$application->archived_at)@if($submission->status===App\Enums\SubmissionStatus::Submitted)<button type="button" class="button full" wire:click="prepareAction('revision')" wire:loading.attr="disabled" wire:target="prepareAction">Buka revisi</button>@elseif(in_array($submission->status,[App\Enums\SubmissionStatus::NotStarted,App\Enums\SubmissionStatus::Draft,App\Enums\SubmissionStatus::Revision]))<button class="button full" wire:click="prepareAction('deadline')">Perpanjang tenggat</button>@if($submission->type===App\Enums\SubmissionType::Portfolio && !$submission->current_version_id)<button class="button full" wire:click="prepareAction('exempt')">Tidak diwajibkan</button>@endif @endif @endif<small>Versi final sebelumnya tetap tersimpan saat revisi dibuka.</small>
+                <p>{{ $submission->localDeadline() }}</p>@if($submission->type === App\Enums\SubmissionType::Portfolio && !$application->archived_at)@if($submission->status===App\Enums\SubmissionStatus::Submitted)<button type="button" class="button full" wire:click="prepareAction('revision')" wire:loading.attr="disabled" wire:target="prepareAction">Buka revisi</button>@elseif(in_array($submission->status,[App\Enums\SubmissionStatus::NotStarted,App\Enums\SubmissionStatus::Draft,App\Enums\SubmissionStatus::Revision]))<button class="button full" wire:click="prepareAction('deadline')">Perpanjang tenggat</button>@if($submission->type===App\Enums\SubmissionType::Portfolio && !$submission->current_version_id)<button class="button full" wire:click="prepareAction('exempt')">Tidak diwajibkan</button>@endif @endif @endif<small>Versi final sebelumnya tetap tersimpan saat revisi dibuka.</small>
             </aside>
         </div>@endif
         @if($action)<section class="panel" style="margin-top:22px" wire:key="confirmation-{{ $applicationId }}-{{ $action }}" x-data x-init="$nextTick(() => { $el.scrollIntoView({ behavior: 'smooth', block: 'center' }); $el.querySelector('textarea').focus({ preventScroll: true }); })" role="region" aria-label="Konfirmasi tindakan">
@@ -303,7 +306,7 @@
             <h1>Pengaturan portal</h1>
             <div class="two-col">@foreach(['quota_mb'=>'Kuota per lamaran (MB)','temporary_password_hours'=>'Masa berlaku password sementara (jam)','retention_months'=>'Retensi setelah arsip (bulan)'] as $key=>$label)<label class="field">{{ $label }}<input type="number" wire:model="settings.{{ $key }}" required></label>@endforeach<label class="field">Zona waktu<select wire:model="settings.timezone">@foreach(['Asia/Makassar','Asia/Jakarta','Asia/Jayapura'] as $zone)<option>{{ $zone }}</option>@endforeach</select></label></div><label class="field">Kontak privasi / bantuan<input wire:model="settings.privacy_contact" required></label><label class="field"><input type="checkbox" wire:model="settings.retention_enabled"> Aktifkan penghapusan otomatis sesuai kebijakan retensi yang telah disetujui perusahaan.</label>
             <div class="notice">Penghapusan retensi bersifat permanen. Tetapkan kebijakan perusahaan dan siklus backup sebelum mengaktifkan.</div>
-            <h2>Batas unggahan</h2>@foreach(['portfolio_main'=>'Dokumen utama','portfolio_evidence'=>'Bukti portofolio','technical_result'=>'Hasil tes'] as $key=>$label)<div class="two-col"><label class="field">{{ $label }} · MB/file<input type="number" min="1" max="25" wire:model="settings.uploads.{{ $key }}.max_mb"></label><label class="field">Jumlah file<input type="number" min="1" max="10" wire:model="settings.uploads.{{ $key }}.max_files" @disabled($key==='portfolio_main' )></label></div>@endforeach<label class="field">Alasan perubahan<textarea wire:model="reason" minlength="5" required></textarea></label><button class="button primary full" wire:loading.attr="disabled">Simpan pengaturan</button>
+            <h2>Batas unggahan</h2>@foreach(['portfolio_main'=>'Dokumen utama','portfolio_evidence'=>'Bukti portofolio'] as $key=>$label)<div class="two-col"><label class="field">{{ $label }} · MB/file<input type="number" min="1" max="25" wire:model="settings.uploads.{{ $key }}.max_mb"></label><label class="field">Jumlah file<input type="number" min="1" max="10" wire:model="settings.uploads.{{ $key }}.max_files" @disabled($key==='portfolio_main' )></label></div>@endforeach<label class="field">Alasan perubahan<textarea wire:model="reason" minlength="5" required></textarea></label><button class="button primary full" wire:loading.attr="disabled">Simpan pengaturan</button>
         </form>
         @elseif($section==='operations')<section class="panel">
             <h2>Status pengiriman email</h2>

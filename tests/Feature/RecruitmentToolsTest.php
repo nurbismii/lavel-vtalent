@@ -6,20 +6,15 @@ use App\Enums\Role;
 use App\Filament\Pages\Recruitment;
 use App\Jobs\SendCandidateAccess;
 use App\Models\AccessDelivery;
-use App\Models\AppSetting;
-use App\Models\Position;
 use App\Models\RecruitmentApplication;
 use App\Models\Submission;
-use App\Models\TechnicalTask;
 use App\Models\User;
 use App\Services\RecruitmentToolsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -263,40 +258,22 @@ class RecruitmentToolsTest extends TestCase
         }
     }
 
-    public function test_admin_uploads_pdf_and_candidate_download_is_gated_by_start_position_and_batch(): void
+    public function test_legacy_pdf_task_management_and_download_are_removed(): void
     {
-        Storage::fake('private');
-        $app = RecruitmentApplication::factory()->create();
-        $start = now()->addHour()->startOfMinute();
-        $data = [...$app->only('position_id', 'recruitment_period_id'), 'starts_at' => $start->copy()->timezone(AppSetting::valueFor('timezone'))->format('Y-m-d H:i')];
-        Livewire::actingAs($this->admin())->test(Recruitment::class)->call('navigate', 'tools')->set('task', $data)
-            ->set('taskFile', UploadedFile::fake()->create('soal.pdf', 10, 'application/pdf'))
-            ->call('saveTechnicalTask')->assertHasNoErrors()->assertSee('Soal dan jadwal tes teknis berhasil disimpan');
-        $task = TechnicalTask::sole();
-        Storage::disk('private')->assertExists($task->path);
-        $this->actingAs($app->user)->withSession(['portal_session_version' => $app->user->session_version]);
-        $url = route('candidate.task.download', $task);
-        $this->get($url)->assertForbidden();
-        $this->travelTo($start);
-        $this->get($url)->assertOk()->assertDownload('soal-tes-teknis.pdf');
-        $other = RecruitmentApplication::factory()->create(['position_id' => $app->position_id]);
-        $this->actingAs($other->user)->withSession(['portal_session_version' => $other->user->session_version])->get($url)->assertForbidden();
-        $other->update(['position_id' => Position::factory()->create()->id, 'recruitment_period_id' => $app->recruitment_period_id]);
-        $this->get($url)->assertForbidden();
-        $app->update(['archived_at' => now(), 'active_user_id' => null]);
-        $this->actingAs($app->user)->withSession(['portal_session_version' => $app->user->session_version])->get($url)->assertForbidden();
+        Livewire::actingAs($this->admin())->test(Recruitment::class)->call('navigate', 'tools')
+            ->assertDontSee('Soal tes teknis')->assertDontSee('taskFile')->assertSee('Portofolio');
+        $this->get('/portal/technical-tasks/1/download')->assertNotFound();
+        $this->assertDatabaseCount('technical_tasks', 0);
     }
 
-    public function test_invalid_file_and_schedule_leave_no_task_or_orphan_file(): void
+    public function test_bulk_deadlines_rejects_legacy_technical_submissions(): void
     {
-        Storage::fake('private');
-        $submission = Submission::factory()->create(['type' => 'technical_test', 'deadline' => now()->addDay()]);
-        $data = [...$submission->application->only('position_id', 'recruitment_period_id'), 'starts_at' => now()->addWeek()->toDateTimeString()];
-        $page = Livewire::actingAs($this->admin())->test(Recruitment::class)->call('navigate', 'tools')->set('task', $data);
-        $page->set('taskFile', UploadedFile::fake()->create('bad.txt', 10, 'text/plain'))->call('saveTechnicalTask')->assertHasErrors('file');
-        $page->set('taskFile', UploadedFile::fake()->create('soal.pdf', 10, 'application/pdf'))->call('saveTechnicalTask')->assertHasErrors('task.starts_at');
-        $this->assertDatabaseCount('technical_tasks', 0);
-        $this->assertCount(0, Storage::disk('private')->allFiles());
+        $submission = Submission::factory()->create(['type' => 'technical_test']);
+        $before = $submission->deadline;
+        Livewire::actingAs($this->admin())->test(Recruitment::class)->call('navigate', 'tools')
+            ->set('bulk', [...$submission->application->only('position_id', 'recruitment_period_id'), 'type' => 'technical_test', 'deadline' => now()->addWeek()->toDateTimeString(), 'reason' => 'Tidak boleh memperpanjang tes upload'])
+            ->call('bulkDeadlines')->assertHasErrors('type');
+        $this->assertTrue($submission->fresh()->deadline->equalTo($before));
     }
 
     public function test_candidate_cannot_invoke_hr_actions(): void

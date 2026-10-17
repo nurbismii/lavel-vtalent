@@ -44,9 +44,9 @@ class SubmissionForm extends Component
     {
         abort_unless(auth()->user()->role === Role::Candidate, 403);
         Gate::authorize('view', $submission);
+        abort_unless($submission->type === SubmissionType::Portfolio || $submission->currentVersion?->status === 'final', 404);
         $this->submissionId = $submission->id;
-        $this->purpose = $submission->type === SubmissionType::Portfolio ? 'portfolio_main' : 'technical_result';
-        $version = $submission->versions()->where('status', 'draft')->first() ?? $submission->currentVersion;
+        $version = ($submission->type === SubmissionType::Portfolio ? $submission->versions()->where('status', 'draft')->first() : null) ?? $submission->currentVersion;
         if (! $version && $submission->editable()) {
             $version = app(SubmissionService::class)->draft($submission, auth()->user());
         }

@@ -89,8 +89,7 @@ class MySqlConcurrencyTest extends TestCase
 
     public function test_parallel_uploads_cannot_exceed_quota_on_mysql(): void
     {
-        $s = Submission::factory()->create(['type' => 'technical_test']);
-        Submission::factory()->create(['recruitment_application_id' => $s->recruitment_application_id, 'type' => 'portfolio', 'status' => 'exempt', 'administrative_reason' => 'Prasyarat pengujian kuota']);
+        $s = Submission::factory()->create();
         $v = app(SubmissionService::class)->draft($s, $s->application->user);
         AppSetting::create(['key' => 'quota_mb', 'value' => 1]);
         $results = $this->parallel('upload', $s, $v->id);
