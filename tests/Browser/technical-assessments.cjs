@@ -50,7 +50,7 @@ function otp(secret) {
         await candidate.locator(`a[href="${base}/portal/technical-assessments/${credentials.attempts.B}"]`).click();
         await candidate.locator('[name="consent"]').check();
         await candidate.getByRole('button', { name: 'Konfirmasi kesiapan' }).click();
-        await candidate.getByText('Menunggu assessor membuka tahap ini.', { exact: false }).waitFor();
+        await candidate.getByRole('button', { name: 'Mulai Identitas dan kondisi', exact: true }).waitFor();
 
         const admin = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
         admin.on('pageerror', error => errors.push(error.message));
@@ -114,17 +114,15 @@ function otp(secret) {
         await admin.getByText(`Sesi #${credentials.attempts.B}`, { exact: true }).waitFor();
         await admin.evaluate(() => scrollTo(0, 0));
         await admin.screenshot({ path: path.join(output, 'technical-admin-desktop.png'), fullPage: true, animations: 'disabled' });
-        await admin.getByLabel('Kandidat dan assessor sudah siap memulai timer tahap ini.').check();
-        await admin.getByRole('button', { name: 'Mulai tahap untuk kandidat' }).click();
+        await candidate.getByRole('button', { name: 'Mulai Identitas dan kondisi', exact: true }).click();
+        await candidate.getByRole('button', { name: 'Mulai', exact: true }).click();
         await candidate.locator('[data-assessment-form]').waitFor({ timeout: 15000 });
         await candidate.locator('[name="answers[identity_conditions]"]').fill('Identitas dan koneksi dikonfirmasi bersama assessor.');
         await candidate.getByText('Jawaban tersimpan', { exact: true }).waitFor();
         await candidate.getByRole('button', { name: 'Selesaikan dan kunci tahap' }).click();
         await candidate.getByRole('button', { name: 'Selesaikan tahap', exact: true }).click();
-        await candidate.getByText('Menunggu assessor membuka tahap ini.', { exact: false }).waitFor();
-        await admin.getByRole('button', { name: 'Perbarui status sesi' }).click();
-        await admin.getByLabel('Kandidat dan assessor sudah siap memulai timer tahap ini.').check();
-        await admin.getByRole('button', { name: 'Mulai tahap untuk kandidat' }).click();
+        await candidate.getByRole('button', { name: 'Mulai Penalaran paralel dan penjelasan proses', exact: true }).click();
+        await candidate.getByRole('button', { name: 'Mulai', exact: true }).click();
         await candidate.locator('[name="answers[B01]"]').first().waitFor({ timeout: 15000 });
         await candidate.locator('[name="answers[B01]"][value="B"]').check();
         await candidate.locator('[name="answers[process]"]').fill('Beberapa faktor berubah bersamaan; pengaruhnya belum dipisahkan.');
@@ -180,7 +178,7 @@ function otp(secret) {
         await admin.screenshot({ path: path.join(output, 'technical-admin-results-mobile.png'), fullPage: true, animations: 'disabled' });
         assert.equal(await admin.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         assert.deepEqual(errors, []);
-        console.log('Browser passed: admin MFA, assessor stage control, automatic refresh, autosave, persisted choices/text, Form A transitions, visible countdown, responsive assignment/results tabs, manual review, mobile tables, no JavaScript errors.');
+        console.log('Browser passed: admin MFA, candidate starts Form B stages, autosave, persisted choices/text, Form A transitions, visible countdown, responsive assignment/results tabs, manual review, mobile tables, no JavaScript errors.');
     } catch (error) {
         const page = browser?.contexts().at(-1)?.pages().at(-1);
         if (page) {

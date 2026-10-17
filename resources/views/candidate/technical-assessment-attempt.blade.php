@@ -23,10 +23,8 @@
         <section class="panel stack" @if($attempt->form === 'B') data-assessment-wait data-state-url="{{ route('candidate.technical-assessments.show', $attempt) }}" data-section="{{ $attempt->section_index }}" @endif>
             <span class="badge">Tahap {{ $attempt->section_index + 1 }} / {{ count($attempt->package['sections']) }}</span><h2>{{ $section['title'] }}</h2><p>Alokasi waktu {{ $section['seconds'] / 60 }} menit.</p>
             <p class="muted">Waktu tahap dibatasi tenggat penugasan: {{ $attempt->deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}.</p>
-            @if($attempt->form === 'B')<p role="status">Menunggu assessor membuka tahap ini. Halaman akan diperbarui otomatis.</p>
-            @else
-                <form data-assessment-start method="post" action="{{ route('candidate.technical-assessments.update', $attempt) }}">@csrf<input type="hidden" name="action" value="start"><input type="hidden" name="section" value="{{ $attempt->section_index }}"><input type="hidden" name="revision" value="{{ $attempt->revision }}"><button class="button primary">Mulai {{ $section['title'] }}</button></form>
-            @endif
+            @if($attempt->form === 'B')<p>Mulai tahap ini saat Anda siap. Setiap tahap dapat dimulai sendiri tanpa menunggu assessor membuka sesi.</p>@endif
+            <form data-assessment-start method="post" action="{{ route('candidate.technical-assessments.update', $attempt) }}">@csrf<input type="hidden" name="action" value="start"><input type="hidden" name="section" value="{{ $attempt->section_index }}"><input type="hidden" name="revision" value="{{ $attempt->revision }}"><button class="button primary">Mulai {{ $section['title'] }}</button></form>
             <noscript><p class="field-error">Aktifkan JavaScript untuk timer dan autosave.</p></noscript>
         </section>
     @else

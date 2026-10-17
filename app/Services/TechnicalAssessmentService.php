@@ -111,7 +111,6 @@ class TechnicalAssessmentService
             abort_unless($attempt->consented_at, 422, 'Konfirmasikan aturan pengerjaan sebelum mulai.');
             abort_unless(($payload['section'] ?? null) === $attempt->section_index && ($payload['revision'] ?? null) === $attempt->revision, 409, 'Status berubah di sesi lain. Muat ulang halaman sebelum melanjutkan.');
             if ($action === 'start') {
-                abort_if($attempt->form === 'B', 403, 'Tahapan Form B dimulai oleh assessor.');
                 $this->start($attempt, $actor);
 
                 return $attempt;

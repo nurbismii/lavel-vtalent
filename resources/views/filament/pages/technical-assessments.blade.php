@@ -36,7 +36,7 @@
                             <div class="technical-package-icon"><x-heroicon-o-clipboard-document-check /></div>
                             <div>
                                 <strong>{{ match($form) { 'A' => 'Screening mandiri', 'B' => 'Verifikasi langsung', default => 'Kecenderungan perilaku' } }}</strong>
-                                <p>{{ match($form) { 'A' => 'Kandidat mengerjakan penalaran, pemeriksaan dokumen, dan judgment kerja.', 'B' => 'Assessor membuka satu tahap pada satu waktu saat sesi langsung.', default => 'Modul opsional untuk konteks wawancara; bukan penentu kelulusan.' } }}</p>
+                                <p>{{ match($form) { 'A' => 'Kandidat mengerjakan penalaran, pemeriksaan dokumen, dan judgment kerja.', 'B' => 'Kandidat memulai setiap tahap sendiri sesuai jadwal. Assessor memantau dan menilai hasil sesi.', default => 'Modul opsional untuk konteks wawancara; bukan penentu kelulusan.' } }}</p>
                                 <div class="technical-package-meta"><span><x-heroicon-o-clock /> {{ array_sum(array_column($package['sections'], 'seconds')) / 60 }} menit standar</span><span>{{ count($package['sections']) }} tahap</span></div>
                             </div>
                         </div>
@@ -156,7 +156,7 @@
                         <section class="technical-session-control">
                             <div><span class="badge {{ $selected->section_started_at ? 'clean' : 'pending' }}">{{ $selected->section_started_at ? 'Tahap aktif' : 'Menunggu mulai' }}</span><h3>{{ $selected->package['sections'][$selected->section_index]['title'] }}</h3><p>{{ $selected->section_expires_at ? 'Waktu tahap berakhir '.$selected->section_expires_at->timezone($zone)->format('H:i:s T') : 'Timer dimulai saat tahap dibuka.' }}</p></div>
                             @if($selected->form === 'B' && !$selected->application->archived_at)
-                                <p class="technical-help">Buka satu tahap pada satu waktu. Fakta baru hanya dibuka setelah keputusan awal dikunci. Pastikan jawaban kandidat sudah tersimpan.</p>
+                                <p class="technical-help">Kandidat dapat memulai setiap tahap sendiri. Kontrol assessor bersifat opsional. Fakta baru hanya dibuka setelah keputusan awal dikunci. Pastikan jawaban kandidat sudah tersimpan sebelum mengunci tahap.</p>
                                 <form wire:submit="control({{ $selected->section_index }}, {{ $selected->revision }}, '{{ $selected->section_started_at ? 'finish' : 'start' }}')" class="technical-control-form">
                                     <label class="technical-confirm"><input type="checkbox" wire:model="confirmStageAction" required><span>{{ $selected->section_started_at ? 'Saya mengonfirmasi tahap akan dikunci menggunakan jawaban yang sudah tersimpan.' : 'Kandidat dan assessor sudah siap memulai timer tahap ini.' }}</span></label>
                                     <button class="button primary" wire:loading.attr="disabled" wire:target="control">{{ $selected->section_started_at ? 'Kunci tahap aktif' : 'Mulai tahap untuk kandidat' }}</button>

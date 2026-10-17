@@ -274,19 +274,23 @@ class TechnicalAssessmentTest extends TestCase
         $this->get($url)->assertNotFound();
     }
 
-    public function test_start_requires_consent_and_timer_does_not_reset_after_refresh_or_duplicate_start(): void
+    #[TestWith(['A'])]
+    #[TestWith(['B'])]
+    #[TestWith(['A2'])]
+    public function test_start_requires_consent_and_timer_does_not_reset_after_refresh_or_duplicate_start(string $form): void
     {
         $this->freezeTime();
-        $attempt = $this->attempt();
+        $attempt = $this->attempt($form);
         $this->loginFor($attempt);
         $url = route('candidate.technical-assessments.update', $attempt);
         $this->postJson($url, $this->payload($attempt, 'start'))->assertUnprocessable();
         $this->postJson($url, ['action' => 'consent', 'consent' => false])->assertJsonValidationErrors('consent');
         $this->postJson($url, ['action' => 'consent', 'consent' => true])->assertOk();
+        $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('data-assessment-start', false)->assertDontSee('Menunggu assessor membuka');
         $this->postJson($url, $this->payload($attempt, 'start'))->assertJsonPath('active', true);
         $expires = $attempt->fresh()->section_expires_at->toIso8601String();
         $this->travel(30)->seconds();
-        $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('Orientasi dan latihan');
+        $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee($attempt->package['sections'][0]['title']);
         $this->postJson($url, $this->payload($attempt, 'start'))->assertOk();
         $this->assertSame($expires, $attempt->fresh()->section_expires_at->toIso8601String());
         $this->assertSame(1, AuditLog::where('action', 'technical_assessment.section_started')->count());
@@ -367,24 +371,46 @@ class TechnicalAssessmentTest extends TestCase
         $this->assertSame(1, AuditLog::where('action', 'technical_assessment.completed')->count());
     }
 
-    public function test_form_b_requires_assessor_and_hides_new_facts_until_initial_decision_is_locked(): void
+    public function test_form_b_candidate_starts_stages_and_new_facts_stay_hidden_until_initial_decision_is_locked(): void
     {
         $this->freezeTime();
         $attempt = $this->attempt('B', ['consented_at' => now(), 'section_index' => 2]);
-        $admin = User::factory()->create(['role' => Role::Admin]);
         $this->loginFor($attempt);
         $url = route('candidate.technical-assessments.update', $attempt);
-        $this->postJson($url, $this->payload($attempt, 'start'))->assertForbidden();
-        app(TechnicalAssessmentService::class)->control($admin, $attempt->id, 2, 0, 'start');
+        $this->postJson($url, $this->payload($attempt, 'start'))->assertJsonPath('active', true);
         $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('keputusan awal')->assertDontSee('berpotensi disusupi');
         $this->postJson($url, $this->payload($attempt, 'finish', ['priority_1' => 'Tahan pembayaran dan verifikasi independen.']))->assertJsonPath('section', 3)->assertJsonPath('active', false);
         $this->get(route('candidate.technical-assessments.show', $attempt))->assertDontSee('berpotensi disusupi');
+        $this->postJson($url, $this->payload($attempt, 'start'))->assertJsonPath('section', 3)->assertJsonPath('active', true);
         $attempt->refresh();
-        app(TechnicalAssessmentService::class)->control($admin, $attempt->id, 3, $attempt->revision, 'start');
 
         $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('berpotensi disusupi')->assertSee('Tahan pembayaran dan verifikasi independen.');
         $this->postJson($url, ['action' => 'save', 'section' => 2, 'revision' => $attempt->revision, 'answers' => ['priority_1' => 'Ubah jawaban']])->assertConflict();
         $this->assertSame('Tahan pembayaran dan verifikasi independen.', $attempt->fresh()->answers[2]['priority_1']);
+    }
+
+    public function test_form_b_candidates_progress_independently_without_assessor_actions(): void
+    {
+        $this->freezeTime();
+        $first = $this->attempt('B', ['consented_at' => now()]);
+        $second = $this->attempt('B', ['consented_at' => now()]);
+        foreach ([$first, $second] as $attempt) {
+            $this->loginFor($attempt);
+            $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'start'))->assertJsonPath('active', true);
+        }
+        $secondExpires = $second->fresh()->section_expires_at->toIso8601String();
+        $this->loginFor($first);
+        $url = route('candidate.technical-assessments.update', $first);
+        for ($section = 0; $section < 5; $section++) {
+            $this->postJson($url, $this->payload($first, 'start'))->assertJsonPath('section', $section)->assertJsonPath('active', true);
+            $this->postJson($url, $this->payload($first, 'finish'))->assertJsonPath('section', $section + 1)->assertJsonPath('active', false);
+        }
+
+        $this->assertNotNull($first->fresh()->completed_at);
+        $this->assertSame(0, $second->fresh()->section_index);
+        $this->assertNull($second->fresh()->completed_at);
+        $this->assertSame($secondExpires, $second->fresh()->section_expires_at->toIso8601String());
+        $this->postJson(route('candidate.technical-assessments.update', $second), $this->payload($second, 'finish'))->assertNotFound();
     }
 
     public function test_form_b_objective_score_and_manual_review_keep_dimensions_separate(): void
@@ -484,9 +510,11 @@ class TechnicalAssessmentTest extends TestCase
         $this->assertSame(2, $attempt->fresh()->section_index);
     }
 
-    public function test_test_schedule_and_purged_application_cannot_be_bypassed(): void
+    #[TestWith(['A'])]
+    #[TestWith(['B'])]
+    public function test_test_schedule_and_purged_application_cannot_be_bypassed(string $form): void
     {
-        $attempt = $this->attempt('A', ['consented_at' => now(), 'opens_at' => now()->addHour()]);
+        $attempt = $this->attempt($form, ['consented_at' => now(), 'opens_at' => now()->addHour()]);
         $this->loginFor($attempt);
         $url = route('candidate.technical-assessments.update', $attempt);
         $this->postJson($url, $this->payload($attempt, 'start'))->assertForbidden();
