@@ -8,6 +8,7 @@
     @elseif($field['type'] !== 'file')
         <fieldset class="dynamic-field" data-required="{{ $field['required'] ? 'true' : 'false' }}" data-field-label="{{ $field['label'] }}" @disabled($disabled ?? false)>
             <legend>{{ $field['label'] }} @if($field['required'])<span aria-label="wajib" class="field-error">*</span>@endif</legend>
+            @if(!empty($field['unique']))<p class="muted">Jawaban harus unik pada penerimaan ini.</p>@endif
             @if(!empty($field['help']))<p class="muted break-words" id="help-{{ $field['id'] }}">{!! nl2br(e($field['help'])) !!}</p>@endif
             @if($field['type'] === 'textarea')
                 <label class="field"><span class="sr-only">{{ $field['label'] }}</span><textarea name="answers[{{ $field['id'] }}]" maxlength="{{ $field['max_length'] ?: 5000 }}" placeholder="{{ $field['placeholder'] ?? '' }}">{{ $value }}</textarea></label>

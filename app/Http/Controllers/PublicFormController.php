@@ -51,6 +51,7 @@ class PublicFormController extends Controller
         if ($existing && $this->forms->hasPublicAccess($request, $existing)) {
             return redirect()->route('forms.response', $existing->reference, 303);
         }
+        $this->forms->validateUniqueAnswers($intake, $draft['answers'] ?? [], $existing?->id);
         $request->session()->put('form_unverified.'.$intake->id, ['email' => $email, 'data' => $draft]);
         $request->session()->put('form_waiting.'.$intake->id, $email);
         $activeToken = FormAccessToken::where('form_intake_id', $intake->id)->where('email', $email)->whereNull('used_at')->where('expires_at', '>', now())->latest('id')->first();
@@ -137,7 +138,11 @@ class PublicFormController extends Controller
         $request->session()->put('form_access.'.$response->id, ['generation' => $response->access_generation, 'expires' => now()->addHours(config('candidate_forms.session_hours'))->timestamp]);
         $draft = $request->session()->pull('form_unverified.'.$response->form_intake_id);
         if ($response->lock_version === 0 && $response->editable() && ($draft['email'] ?? null) === $response->email) {
-            $this->forms->save($response, 0, $draft['data']);
+            try {
+                $this->forms->save($response, 0, $draft['data']);
+            } catch (ValidationException $exception) {
+                return redirect()->route('forms.response', $response->reference)->withErrors($exception->errors())->withInput($draft['data']);
+            }
         }
 
         return redirect()->route('forms.response', $response->reference)->with('status', $response->status === 'submitted'

@@ -16,6 +16,6 @@
             </div>@endforeach
         </section>@empty<section class="panel">
             <h2>Belum ada pengumpulan final.</h2>
-            <p class="muted">Tanda terima akan muncul setelah Anda mengirim dokumen final.</p><a href="{{ route('candidate.dashboard') }}">Kembali ke beranda →</a>
+            <p class="muted">Tanda terima akan muncul setelah Anda mengirim dokumen final.</p><a href="{{ route('candidate.dashboard') }}">Kembali ke beranda</a>
         </section>@endforelse</div>{{ $versions->links() }}
 </x-layouts.portal>

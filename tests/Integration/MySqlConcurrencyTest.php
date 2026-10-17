@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\TestWith;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
@@ -98,12 +99,12 @@ class MySqlConcurrencyTest extends TestCase
         $this->assertLessThanOrEqual(1048576, UploadedFile::where('recruitment_application_id', $s->recruitment_application_id)->sum('size'));
     }
 
-    private function formResponses(bool $twoIntakes): array
+    private function formResponses(bool $twoIntakes, array $fields = []): array
     {
         $admin = User::factory()->create(['role' => Role::Admin]);
         $admin->saveAppAuthenticationSecret('TESTSECRET');
         $service = app(CandidateFormService::class);
-        $form = $service->saveTemplate($admin, null, 0, ['title' => 'MySQL form', 'description' => '', 'fields' => []]);
+        $form = $service->saveTemplate($admin, null, 0, ['title' => 'MySQL form', 'description' => '', 'fields' => $fields]);
         $version = $service->publish($admin, $form, $form->lock_version);
         $scope = ['candidate_form_version_id' => $version->id, 'position_id' => Position::factory()->create()->id, 'recruitment_period_id' => RecruitmentPeriod::factory()->create()->id];
         $intake = $service->createIntake($admin, $scope);
@@ -113,12 +114,12 @@ class MySqlConcurrencyTest extends TestCase
         return [$admin, $response, $other];
     }
 
-    private function parallelForms(string $action, array $responses, int $adminId): array
+    private function parallelForms(string $action, array $responses, int $adminId, array $answers = []): array
     {
         $workers = [];
         $release = microtime(true) + 2;
-        foreach ($responses as $response) {
-            $worker = new Process([PHP_BINARY, __DIR__.'/form-mysql-worker.php', $action, (string) $response->id, (string) $adminId, (string) $release], base_path(), ['PORTAL_TEST_DATABASE' => $this->databaseName]);
+        foreach ($responses as $index => $response) {
+            $worker = new Process([PHP_BINARY, __DIR__.'/form-mysql-worker.php', $action, (string) $response->id, (string) $adminId, (string) $release, json_encode($answers[$index] ?? [], JSON_THROW_ON_ERROR)], base_path(), ['PORTAL_TEST_DATABASE' => $this->databaseName]);
             $worker->setTimeout(40);
             $worker->start();
             $workers[] = $worker;
@@ -127,6 +128,7 @@ class MySqlConcurrencyTest extends TestCase
         return array_map(function ($worker) {
             $worker->wait();
             $this->assertSame(0, $worker->getExitCode(), $worker->getErrorOutput().$worker->getOutput());
+            $this->assertJson($worker->getOutput(), $worker->getOutput());
 
             return json_decode($worker->getOutput(), true, flags: JSON_THROW_ON_ERROR);
         }, $workers);
@@ -138,6 +140,27 @@ class MySqlConcurrencyTest extends TestCase
         $results = $this->parallelForms('final', [$response, $other], $admin->id);
         $this->assertSame($results[0]['reference'], $results[1]['reference']);
         $this->assertSame(1, $response->revisions()->count());
+    }
+
+    #[TestWith(['numeric_text', '0012345678901234', '0012345678901234'])]
+    #[TestWith(['email', 'Person@Example.com', 'person@example.com'])]
+    #[TestWith(['number', '01.50', '1.5'])]
+    #[TestWith(['checkbox', ['Satu', 'Dua'], ['Dua', 'Satu']])]
+    #[TestWith(['consent', true, '1'])]
+    public function test_parallel_unique_answers_accept_only_one_response_on_mysql(string $type, mixed $firstValue, mixed $secondValue): void
+    {
+        $field = ['id' => (string) Str::uuid(), 'type' => $type, 'label' => 'Identitas', 'required' => true, 'unique' => true, 'options' => ['Satu', 'Dua'], 'extensions' => []];
+        [$admin, $response] = $this->formResponses(false, [$field]);
+        $other = $response->intake->responses()->create(['reference' => (string) Str::uuid(), 'name' => 'Kandidat lain', 'email' => 'other@example.test', 'email_verified_at' => now(), 'answers' => []]);
+
+        $results = $this->parallelForms('unique', [$response, $other], $admin->id, [[$field['id'] => $firstValue], [$field['id'] => $secondValue]]);
+
+        $this->assertCount(1, array_filter($results, fn ($result) => $result['status'] === 'accepted'));
+        $rejected = array_values(array_filter($results, fn ($result) => $result['status'] === 'rejected'));
+        $this->assertCount(1, $rejected);
+        $this->assertArrayHasKey('answers.'.$field['id'], $rejected[0]['errors']);
+        $this->assertSame(1, $response->intake->responses()->whereNotNull('submitted_at')->count());
+        $this->assertSame(1, $response->revisions()->count() + $other->revisions()->count());
     }
 
     public function test_parallel_form_linking_by_email_creates_one_account_on_mysql(): void

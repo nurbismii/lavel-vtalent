@@ -49,6 +49,7 @@ class CandidateFormService
             'fields.*.type' => ['required', Rule::in(array_keys(self::TYPES))],
             'fields.*.label' => 'required|string|max:255', 'fields.*.help' => 'nullable|string|max:1000',
             'fields.*.placeholder' => 'nullable|string|max:255', 'fields.*.required' => 'required|boolean',
+            'fields.*.unique' => 'sometimes|boolean',
             'fields.*.options' => 'present|array|max:100', 'fields.*.options.*' => 'required|string|max:255',
             'fields.*.max_length' => 'nullable|integer|min:1|max:10000',
             'fields.*.min' => 'nullable|string|max:30', 'fields.*.max' => 'nullable|string|max:30',
@@ -61,7 +62,10 @@ class CandidateFormService
             'fields.*.condition.value' => 'nullable|string|max:255',
         ])->validate();
         foreach ($valid['fields'] as $i => &$field) {
-            $field = array_replace(['help' => '', 'placeholder' => '', 'max_length' => null, 'min' => '', 'max' => '', 'max_mb' => null, 'max_files' => null], $field);
+            $field = array_replace(['help' => '', 'placeholder' => '', 'unique' => false, 'max_length' => null, 'min' => '', 'max' => '', 'max_mb' => null, 'max_files' => null], $field);
+            if ($field['unique'] && in_array($field['type'], ['file', 'section'], true)) {
+                throw ValidationException::withMessages(["fields.$i.unique" => 'Jawaban unik tidak tersedia untuk file atau bagian.']);
+            }
             if (in_array($field['type'], ['select', 'radio', 'checkbox'], true)) {
                 if (! count($field['options']) || count(array_unique($field['options'])) !== count($field['options'])) {
                     throw ValidationException::withMessages(["fields.$i.options" => 'Pilihan harus terisi dan tidak boleh duplikat.']);
@@ -432,6 +436,40 @@ class CandidateFormService
         return Validator::make($data, $rules, ['required' => ':attribute wajib diisi.', 'accepted' => ':attribute wajib disetujui.'], $labels)->validate();
     }
 
+    public function validateUniqueAnswers(FormIntake $intake, array $answers, ?int $exceptId = null): void
+    {
+        $errors = [];
+        foreach ($this->visibleFields($intake->version->fields, $answers) as $field) {
+            $value = $answers[$field['id']] ?? null;
+            if (empty($field['unique']) || $value === null || $value === '' || $value === []) {
+                continue;
+            }
+            $query = $intake->responses()->when($exceptId !== null, fn ($query) => $query->whereKeyNot($exceptId));
+            $column = 'answers->'.$field['id'];
+            if (is_array($value)) {
+                $query->whereJsonLength($column, count($value));
+                foreach ($value as $option) {
+                    $query->whereJsonContains($column, $option);
+                }
+            } elseif ($field['type'] === 'consent') {
+                $query->where(fn ($query) => $query->where($column, (bool) $value)->orWhere($column, (int) (bool) $value)->orWhere($column, (string) (int) (bool) $value));
+            } else {
+                $wrapped = $query->getQuery()->getGrammar()->wrap($column);
+                if ($field['type'] === 'number') {
+                    $query->whereRaw('('.$wrapped.' + 0) = (? + 0)', [$value]);
+                } else {
+                    $query->whereRaw('LOWER(TRIM('.$wrapped.')) = LOWER(TRIM(?))', [$value]);
+                }
+            }
+            if ($query->exists()) {
+                $errors['answers.'.$field['id']] = $field['label'].' sudah digunakan pada penerimaan ini. Gunakan nilai lain.';
+            }
+        }
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
     public function validateDocuments(FormResponse $response, ?array $answers = null): void
     {
         $documents = $response->documents()->where('selected', true)->get();
@@ -463,6 +501,7 @@ class CandidateFormService
                 throw ValidationException::withMessages(['conflict' => 'Data berubah di tab lain. Salin perubahan Anda lalu muat ulang sebelum menyimpan.']);
             }
             $valid = $this->validateAnswers($intake->version->fields, $data, $final);
+            $this->validateUniqueAnswers($intake, $valid['answers'] ?? [], $response->id);
             $visibleIds = array_column($this->visibleFields($intake->version->fields, $valid['answers'] ?? []), 'id');
             $documents = $response->documents()->where('selected', true)->whereIn('field_id', $visibleIds)->get();
             if ($final) {

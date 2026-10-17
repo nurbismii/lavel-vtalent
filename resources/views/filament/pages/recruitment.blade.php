@@ -138,7 +138,7 @@
                                 @endif
                             </td>
                             @endforeach
-                            <td class="applications-row-action"><button type="button" class="button small" wire:click="openApplication({{ $app->id }})" aria-label="Lihat detail lamaran {{ $app->user->name }}">Detail <span aria-hidden="true">→</span></button></td>
+                            <td class="applications-row-action"><button type="button" class="button small" wire:click="openApplication({{ $app->id }})" aria-label="Lihat detail lamaran {{ $app->user->name }}">Detail <span aria-hidden="true"></span></button></td>
                         </tr>
                         @empty
                         <tr>

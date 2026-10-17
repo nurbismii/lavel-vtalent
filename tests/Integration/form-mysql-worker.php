@@ -5,6 +5,7 @@ use App\Models\User;
 use App\Services\CandidateFormService;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 require __DIR__.'/../../vendor/autoload.php';
 $app = require __DIR__.'/../../bootstrap/app.php';
@@ -21,7 +22,14 @@ while (microtime(true) < (float) $release) {
     usleep(10000);
 }
 $service = app(CandidateFormService::class);
-if ($action === 'final') {
+if ($action === 'unique') {
+    try {
+        $service->save($response, 0, ['name' => 'Kandidat', 'answers' => json_decode($argv[5], true, flags: JSON_THROW_ON_ERROR), 'consent' => true], true);
+        echo json_encode(['status' => 'accepted']);
+    } catch (ValidationException $exception) {
+        echo json_encode(['status' => 'rejected', 'errors' => $exception->errors()]);
+    }
+} elseif ($action === 'final') {
     $result = $service->save($response, 0, ['name' => 'Kandidat', 'answers' => [], 'consent' => true], true);
     echo json_encode(['reference' => $result->reference]);
 } elseif ($action === 'link') {

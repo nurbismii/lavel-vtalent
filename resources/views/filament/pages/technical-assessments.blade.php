@@ -131,7 +131,7 @@
                                     <td><span class="badge {{ $attempt->completed_at ? 'clean' : 'pending' }}">{{ $attempt->completed_at ? 'Selesai' : (now()->gte($attempt->deadline) ? 'Tenggat berakhir' : ($attempt->section_started_at ? 'Berlangsung' : 'Menunggu mulai')) }}</span>@unless($attempt->completed_at)<small>Tahap {{ $attempt->section_index + 1 }} / {{ count($attempt->package['sections']) }}</small>@endunless</td>
                                     <td><small>Dibuka {{ $attempt->opens_at->timezone($zone)->format('d M Y H:i') }}</small><small>Batas {{ $attempt->deadline->timezone($zone)->format('d M Y H:i') }}</small></td>
                                     <td><span class="technical-review-status">{{ $attempt->review['status'] ?? 'Belum dinilai' }}</span></td>
-                                    <td><button class="button small" wire:click="selectAttempt({{ $attempt->id }})" wire:loading.attr="disabled" wire:target="selectAttempt">Buka sesi / hasil <span aria-hidden="true">→</span></button></td>
+                                    <td><button class="button small" wire:click="selectAttempt({{ $attempt->id }})" wire:loading.attr="disabled" wire:target="selectAttempt">Buka sesi / hasil <span aria-hidden="true"></span></button></td>
                                 </tr>
                             @empty
                                 <tr><td colspan="6"><div class="technical-empty"><x-heroicon-o-clipboard-document-list /><h3>{{ $resultSearch !== '' ? 'Kandidat tidak ditemukan' : 'Belum ada penugasan' }}</h3><p>{{ $resultSearch !== '' ? 'Coba cari dengan nama atau email yang lain.' : 'Buat penugasan melalui tab Pengaturan & penugasan untuk memulai.' }}</p></div></td></tr>

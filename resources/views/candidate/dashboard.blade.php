@@ -7,7 +7,7 @@
         </div>@if($application)<span class="badge clean">● Lamaran aktif</span>@endif
     </div>@if(!$application)<section class="panel">
         <h2>Belum ada lamaran aktif.</h2>
-        <p class="muted">Hubungi HR jika Anda sudah menerima penugasan. Riwayat pengumpulan sebelumnya tetap tersedia.</p><a href="{{ route('candidate.history') }}">Lihat riwayat →</a>
+        <p class="muted">Hubungi HR jika Anda sudah menerima penugasan. Riwayat pengumpulan sebelumnya tetap tersedia.</p><a href="{{ route('candidate.history') }}">Lihat riwayat</a>
     </section>@else<div class="grid grid-cols-1 gap-[22px] lg:grid-cols-3">@foreach($application->submissions->where('type', App\Enums\SubmissionType::Portfolio) as $submission)<section class="panel task-panel {{ $submission->type->value }}">
             <div class="row">
                 <div class="icon-box"><x-heroicon-o-folder-open /></div><span class="badge {{ $submission->status->value }}">{{ $submission->status->label() }}</span>
@@ -15,7 +15,7 @@
             <h2>{{ $submission->type->label() }}</h2>
             <p class="muted">Perkenalkan pengalaman dan karya terbaik melalui dokumen portofolio.</p>
             <hr><small>TENGGAT PENGUMPULAN</small>
-            <p><strong>{{ $submission->localDeadline() }}</strong></p>@if($submission->deadline->isPast() && in_array($submission->status,[App\Enums\SubmissionStatus::NotStarted,App\Enums\SubmissionStatus::Draft,App\Enums\SubmissionStatus::Revision]))<p class="field-error">{{ $submission->status===App\Enums\SubmissionStatus::Revision ? 'Revisi belum dikumpulkan' : 'Tenggat terlewati' }}</p>@endif<a class="button {{ $submission->editable()?'primary':'' }} full" href="{{ route('candidate.submission',$submission) }}">{{ match($submission->status){App\Enums\SubmissionStatus::Submitted=>'Lihat tanda terima',App\Enums\SubmissionStatus::Exempt=>'Lihat detail',default=>$submission->editable()?($submission->status===App\Enums\SubmissionStatus::Revision?'Kerjakan revisi':'Lanjutkan pengumpulan'):'Lihat draf'} }} →</a>
+            <p><strong>{{ $submission->localDeadline() }}</strong></p>@if($submission->deadline->isPast() && in_array($submission->status,[App\Enums\SubmissionStatus::NotStarted,App\Enums\SubmissionStatus::Draft,App\Enums\SubmissionStatus::Revision]))<p class="field-error">{{ $submission->status===App\Enums\SubmissionStatus::Revision ? 'Revisi belum dikumpulkan' : 'Tenggat terlewati' }}</p>@endif<a class="button {{ $submission->editable()?'primary':'' }} full" href="{{ route('candidate.submission',$submission) }}">{{ match($submission->status){App\Enums\SubmissionStatus::Submitted=>'Lihat tanda terima',App\Enums\SubmissionStatus::Exempt=>'Lihat detail',default=>$submission->editable()?($submission->status===App\Enums\SubmissionStatus::Revision?'Kerjakan revisi':'Lanjutkan pengumpulan'):'Lihat draf'} }}</a>
         </section>@endforeach
         <section class="panel task-panel technical_test">
             <div class="icon-box"><x-heroicon-o-code-bracket /></div>
@@ -28,7 +28,7 @@
                 <p class="muted">Belum ditetapkan.</p>
             @endforelse
             @if(App\Services\TechnicalAssessmentService::available())
-                <a class="button primary full" href="{{ route('candidate.technical-assessments') }}">Buka tes teknis online →</a>
+                <a class="button primary full" href="{{ route('candidate.technical-assessments') }}">Buka tes teknis online</a>
             @else
                 <p class="muted">Tes teknis online belum tersedia. Hubungi HR untuk informasi lebih lanjut.</p>
             @endif
@@ -44,7 +44,7 @@
                 <p class="muted">Belum ditetapkan.</p>
             @endforelse
             @if(App\Services\PsychometricService::available())
-                <a class="button primary full" href="{{ route('candidate.psychometrics') }}">Buka tes psikotes →</a>
+                <a class="button primary full" href="{{ route('candidate.psychometrics') }}">Buka tes psikotes</a>
             @else
                 <p class="muted">Psikotes belum tersedia. Hubungi HR untuk informasi lebih lanjut.</p>
             @endif

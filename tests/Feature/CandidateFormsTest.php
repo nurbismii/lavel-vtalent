@@ -135,6 +135,193 @@ class CandidateFormsTest extends TestCase
         return [$choice, $section, [...$this->field(), 'label' => 'Nama perusahaan'], [...$this->field('file'), 'label' => 'Surat pengalaman'], $this->field('section', false), [...$this->field(), 'label' => 'Domisili']];
     }
 
+    public function test_editor_publishes_unique_fields_and_preserves_existing_intake_rules(): void
+    {
+        $field = $this->field('numeric_text');
+        [$admin, $template, $intake] = $this->setupForm([$field]);
+        $template->update(['fields' => [$field]]);
+        $page = Livewire::actingAs($admin)->test(CandidateForms::class)->call('edit', $template->id)
+            ->assertSet('fields.0.unique', false)->assertSee('Jawaban harus unik')
+            ->set('fields.0.unique', true)->call('publish')->assertHasNoErrors();
+
+        $this->assertTrue($template->fresh()->fields[0]['unique']);
+        $this->assertTrue($template->versions()->latest('number')->firstOrFail()->fields[0]['unique']);
+        $this->assertFalse($intake->version->fields[0]['unique']);
+        $page->call('duplicate', $template->id)->assertHasNoErrors()->assertSet('fields.0.unique', true)
+            ->set('fields.0.type', 'file')->assertSet('fields.0.unique', false);
+    }
+
+    #[TestWith(['file'])]
+    #[TestWith(['section'])]
+    public function test_unique_option_rejects_fields_without_answers(string $type): void
+    {
+        $this->expectException(ValidationException::class);
+
+        app(CandidateFormService::class)->schema(['title' => 'Form', 'fields' => [[...$this->field($type), 'unique' => true]]]);
+    }
+
+    #[TestWith(['numeric_text', '0012345678901234', '0012345678901234'])]
+    #[TestWith(['email', 'Person@Example.com', 'person@example.com'])]
+    #[TestWith(['text', '  Kandidat  ', 'kandidat'])]
+    #[TestWith(['text', "O'Reilly", "O'Reilly"])]
+    #[TestWith(['number', '01.50', '1.5'])]
+    #[TestWith(['number', '0', '0.0'])]
+    #[TestWith(['checkbox', ['Satu', 'Dua'], ['Dua', 'Satu']])]
+    #[TestWith(['consent', true, '1'])]
+    #[TestWith(['consent', false, '0'])]
+    public function test_unique_field_rejects_duplicate_draft_answers(string $type, mixed $firstValue, mixed $duplicate): void
+    {
+        $field = [...$this->field($type, false), 'unique' => true];
+        [, , $intake] = $this->setupForm([$field]);
+        $first = $this->response($intake, 'first@example.com');
+        app(CandidateFormService::class)->save($first, 0, ['answers' => [$field['id'] => $firstValue]]);
+        $second = $this->response($intake, 'second@example.com');
+
+        $this->grant($second)->post(route('forms.save', $second->reference), ['lock_version' => 0, 'answers' => [$field['id'] => $duplicate], 'action' => 'save'])
+            ->assertSessionHasErrors(['answers.'.$field['id'] => $field['label'].' sudah digunakan pada penerimaan ini. Gunakan nilai lain.']);
+
+        $this->assertSame([], $second->fresh()->answers);
+        $this->assertSame(0, $second->fresh()->lock_version);
+        $this->assertDatabaseCount('form_response_revisions', 0);
+    }
+
+    public function test_unique_field_blocks_access_request_before_sending_email(): void
+    {
+        Queue::fake([SendFormAccess::class]);
+        $field = [...$this->field('numeric_text'), 'unique' => true];
+        [, , $intake] = $this->setupForm([$field]);
+        $this->finalized($this->response($intake), [$field['id'] => '0012345678901234']);
+
+        $this->post(route('forms.access', $intake->slug), ['email' => 'other@example.com', 'answers' => [$field['id'] => '0012345678901234']])
+            ->assertSessionHasErrors('answers.'.$field['id']);
+
+        $this->assertDatabaseCount('form_access_tokens', 0);
+        $this->assertDatabaseCount('form_responses', 1);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_unique_conflict_during_email_verification_returns_to_editable_form_with_input(): void
+    {
+        Queue::fake([SendFormAccess::class]);
+        $field = [...$this->field('numeric_text'), 'unique' => true];
+        [, , $intake] = $this->setupForm([$field]);
+        $this->post(route('forms.access', $intake->slug), ['email' => 'pending@example.com', 'name' => 'Kandidat', 'answers' => [$field['id'] => '0012345678901234']])->assertSessionHasNoErrors();
+        $job = Queue::pushed(SendFormAccess::class)->sole();
+        $this->finalized($this->response($intake), [$field['id'] => '0012345678901234']);
+
+        $result = $this->post(route('forms.consume', $job->rawToken));
+
+        $response = FormResponse::where('email', 'pending@example.com')->sole();
+        $result->assertRedirect(route('forms.response', $response->reference))->assertSessionHasErrors('answers.'.$field['id'])
+            ->assertSessionHasInput('answers.'.$field['id'], '0012345678901234');
+        $this->assertSame([], $response->answers);
+        $this->get(route('forms.response', $response->reference))->assertOk()->assertSee('0012345678901234');
+        Queue::assertPushed(SendFormAccess::class, 1);
+    }
+
+    public function test_unique_field_is_rechecked_on_final_submission(): void
+    {
+        $field = [...$this->field('numeric_text'), 'unique' => true];
+        [, , $intake] = $this->setupForm([$field]);
+        $response = $this->response($intake);
+        $response->update(['answers' => [$field['id'] => '0012345678901234']]);
+        $this->finalized($this->response($intake, 'other@example.com'), [$field['id'] => '1123456789012345']);
+        $response->update(['answers' => [$field['id'] => '1123456789012345']]);
+
+        $this->grant($response)->withSession(['form_review.'.$response->id => 0])->post(route('forms.submit', $response->reference), ['lock_version' => 0, 'consent' => true])
+            ->assertSessionHasErrors('answers.'.$field['id']);
+
+        $this->assertNull($response->fresh()->submitted_at);
+        $this->assertSame('draft', $response->fresh()->status);
+        $this->assertSame(0, $response->revisions()->count());
+    }
+
+    public function test_unique_field_allows_own_draft_submission_and_revision(): void
+    {
+        $field = [...$this->field('numeric_text'), 'unique' => true];
+        [$admin, , $intake] = $this->setupForm([$field]);
+        $response = $this->response($intake);
+        $answers = [$field['id'] => '0012345678901234'];
+
+        $this->grant($response)->post(route('forms.save', $response->reference), ['lock_version' => 0, 'name' => 'Kandidat', 'answers' => $answers, 'consent' => true, 'action' => 'review'])
+            ->assertOk()->assertSessionHasNoErrors();
+        $this->post(route('forms.submit', $response->reference), ['lock_version' => 1, 'consent' => true])->assertSessionHasNoErrors();
+        app(CandidateFormService::class)->revise($admin, $response->fresh(), 'Perbaiki jawaban lainnya', now()->addDay()->toDateTimeString());
+        $revised = $this->finalized($response->fresh(), $answers);
+
+        $this->assertSame($answers, $revised->answers);
+        $this->assertSame('submitted', $revised->status);
+        $this->assertSame(2, $revised->revisions()->count());
+    }
+
+    public function test_unique_field_allows_same_value_in_another_intake(): void
+    {
+        $field = [...$this->field('numeric_text'), 'unique' => true];
+        [$admin, , $intake] = $this->setupForm([$field]);
+        $answers = [$field['id'] => '0012345678901234'];
+        $this->finalized($this->response($intake), $answers);
+        $other = app(CandidateFormService::class)->createIntake($admin, $intake->only('candidate_form_version_id', 'position_id', 'recruitment_period_id'));
+
+        $response = $this->finalized($this->response($other), $answers);
+
+        $this->assertSame('submitted', $response->status);
+        $this->assertSame($answers, $response->answers);
+    }
+
+    public function test_unchecked_unique_option_allows_duplicate_values(): void
+    {
+        $field = [...$this->field('numeric_text'), 'unique' => false];
+        [, , $intake] = $this->setupForm([$field]);
+        $answers = [$field['id'] => '0012345678901234'];
+        $this->finalized($this->response($intake), $answers);
+
+        $response = $this->finalized($this->response($intake, 'other@example.com'), $answers);
+
+        $this->assertSame('submitted', $response->status);
+        $this->assertSame($answers, $response->answers);
+    }
+
+    #[TestWith(['numeric_text', '00123', '123'])]
+    #[TestWith(['checkbox', ['Satu', 'Dua'], ['Satu']])]
+    public function test_unique_field_allows_distinct_values(string $type, mixed $firstValue, mixed $secondValue): void
+    {
+        $field = [...$this->field($type), 'unique' => true];
+        [, , $intake] = $this->setupForm([$field]);
+        $this->finalized($this->response($intake), [$field['id'] => $firstValue]);
+
+        $response = $this->finalized($this->response($intake, 'other@example.com'), [$field['id'] => $secondValue]);
+
+        $this->assertSame('submitted', $response->status);
+        $this->assertSame([$field['id'] => $secondValue], $response->answers);
+    }
+
+    #[TestWith(['text', ''])]
+    #[TestWith(['checkbox', []])]
+    public function test_optional_unique_fields_allow_multiple_empty_answers(string $type, mixed $value): void
+    {
+        $field = [...$this->field($type, false), 'unique' => true];
+        [, , $intake] = $this->setupForm([$field]);
+        $answers = [$field['id'] => $value];
+        $this->finalized($this->response($intake), $answers);
+
+        $response = $this->finalized($this->response($intake, 'other@example.com'), $answers);
+
+        $this->assertSame('submitted', $response->status);
+    }
+
+    public function test_hidden_unique_answers_are_ignored(): void
+    {
+        $choice = [...$this->field('radio'), 'options' => ['Ya', 'Tidak']];
+        $field = [...$this->field('numeric_text'), 'unique' => true, 'condition' => ['field_id' => $choice['id'], 'value' => 'Ya']];
+        [, , $intake] = $this->setupForm([$choice, $field]);
+        $this->finalized($this->response($intake), [$choice['id'] => 'Ya', $field['id'] => '0012345678901234']);
+
+        $response = $this->finalized($this->response($intake, 'other@example.com'), [$choice['id'] => 'Tidak', $field['id'] => '0012345678901234']);
+
+        $this->assertSame([$choice['id'] => 'Tidak'], $response->answers);
+        $this->assertSame('submitted', $response->status);
+    }
+
     public function test_conditional_section_ignores_hidden_answers_and_required_documents_in_review_and_submission(): void
     {
         [$choice, , $company, $file, , $city] = $fields = $this->conditionalFields();

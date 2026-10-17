@@ -152,7 +152,7 @@ class CandidateForms extends Page
         $this->formLock = $form->lock_version;
         $this->formTitle = $form->title;
         $this->description = $form->description ?? '';
-        $this->fields = array_map(fn ($f) => [...$f, 'condition' => $f['condition'] ?? ['field_id' => '', 'value' => ''], 'options_text' => implode("\n", $f['options'])], $form->fields);
+        $this->fields = array_map(fn ($f) => [...$f, 'unique' => $f['unique'] ?? false, 'condition' => $f['condition'] ?? ['field_id' => '', 'value' => ''], 'options_text' => implode("\n", $f['options'])], $form->fields);
         $this->preview = false;
     }
 
@@ -182,7 +182,7 @@ class CandidateForms extends Page
         if (count($this->fields) >= 100) {
             return;
         }
-        $this->fields[] = ['id' => (string) Str::uuid(), 'type' => 'text', 'label' => '', 'help' => '', 'placeholder' => '', 'required' => false, 'options_text' => '', 'options' => [], 'max_length' => 255, 'min' => '', 'max' => '', 'max_mb' => 10, 'max_files' => 1, 'extensions' => ['pdf'], 'condition' => ['field_id' => '', 'value' => '']];
+        $this->fields[] = ['id' => (string) Str::uuid(), 'type' => 'text', 'label' => '', 'help' => '', 'placeholder' => '', 'required' => false, 'unique' => false, 'options_text' => '', 'options' => [], 'max_length' => 255, 'min' => '', 'max' => '', 'max_mb' => 10, 'max_files' => 1, 'extensions' => ['pdf'], 'condition' => ['field_id' => '', 'value' => '']];
     }
 
     public function moveField(int $index, int $direction): void
@@ -234,6 +234,9 @@ class CandidateForms extends Page
 
     public function updatedFields(mixed $value, ?string $key = null): void
     {
+        if ($key !== null && preg_match('/^(\d+)\.type$/', $key, $matches) && in_array($value, ['file', 'section'], true)) {
+            $this->fields[(int) $matches[1]]['unique'] = false;
+        }
         if ($key !== null && preg_match('/^(\d+)\.condition\.field_id$/', $key, $matches)) {
             $this->fields[(int) $matches[1]]['condition']['value'] = '';
         }
