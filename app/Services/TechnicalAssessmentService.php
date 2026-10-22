@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\Role;
+use App\Models\AppSetting;
 use App\Models\AuditLog;
 use App\Models\RecruitmentApplication;
 use App\Models\TechnicalAssessmentAttempt;
@@ -26,7 +27,75 @@ class TechnicalAssessmentService
     /** @return array<string, array<string, mixed>> */
     public function packages(): array
     {
-        return json_decode(file_get_contents(resource_path('technical-assessments.json')), true, 512, JSON_THROW_ON_ERROR);
+        $packages = json_decode(file_get_contents(resource_path('technical-assessments.json')), true, 512, JSON_THROW_ON_ERROR);
+        $labels = AppSetting::whereIn('key', array_map(fn (string $form): string => 'technical_assessment_labels_'.$form, array_keys($packages)))->pluck('value', 'key');
+        foreach ($packages as $form => &$package) {
+            $saved = $labels->get('technical_assessment_labels_'.$form, []);
+            $package['title'] = $saved['title'] ?? $package['title'];
+            $legacySectionIds = [];
+            if (isset($saved['questions']['identity_conditions'])) {
+                $legacySectionIds[] = 'identity_conditions';
+            }
+            $legacySectionIds[] = 'B01';
+            $legacySectionIds[] = isset($saved['questions']['priority_1']) ? 'priority_1' : 'priority_1_priority';
+            if (isset($saved['questions']['priority_1'])) {
+                $legacySectionIds[] = 'revised_decision';
+            }
+            $legacySectionIds[] = 'probe_1';
+            if (isset($saved['questions']['technical_conditions'])) {
+                $legacySectionIds[] = 'technical_conditions';
+            }
+            $savedSectionIds = $saved['section_question_ids'] ?? $legacySectionIds;
+            foreach ($package['sections'] as $index => &$section) {
+                $sectionId = $section['questions'][0]['id'];
+                if ($sectionId === 'priority_1_priority' && isset($saved['questions']['priority_1'])) {
+                    $sectionId = 'priority_1';
+                }
+                $savedIndex = $form === 'B' ? array_search($sectionId, $savedSectionIds, true) : $index;
+                $savedTitle = $savedIndex !== false ? ($saved['sections'][$savedIndex] ?? null) : null;
+                if ($form === 'B' && ! isset($saved['section_question_ids']) && in_array($savedTitle, ['Penalaran paralel dan penjelasan proses', 'Simulasi dinamis · keputusan awal', 'Simulasi dinamis · fakta baru', 'Bagian 3. Probe Konsistensi'], true)) {
+                    $savedTitle = null;
+                }
+                $section['title'] = $savedTitle ?? $section['title'];
+                foreach ($section['questions'] as &$question) {
+                    $question['label'] = $saved['questions'][$question['id']]['label'] ?? $question['label'] ?? $question['id'];
+                    $question['prompt'] = $saved['questions'][$question['id']]['prompt'] ?? $question['prompt'];
+                }
+                unset($question);
+            }
+            unset($section);
+        }
+        unset($package);
+
+        return $packages;
+    }
+
+    /** @param array{title: string, sections: array<int, string>, questions: array<string, array{label: string, prompt: string}>} $labels */
+    public function updatePackageLabels(User $actor, string $form, array $labels): void
+    {
+        $this->admin($actor);
+        $packages = $this->packages();
+        abort_unless(isset($packages[$form]), 422);
+        $package = $packages[$form];
+        $questionIds = array_column(array_merge(...array_column($package['sections'], 'questions')), 'id');
+        Validator::make($labels, [
+            'title' => ['required', 'string', 'max:255'],
+            'sections' => ['required', 'array:'.implode(',', array_keys($package['sections'])), 'size:'.count($package['sections'])],
+            'sections.*' => ['required', 'string', 'max:255'],
+            'questions' => ['required', 'array:'.implode(',', $questionIds), 'size:'.count($questionIds)],
+            'questions.*' => ['required', 'array:label,prompt'],
+            'questions.*.label' => ['required', 'string', 'max:255'],
+            'questions.*.prompt' => ['required', 'string', 'max:5000'],
+        ])->validate();
+
+        if ($form === 'B') {
+            $labels['section_question_ids'] = array_map(fn (array $section): string => $section['questions'][0]['id'], $package['sections']);
+        }
+
+        DB::transaction(function () use ($actor, $form, $labels): void {
+            $setting = AppSetting::updateOrCreate(['key' => 'technical_assessment_labels_'.$form], ['value' => $labels]);
+            AuditLog::record('technical_assessment.package_updated', $setting, $actor, metadata: ['form' => $form]);
+        });
     }
 
     public function admin(User $actor): void
@@ -45,7 +114,7 @@ class TechnicalAssessmentService
     {
         $this->admin($actor);
         Validator::make($data, [
-            'application_id' => ['required', 'integer'], 'form' => ['required', 'in:A,B,A2'],
+            'application_id' => ['required', 'integer'], 'form' => ['required', 'in:A,B'],
             'opens_at' => ['required', 'date'], 'deadline' => ['required', 'date', 'after:opens_at', 'after:now'],
             'durations' => ['required', 'array'], 'durations.*' => ['required', 'integer', 'min:60', 'max:7200'],
             'reviewed' => ['accepted'],
@@ -89,7 +158,10 @@ class TechnicalAssessmentService
             }
             if ($action === 'conditions') {
                 abort_unless($attempt->completed_at, 422, 'Catatan akhir tersedia setelah tes selesai.');
-                Validator::make($payload, ['conditions' => ['required', 'array:technical_conditions,accommodations,unfinished,other_conditions'], 'conditions.*' => ['nullable', 'string', 'max:2000'], 'confirmation' => ['accepted']])->validate();
+                if ($attempt->form === 'A' || empty($attempt->conditionQuestions())) {
+                    throw ValidationException::withMessages(['conditions' => 'Catatan kondisi dan konfirmasi diisi setelah seluruh soal Form A dan Form B selesai.']);
+                }
+                Validator::make($payload, ['conditions' => ['required', 'array:technical_conditions,unfinished,other_conditions'], 'conditions.*' => ['nullable', 'string', 'max:2000'], 'confirmation' => ['accepted']])->validate();
                 $attempt->update(['conditions' => $payload['conditions']]);
                 AuditLog::record('technical_assessment.conditions_saved', $attempt, $actor);
 
@@ -116,9 +188,45 @@ class TechnicalAssessmentService
 
                 return $attempt;
             }
-            abort_unless(in_array($action, ['save', 'finish'], true) && $attempt->section_started_at, 409, 'Tahap belum dimulai atau sudah ditutup.');
+            abort_unless(in_array($action, ['save', 'next', 'finish'], true) && $attempt->section_started_at, 409, 'Tahap belum dimulai atau sudah ditutup.');
             $section = $attempt->package['sections'][$attempt->section_index];
             Validator::make($payload, ['answers' => ['present', 'array', 'max:'.count($section['questions'])], 'answers.*' => ['nullable', 'string', 'max:5000']])->validate();
+            $isReasoning = $attempt->isReasoningSection();
+            $isSimulation = $attempt->isSimulationSection();
+            abort_if($action === 'next' && ! $isReasoning && ! $isSimulation, 422, 'Lanjut hanya tersedia pada penalaran paralel atau simulasi dinamis.');
+            if ($isReasoning) {
+                if ($attempt->reasoning_answers_locked_at) {
+                    abort_if($action === 'next', 409, 'Jawaban B01–B04 sudah dikunci. Muat ulang halaman.');
+                    abort_if(array_diff(array_keys($payload['answers']), ['process']), 422, 'Jawaban B01–B04 sudah dikunci dan tidak dapat diubah.');
+                } else {
+                    abort_if($action === 'finish', 422, 'Jawab B01–B04 dan tekan Next sebelum mengisi penjelasan proses.');
+                    abort_if(array_key_exists('process', $payload['answers']), 422, 'Penjelasan proses tersedia setelah jawaban B01–B04 dikunci.');
+                    if ($action === 'next') {
+                        Validator::make($payload, [
+                            'answers.B01' => ['required'], 'answers.B02' => ['required'],
+                            'answers.B03' => ['required'], 'answers.B04' => ['required'],
+                        ], ['required' => 'Jawab seluruh soal B01–B04 sebelum menekan Next.'])->validate();
+                    }
+                }
+            }
+            if ($isSimulation) {
+                if ($attempt->simulation_answers_locked_at) {
+                    abort_if($action === 'next', 409, 'Jawaban prioritas sudah dikunci. Muat ulang halaman.');
+                    abort_if(array_diff(array_keys($payload['answers']), ['revised_decision']), 422, 'Jawaban prioritas sudah dikunci dan tidak dapat diubah.');
+                } else {
+                    abort_if($action === 'finish', 422, 'Lengkapi seluruh prioritas dan tekan Lanjut sebelum menanggapi fakta baru.');
+                    abort_if(array_key_exists('revised_decision', $payload['answers']), 422, 'Fakta baru tersedia setelah jawaban prioritas dikunci.');
+                    if ($action === 'next') {
+                        $rules = [];
+                        foreach ($section['questions'] as $question) {
+                            if (isset($question['group'])) {
+                                $rules['answers.'.$question['id']] = ['required', 'string'];
+                            }
+                        }
+                        Validator::make($payload, $rules, ['required' => 'Lengkapi seluruh kolom prioritas sebelum menekan Lanjut.'])->validate();
+                    }
+                }
+            }
             $questions = collect($section['questions'])->keyBy('id');
             foreach ($payload['answers'] as $key => $value) {
                 $question = $questions->get($key);
@@ -128,10 +236,16 @@ class TechnicalAssessmentService
                 }
             }
             $answers = $attempt->answers ?? [];
-            if (($answers[$attempt->section_index] ?? []) !== $payload['answers']) {
-                $answers[$attempt->section_index] = $payload['answers'];
+            $sectionAnswers = $isReasoning || $isSimulation ? array_replace($answers[$attempt->section_index] ?? [], $payload['answers']) : $payload['answers'];
+            if (($answers[$attempt->section_index] ?? []) !== $sectionAnswers) {
+                $answers[$attempt->section_index] = $sectionAnswers;
                 $attempt->update(['answers' => $answers, 'revision' => $attempt->revision + 1]);
                 AuditLog::record('technical_assessment.answers_saved', $attempt, $actor, metadata: ['section' => $attempt->section_index, 'revision' => $attempt->revision]);
+            }
+            if ($action === 'next') {
+                $lockColumn = $isReasoning ? 'reasoning_answers_locked_at' : 'simulation_answers_locked_at';
+                $attempt->update([$lockColumn => now(), 'revision' => $attempt->revision + 1]);
+                AuditLog::record($isReasoning ? 'technical_assessment.reasoning_answers_locked' : 'technical_assessment.simulation_answers_locked', $attempt, $actor, metadata: ['section' => $attempt->section_index]);
             }
             if ($action === 'finish') {
                 $this->advance($attempt, 'submitted', $actor);
@@ -230,17 +344,16 @@ class TechnicalAssessmentService
             $scores['Perlu verifikasi'] = array_values(array_filter(['D03', 'D04', 'D07'], fn (string $id): bool => $items[$id] === 0));
         } elseif ($attempt->form === 'B') {
             $scores['Penalaran objektif'] = array_sum($items);
-        } else {
-            foreach ($attempt->package['ipip_factors'] as $factor => $definitions) {
-                $values = [];
-                foreach ($definitions as $definition) {
-                    $value = $answers[$definition['id']] ?? null;
-                    if ($value !== null && $value !== '') {
-                        $values[] = $definition['reverse'] ? 6 - (int) $value : (int) $value;
-                    }
+        }
+        foreach ($attempt->package['ipip_factors'] ?? [] as $factor => $definitions) {
+            $values = [];
+            foreach ($definitions as $definition) {
+                $value = $answers[$definition['id']] ?? null;
+                if ($value !== null && $value !== '') {
+                    $values[] = $definition['reverse'] ? 6 - (int) $value : (int) $value;
                 }
-                $scores[$factor] = count($values) === 5 ? array_sum($values) / 5 : null;
             }
+            $scores[$factor] = count($values) === 5 ? array_sum($values) / 5 : null;
         }
         $attempt->update(['scores' => $scores, 'completed_at' => now(), 'section_started_at' => null, 'section_expires_at' => null, 'revision' => $attempt->revision + 1]);
         AuditLog::record('technical_assessment.completed', $attempt, reason: $reason);

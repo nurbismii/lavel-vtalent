@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\TechnicalAssessmentService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\TestWith;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -23,9 +24,46 @@ class TechnicalAssessmentTest extends TestCase
 
     private function attempt(string $form = 'A', array $attributes = []): TechnicalAssessmentAttempt
     {
-        $package = app(TechnicalAssessmentService::class)->packages()[$form];
+        $packages = app(TechnicalAssessmentService::class)->packages();
+        $package = $packages[$form === 'A2' ? 'A' : $form];
+        if ($form === 'A2') {
+            $package = array_replace($package, ['title' => 'Form A2 · IPIP BFM 25 opsional', 'version' => '2026-10-15.1', 'sections' => [$package['sections'][3]], 'scoring' => [], 'condition_questions' => $packages['B']['condition_questions']]);
+        }
 
         return TechnicalAssessmentAttempt::factory()->create($attributes + ['form' => $form, 'package' => $package, 'version' => $package['version']]);
+    }
+
+    private function simulationAnswers(): array
+    {
+        return [
+            'priority_1_priority' => 'Pembayaran',
+            'priority_1_action' => 'Tahan pembayaran dan verifikasi independen.',
+            'priority_1_evidence' => 'Rekening master dan konfirmasi independen.',
+            'priority_1_coordination' => 'Finance dan Manager.',
+            'priority_2_priority' => 'Laporan',
+            'priority_2_action' => 'Klarifikasi angka sebelum rapat.',
+            'priority_2_evidence' => 'Sumber data yang telah dikonfirmasi.',
+            'priority_2_coordination' => 'Pemilik data dan pimpinan rapat.',
+            'priority_3_priority' => 'Administrasi',
+            'priority_3_action' => 'Selesaikan rekap sebelum tenggat besok.',
+            'priority_3_evidence' => 'Daftar kehadiran pelatihan.',
+            'priority_3_coordination' => 'PIC pelatihan.',
+        ];
+    }
+
+    private function legacyFormBPackage(): array
+    {
+        $package = app(TechnicalAssessmentService::class)->packages()['B'];
+        $simulation = $package['sections'][1];
+        $initial = ['title' => 'Simulasi dinamis - keputusan awal', 'seconds' => 240, 'material' => $simulation['material'], 'questions' => []];
+        foreach ([1, 2, 3] as $number) {
+            $initial['questions'][] = ['id' => 'priority_'.$number, 'label' => 'Prioritas '.$number, 'prompt' => 'Tindakan, batas, kontrol, dan koordinasi.', 'type' => 'text'];
+        }
+        $facts = ['title' => 'Simulasi dinamis - fakta baru', 'seconds' => 240, 'material' => array_merge($simulation['material'], $simulation['followup_material']), 'questions' => [collect($simulation['questions'])->firstWhere('id', 'revised_decision')]];
+        array_splice($package['sections'], 1, 1, [$initial, $facts]);
+        $package['version'] = '2026-10-21.3';
+
+        return $package;
     }
 
     private function loginFor(TechnicalAssessmentAttempt $attempt): void
@@ -56,7 +94,7 @@ class TechnicalAssessmentTest extends TestCase
             ->set('deadline', now()->addHours(3)->timezone(AppSetting::valueFor('timezone'))->toDateTimeString())->set('reviewed', true)
             ->call('assign')->assertHasNoErrors();
         $attempt = TechnicalAssessmentAttempt::sole();
-        $this->assertSame([300, 900, 900, 600], array_column($attempt->package['sections'], 'seconds'));
+        $this->assertSame([900, 900, 600, 420], array_column($attempt->package['sections'], 'seconds'));
         $this->assertSame('C', array_key_first($attempt->package['scoring']['A01']));
         $attempt->update(['answers' => [1 => ['A01' => 'B']]]);
 
@@ -65,6 +103,371 @@ class TechnicalAssessmentTest extends TestCase
         $this->assertDatabaseCount('technical_assessment_attempts', 1);
         $this->assertSame([1 => ['A01' => 'B']], $attempt->fresh()->answers);
         $this->assertSame(1, AuditLog::where('action', 'technical_assessment.assigned')->count());
+    }
+
+    public function test_admin_updates_package_and_question_titles_for_new_assignments_without_changing_existing_sessions(): void
+    {
+        $this->freezeTime();
+        $existing = $this->attempt('A', ['consented_at' => now(), 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15), 'answers' => [0 => ['A01' => 'C']]]);
+        $original = $existing->fresh()->getAttributes();
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $application = RecruitmentApplication::factory()->create();
+
+        Livewire::actingAs($admin)->test(TechnicalAssessments::class)
+            ->set('packageTitle', 'Tes Administrasi')
+            ->set('sectionTitles.0', 'Penalaran Administrasi')
+            ->set('questionTitles.A01.label', 'Pemahaman prosedur')
+            ->set('questionTitles.A01.prompt', '<script>alert(1)</script> Pertanyaan administrasi')
+            ->set('reviewed', true)->call('savePackage')->assertHasNoErrors()->assertSet('reviewed', false)
+            ->assertSee('Nama paket dan soal berhasil diperbarui')
+            ->set('applicationIds', [$application->id])
+            ->set('opensAt', now()->subMinute()->timezone(AppSetting::valueFor('timezone'))->toDateTimeString())
+            ->set('deadline', now()->addHours(3)->timezone(AppSetting::valueFor('timezone'))->toDateTimeString())
+            ->set('reviewed', true)->call('assign')->assertHasNoErrors();
+
+        $assigned = TechnicalAssessmentAttempt::where('recruitment_application_id', $application->id)->sole();
+        $this->assertSame('Tes Administrasi', $assigned->package['title']);
+        $this->assertSame('Penalaran Administrasi', $assigned->package['sections'][0]['title']);
+        $this->assertSame('Pemahaman prosedur', $assigned->package['sections'][0]['questions'][0]['label']);
+        $this->assertSame($existing->package['scoring'], $assigned->package['scoring']);
+        $this->assertSame($original, $existing->fresh()->getAttributes());
+        $this->assertDatabaseHas('app_settings', ['key' => 'technical_assessment_labels_A']);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'technical_assessment.package_updated', 'actor_id' => $admin->id]);
+        Livewire::actingAs($admin)->test(TechnicalAssessments::class)
+            ->assertSet('packageTitle', 'Tes Administrasi')->assertSet('questionTitles.A01.label', 'Pemahaman prosedur')
+            ->set('form', 'B')->assertSet('questionTitles.B01.label', 'B01')->set('form', 'A')->assertSet('packageTitle', 'Tes Administrasi');
+        $assigned->update(['consented_at' => now(), 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15)]);
+        $this->loginFor($assigned);
+        $this->get(route('candidate.technical-assessments.show', $assigned))->assertSee('Pemahaman prosedur')
+            ->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false)->assertDontSee('<script>alert(1)</script>', false);
+    }
+
+    #[TestWith(['packageTitle', '', 'title'])]
+    #[TestWith(['sectionTitles.0', '', 'sections.0'])]
+    #[TestWith(['questionTitles.A01.label', '', 'questions.A01.label'])]
+    #[TestWith(['questionTitles.A01.prompt', '', 'questions.A01.prompt'])]
+    #[TestWith(['questionTitles.A01.options', ['Z' => 'Jawaban tambahan'], 'questions.A01'])]
+    #[TestWith(['questionTitles.EXTRA', ['label' => 'Soal tambahan', 'prompt' => 'Tidak diizinkan'], 'questions'])]
+    public function test_package_edits_reject_invalid_titles_and_unexpected_question_data(string $property, mixed $value, string $error): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+
+        Livewire::actingAs($admin)->test(TechnicalAssessments::class)->set($property, $value)
+            ->call('savePackage')->assertHasErrors($error);
+
+        $this->assertDatabaseMissing('app_settings', ['key' => 'technical_assessment_labels_A']);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'technical_assessment.package_updated']);
+    }
+
+    public function test_revoked_admin_cannot_update_packages(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $page = Livewire::actingAs($admin)->test(TechnicalAssessments::class)->set('packageTitle', 'Perubahan terlarang');
+        $admin->update(['active' => false]);
+
+        $page->call('savePackage')->assertForbidden();
+
+        $this->assertDatabaseMissing('app_settings', ['key' => 'technical_assessment_labels_A']);
+    }
+
+    public function test_form_a_includes_behavior_followup_and_removes_instruction_stage_and_separate_a2_assignment(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $application = RecruitmentApplication::factory()->create();
+        Livewire::actingAs($admin)->test(TechnicalAssessments::class)
+            ->assertViewHas('packages', fn (array $packages): bool => array_keys($packages) === ['A', 'B'])
+            ->assertDontSee('Orientasi dan latihan');
+        $this->actingAs($admin);
+        try {
+            app(TechnicalAssessmentService::class)->assign($admin, ['application_id' => $application->id, 'form' => 'A2', 'opens_at' => now()->subMinute(), 'deadline' => now()->addHour(), 'durations' => [420], 'reviewed' => true]);
+            $this->fail('A2 must not be assignable separately.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('form', $exception->errors());
+        }
+        $this->assertDatabaseCount('technical_assessment_attempts', 0);
+    }
+
+    public function test_new_form_b_starts_with_reasoning_without_identity_and_conditions(): void
+    {
+        $this->freezeTime();
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $application = RecruitmentApplication::factory()->create();
+        Livewire::actingAs($admin)->test(TechnicalAssessments::class)->set('form', 'B')
+            ->assertDontSee('Identitas dan kondisi')->assertSet('durations', [300, 480, 300])
+            ->set('applicationIds', [$application->id])
+            ->set('opensAt', now()->subMinute()->timezone(AppSetting::valueFor('timezone'))->toDateTimeString())
+            ->set('deadline', now()->addHours(2)->timezone(AppSetting::valueFor('timezone'))->toDateTimeString())
+            ->set('reviewed', true)->call('assign')->assertHasNoErrors();
+        $attempt = TechnicalAssessmentAttempt::sole();
+        $this->completeFormAFor($attempt);
+        $this->loginFor($attempt);
+        $url = route('candidate.technical-assessments.update', $attempt);
+
+        $this->postJson($url, ['action' => 'consent', 'consent' => true])->assertOk();
+        $this->get(route('candidate.technical-assessments.show', $attempt))
+            ->assertSee('Mulai Penalaran paralel')->assertDontSee('Identitas dan kondisi');
+        $this->postJson($url, $this->payload($attempt, 'start'))->assertJsonPath('section', 0)->assertJsonPath('remaining', 300);
+        $this->postJson($url, $this->payload($attempt, 'save', ['B01' => 'B']))->assertOk();
+
+        $this->assertSame([0 => ['B01' => 'B']], $attempt->fresh()->answers);
+    }
+
+    #[TestWith([0])]
+    #[TestWith([1])]
+    public function test_next_locks_reasoning_choices_and_reveals_process_with_the_same_stage_timer(int $section): void
+    {
+        $this->freezeTime();
+        $package = app(TechnicalAssessmentService::class)->packages()['B'];
+        if ($section === 1) {
+            array_unshift($package['sections'], ['title' => 'Identitas dan kondisi', 'seconds' => 120, 'material' => [], 'questions' => []]);
+        }
+        $attempt = $this->attempt('B', ['package' => $package, 'consented_at' => now(), 'section_index' => $section,
+            'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(5)]);
+        $this->completeFormAFor($attempt);
+        $this->loginFor($attempt);
+        $url = route('candidate.technical-assessments.update', $attempt);
+        $show = route('candidate.technical-assessments.show', $attempt);
+        $choices = ['B01' => 'B', 'B02' => 'C', 'B03' => 'A', 'B04' => 'C'];
+        $started = $attempt->section_started_at->toIso8601String();
+        $expires = $attempt->section_expires_at->toIso8601String();
+
+        $this->get($show)->assertSee('value="next"', false)->assertSee('name="answers[B04]"', false)
+            ->assertDontSee('name="answers[process]"', false)
+            ->assertDontSee('Jelaskan informasi yang digunakan, langkah berpikir, dan pemeriksaan jawaban untuk B04.');
+        $staleSave = $this->payload($attempt, 'save', ['B01' => 'A']);
+        $this->travel(30)->seconds();
+        $this->postJson($url, $this->payload($attempt, 'next', $choices))
+            ->assertJsonPath('section', $section)->assertJsonPath('active', true)
+            ->assertJsonPath('reasoning_locked', true)->assertJsonPath('remaining', 270);
+
+        $this->assertNotNull($attempt->fresh()->reasoning_answers_locked_at);
+        $this->assertSame($started, $attempt->fresh()->section_started_at->toIso8601String());
+        $this->assertSame($expires, $attempt->fresh()->section_expires_at->toIso8601String());
+        $this->assertSame([$section => $choices], $attempt->fresh()->answers);
+        $this->get($show)->assertSee('name="answers[process]"', false)
+            ->assertDontSee('name="answers[B01]"', false)->assertDontSee('value="next"', false);
+        $this->postJson($url, $staleSave)->assertConflict();
+        $this->postJson($url, $this->payload($attempt, 'save', ['process' => 'Pisahkan faktor yang berubah.']))->assertOk();
+        $this->get($show)->assertSee('Pisahkan faktor yang berubah.');
+        $this->assertSame($choices + ['process' => 'Pisahkan faktor yang berubah.'], $attempt->fresh()->answers[$section]);
+        $this->assertDatabaseHas('audit_logs', ['target_id' => $attempt->id, 'action' => 'technical_assessment.reasoning_answers_locked']);
+        $this->postJson($url, $this->payload($attempt, 'finish', ['process' => 'Periksa kembali bukti.']))
+            ->assertJsonPath('section', $section + 1)->assertJsonPath('active', false);
+        $this->assertSame($choices + ['process' => 'Periksa kembali bukti.'], $attempt->fresh()->answers[$section]);
+        $attempt->update(['deadline' => now()]);
+        $this->getJson($show)->assertJsonPath('completed', true);
+        $this->assertSame(4, $attempt->fresh()->scores['Penalaran objektif']);
+    }
+
+    #[TestWith(['next', ['B01' => 'B', 'B02' => 'C', 'B03' => 'A']])]
+    #[TestWith(['next', ['B01' => 'B', 'B02' => 'C', 'B03' => 'A', 'B04' => 'Z']])]
+    #[TestWith(['save', ['process' => 'Belum boleh terlihat.']])]
+    #[TestWith(['finish', ['B01' => 'B', 'B02' => 'C', 'B03' => 'A', 'B04' => 'C']])]
+    public function test_reasoning_rejects_incomplete_next_invalid_choices_and_skipping_the_lock(string $action, array $answers): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(5)]);
+        $this->loginFor($attempt);
+        $original = $attempt->fresh()->getAttributes();
+
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, $action, $answers))->assertUnprocessable();
+
+        $this->assertSame($original, $attempt->fresh()->getAttributes());
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    #[TestWith(['save', ['B01' => 'A']])]
+    #[TestWith(['finish', ['B04' => 'D', 'process' => 'Mengubah pilihan terkunci.']])]
+    #[TestWith(['next', ['B01' => 'A', 'B02' => 'A', 'B03' => 'A', 'B04' => 'A']])]
+    public function test_locked_reasoning_choices_cannot_be_overwritten_or_relocked(string $action, array $answers): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(5)]);
+        $this->loginFor($attempt);
+        $url = route('candidate.technical-assessments.update', $attempt);
+        $this->postJson($url, $this->payload($attempt, 'next', ['B01' => 'B', 'B02' => 'C', 'B03' => 'A', 'B04' => 'C']))->assertOk();
+        $original = $attempt->fresh()->getAttributes();
+
+        $response = $this->postJson($url, $this->payload($attempt, $action, $answers));
+
+        if ($action === 'next') {
+            $response->assertConflict();
+        } else {
+            $response->assertUnprocessable();
+        }
+        $this->assertSame($original, $attempt->fresh()->getAttributes());
+        $this->assertSame(1, AuditLog::where('action', 'technical_assessment.reasoning_answers_locked')->count());
+    }
+
+    #[TestWith(['next', false])]
+    #[TestWith(['save', true])]
+    public function test_reasoning_timeout_discards_late_next_or_process_answers(string $action, bool $locked): void
+    {
+        $this->freezeTime();
+        $choices = ['B01' => 'B', 'B02' => 'C', 'B03' => 'A', 'B04' => 'C'];
+        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_started_at' => now()->subMinutes(5), 'section_expires_at' => now(),
+            'reasoning_answers_locked_at' => $locked ? now()->subMinute() : null, 'answers' => [0 => $choices]]);
+        $this->loginFor($attempt);
+
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, $action, $locked ? ['process' => 'Terlambat.'] : $choices))
+            ->assertJsonPath('section', 1)->assertJsonPath('active', false);
+
+        $this->assertSame([0 => $choices], $attempt->fresh()->answers);
+        $this->assertSame($locked, $attempt->fresh()->reasoning_answers_locked_at !== null);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'technical_assessment.reasoning_answers_locked']);
+    }
+
+    public function test_next_is_rejected_outside_parallel_reasoning_without_changing_answers(): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15)]);
+        $this->loginFor($attempt);
+
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'next', ['A01' => 'C']))->assertUnprocessable();
+
+        $this->assertSame([], $attempt->fresh()->answers);
+        $this->assertNull($attempt->fresh()->reasoning_answers_locked_at);
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_form_b_preserves_custom_titles_saved_before_identity_stage_removal(): void
+    {
+        AppSetting::factory()->create(['key' => 'technical_assessment_labels_B', 'value' => [
+            'title' => 'Tes lanjutan administrasi',
+            'sections' => ['Identitas lama', 'Penalaran khusus', 'Keputusan khusus', 'Fakta khusus', 'Probe khusus', 'Kuesioner khusus'],
+            'questions' => ['identity_conditions' => ['label' => 'Identitas lama', 'prompt' => 'Konfirmasi lama'], 'priority_1' => ['label' => 'Prioritas 1', 'prompt' => 'Keputusan awal.']],
+        ]]);
+        $admin = User::factory()->create(['role' => Role::Admin]);
+
+        Livewire::actingAs($admin)->test(TechnicalAssessments::class)->set('form', 'B')
+            ->assertSet('packageTitle', 'Tes lanjutan administrasi')
+            ->assertSet('sectionTitles', ['Penalaran khusus', 'Keputusan khusus', 'Probe khusus'])
+            ->call('savePackage')->assertHasNoErrors()
+            ->set('form', 'A')->set('form', 'B')
+            ->assertSet('sectionTitles', ['Penalaran khusus', 'Keputusan khusus', 'Probe khusus'])
+            ->assertDontSee('Identitas lama');
+    }
+
+    public function test_old_five_stage_labels_cannot_swap_probe_and_condition_notes(): void
+    {
+        AppSetting::factory()->create(['key' => 'technical_assessment_labels_B', 'value' => [
+            'title' => 'Sesi B',
+            'sections' => ['Identitas dan kondisi', 'Penalaran paralel dan penjelasan proses', 'Simulasi dinamis · keputusan awal', 'Simulasi dinamis · fakta baru', 'Probe konsistensi'],
+            'questions' => [
+                'identity_conditions' => ['label' => 'Identitas', 'prompt' => 'Konfirmasi lama.'],
+                'priority_1' => ['label' => 'Prioritas 1', 'prompt' => 'Keputusan awal.'],
+                'probe_1' => ['label' => 'Pertanyaan 1', 'prompt' => 'Bagaimana Anda biasanya membedakan fakta, asumsi, dan informasi yang belum diketahui?'],
+            ],
+        ]]);
+        $admin = User::factory()->create(['role' => Role::Admin]);
+
+        Livewire::actingAs($admin)->test(TechnicalAssessments::class)->set('form', 'B')
+            ->assertSet('sectionTitles', ['Penalaran paralel', 'Simulasi dinamis', 'Probe konsistensi'])
+            ->assertSet('durations', [300, 480, 300])
+            ->assertSet('questionTitles.probe_1.prompt', 'Bagaimana Anda biasanya membedakan fakta, asumsi, dan informasi yang belum diketahui?')
+            ->call('savePackage')->assertHasNoErrors()->set('form', 'A')->set('form', 'B')
+            ->assertSet('sectionTitles', ['Penalaran paralel', 'Simulasi dinamis', 'Probe konsistensi']);
+
+        $this->assertSame(['B01', 'priority_1_priority', 'probe_1'], AppSetting::where('key', 'technical_assessment_labels_B')->sole()->value['section_question_ids']);
+    }
+
+    public function test_legacy_merged_attempt_displays_correct_three_sections_and_preserves_saved_condition_notes(): void
+    {
+        $this->freezeTime();
+        $package = app(TechnicalAssessmentService::class)->packages()['B'];
+        $package['sections'][0]['title'] = 'Penalaran paralel dan penjelasan proses';
+        $package['sections'][1]['title'] = 'Simulasi dinamis · keputusan awal';
+        $package['sections'][2]['title'] = 'Simulasi dinamis · fakta baru';
+        $package['sections'][] = ['title' => 'Probe konsistensi', 'kind' => 'questionnaire', 'seconds' => 300, 'material' => [], 'questions' => $package['condition_questions']];
+        $package['condition_questions'] = [];
+        $attempt = $this->attempt('B', ['version' => '2026-10-21.4', 'package' => $package, 'section_index' => 4, 'completed_at' => now(),
+            'answers' => [2 => ['probe_1' => 'Pisahkan bukti dari asumsi.'], 3 => ['technical_conditions' => 'Koneksi sempat terputus.']]]);
+        $original = $attempt->fresh()->getAttributes();
+        $this->loginFor($attempt);
+
+        $this->get(route('candidate.technical-assessments'))->assertSee('18 menit - 3 tahap')->assertDontSee('Versi')->assertDontSee($attempt->version);
+        $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('Catatan kondisi dan konfirmasi')->assertSee('Koneksi sempat terputus.')
+            ->assertSee('18 menit - 3 tahap')->assertDontSee('Versi')->assertDontSee($attempt->version);
+        Livewire::actingAs(User::factory()->create(['role' => Role::Admin]))->test(TechnicalAssessments::class)->call('selectAttempt', $attempt->id)
+            ->assertSeeInOrder(['Penalaran paralel', 'Simulasi dinamis', 'Probe konsistensi', 'Pisahkan bukti dari asumsi.', 'Catatan kondisi', 'Koneksi sempat terputus.']);
+
+        $this->assertSame($original, $attempt->fresh()->getAttributes());
+        $this->assertSame(['Penalaran paralel', 'Simulasi dinamis', 'Probe konsistensi'], array_column($attempt->sectionsForDisplay(), 'title'));
+    }
+
+    #[TestWith([2, 'Probe konsistensi'])]
+    #[TestWith([3, 'Catatan kondisi dan konfirmasi'])]
+    public function test_legacy_active_probe_and_notes_show_their_own_titles_without_a_fourth_test_stage(int $index, string $title): void
+    {
+        $this->freezeTime();
+        $package = app(TechnicalAssessmentService::class)->packages()['B'];
+        $package['sections'][2]['title'] = 'Simulasi dinamis · fakta baru';
+        $package['sections'][] = ['title' => 'Probe konsistensi', 'kind' => 'questionnaire', 'seconds' => 300, 'material' => [], 'questions' => $package['condition_questions']];
+        $package['condition_questions'] = [];
+        $attempt = $this->attempt('B', ['package' => $package, 'consented_at' => now(), 'section_index' => $index, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(5)]);
+        $original = $attempt->fresh()->getAttributes();
+        $this->loginFor($attempt);
+
+        $this->get(route('candidate.technical-assessments.show', $attempt))
+            ->assertSee('<h2>'.$title.'</h2>', false)->assertDontSee('Tahap 4 / 3');
+        Livewire::actingAs(User::factory()->create(['role' => Role::Admin]))->test(TechnicalAssessments::class)
+            ->call('selectAttempt', $attempt->id)->assertDontSee('Tahap 4')->assertDontSee('Tahap 4 dari 3');
+
+        $this->assertSame($original, $attempt->fresh()->getAttributes());
+    }
+
+    public function test_legacy_form_b_keeps_locked_initial_answers_visible_at_the_original_stage_index(): void
+    {
+        $this->freezeTime();
+        $package = $this->legacyFormBPackage();
+        array_unshift($package['sections'], ['title' => 'Identitas dan kondisi', 'seconds' => 120, 'material' => [], 'questions' => []]);
+        $package['version'] = '2026-10-21.2';
+        $attempt = $this->attempt('B', ['package' => $package, 'version' => $package['version'], 'consented_at' => now(), 'section_index' => 3,
+            'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(4), 'answers' => [2 => ['priority_1' => 'Keputusan awal lama tetap terkunci.']]]);
+        $this->loginFor($attempt);
+
+        $this->get(route('candidate.technical-assessments.show', $attempt))
+            ->assertSee('Keputusan awal Anda yang sudah dikunci')->assertSee('Keputusan awal lama tetap terkunci.');
+
+        $this->assertSame($package, $attempt->fresh()->package);
+        $this->assertSame([2 => ['priority_1' => 'Keputusan awal lama tetap terkunci.']], $attempt->fresh()->answers);
+    }
+
+    #[TestWith(['A', 0, false])]
+    #[TestWith(['A', 3, true])]
+    #[TestWith(['B', 0, false])]
+    public function test_two_minute_reminder_is_enabled_only_for_form_a_behavior_stage(string $form, int $section, bool $enabled): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt($form, ['consented_at' => now(), 'section_index' => $section, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(7)]);
+        $this->loginFor($attempt);
+
+        $this->get(route('candidate.technical-assessments.show', $attempt))
+            ->assertSee('data-two-minute-warning="'.($enabled ? 'true' : 'false').'"', false);
+    }
+
+    public function test_numerical_table_precedes_a05_and_documents_render_in_comparison_columns(): void
+    {
+        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15)]);
+        $this->loginFor($attempt);
+        $url = route('candidate.technical-assessments.show', $attempt);
+        $this->get($url)->assertSeeInOrder(['<legend>A04</legend>', 'Tabel kinerja tiga minggu', '<legend>A05</legend>'], false);
+
+        $attempt->update(['section_index' => 1]);
+        $this->get($url)->assertSee('class="assessment-documents"', false)->assertSee('Dokumen A Permintaan Pembayaran')->assertSee('Dokumen B Register Kontrol')
+            ->assertSeeInOrder([
+                '<h3>Aturan Kontrol</h3>',
+                '<ul class="assessment-control-rules">',
+                '<li>Pembayaran di atas Rp400 juta memerlukan persetujuan Manager dan Finance.</li>',
+                '<li>Perubahan rekening harus diverifikasi melalui saluran independen sebelum pelepasan.</li>',
+                '<li>Nomor invoice dan jumlah harus konsisten dengan register.</li>',
+                '<li>Dokumen pajak harus masih berlaku pada tanggal penelaahan.</li>',
+                '</ul>',
+            ], false);
+        $attempt->update(['completed_at' => now(), 'section_started_at' => null, 'section_expires_at' => null]);
+        $this->get($url)->assertDontSee('Apakah akomodasi yang disepakati telah tersedia');
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), ['action' => 'conditions', 'conditions' => ['accommodations' => 'Tidak ditanyakan'], 'confirmation' => true])->assertJsonValidationErrors('conditions');
+        $this->assertNull($attempt->fresh()->conditions);
     }
 
     public function test_assignment_requires_review_and_admin_and_rejects_inactive_applications(): void
@@ -266,14 +669,14 @@ class TechnicalAssessmentTest extends TestCase
     public function test_candidate_only_sees_own_current_stage_and_no_secret_data_in_html_or_json(): void
     {
         $this->freezeTime();
-        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_index' => 1, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15)]);
+        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_index' => 0, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15)]);
         $url = route('candidate.technical-assessments.show', $attempt);
         $this->getJson($url)->assertUnauthorized();
         $this->loginFor($this->attempt());
         $this->get($url)->assertNotFound();
         $this->loginFor($attempt);
         $this->get($url)->assertSee('A01')->assertSee('Tabel', false)->assertDontSee('D01')->assertDontSee('S01')->assertDontSee('Kunci dan Skoring')->assertDontSee('IPP =');
-        $this->getJson($url)->assertExactJson(['section' => 1, 'revision' => 0, 'active' => true, 'completed' => false, 'remaining' => 900]);
+        $this->getJson($url)->assertExactJson(['section' => 0, 'revision' => 0, 'active' => true, 'completed' => false, 'reasoning_locked' => false, 'simulation_locked' => false, 'remaining' => 900]);
         $this->assertArrayNotHasKey('package', $attempt->toArray());
         $attempt->application->update(['archived_at' => now(), 'active_user_id' => null]);
         $this->get($url)->assertNotFound();
@@ -306,13 +709,13 @@ class TechnicalAssessmentTest extends TestCase
 
     public function test_autosave_persists_answers_and_rejects_stale_revision_without_overwriting(): void
     {
-        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_index' => 1, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15)]);
+        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_index' => 0, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15)]);
         $this->loginFor($attempt);
         $url = route('candidate.technical-assessments.update', $attempt);
         $payload = $this->payload($attempt, 'save', ['A01' => 'C', 'A02' => 'B']);
         $this->postJson($url, $payload)->assertJsonPath('revision', 1);
         $this->postJson($url, $payload + [])->assertConflict();
-        $this->assertSame([1 => ['A01' => 'C', 'A02' => 'B']], $attempt->fresh()->answers);
+        $this->assertSame([0 => ['A01' => 'C', 'A02' => 'B']], $attempt->fresh()->answers);
         $this->postJson($url, $this->payload($attempt, 'save', ['A01' => 'C', 'A02' => 'B']))->assertJsonPath('revision', 1);
         $this->assertSame(1, AuditLog::where('action', 'technical_assessment.answers_saved')->count());
     }
@@ -322,7 +725,7 @@ class TechnicalAssessmentTest extends TestCase
     #[TestWith(['A01', ['C']])]
     public function test_invalid_answers_are_rejected_without_writing(string $id, mixed $answer): void
     {
-        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_index' => 1, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15)]);
+        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_index' => 0, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15)]);
         $this->loginFor($attempt);
 
         $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'save', [$id => $answer]))->assertUnprocessable();
@@ -334,12 +737,12 @@ class TechnicalAssessmentTest extends TestCase
     public function test_timeout_commits_stage_transition_and_discards_late_answer(): void
     {
         $this->freezeTime();
-        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_index' => 1, 'section_started_at' => now()->subMinutes(15), 'section_expires_at' => now(), 'answers' => [1 => ['A01' => 'C']]]);
+        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_index' => 0, 'section_started_at' => now()->subMinutes(15), 'section_expires_at' => now(), 'answers' => [0 => ['A01' => 'C']]]);
         $this->loginFor($attempt);
 
-        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'save', ['A01' => 'B']))->assertJsonPath('section', 2)->assertJsonPath('active', false);
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'save', ['A01' => 'B']))->assertJsonPath('section', 1)->assertJsonPath('active', false);
 
-        $this->assertSame([1 => ['A01' => 'C']], $attempt->fresh()->answers);
+        $this->assertSame([0 => ['A01' => 'C']], $attempt->fresh()->answers);
         $this->assertNull($attempt->fresh()->section_started_at);
         $this->assertDatabaseHas('audit_logs', ['action' => 'technical_assessment.section_closed', 'reason' => 'timeout']);
     }
@@ -349,10 +752,12 @@ class TechnicalAssessmentTest extends TestCase
         $answers = ['A01' => 'C', 'A02' => 'B', 'A03' => 'D', 'A04' => 'B', 'A05' => 'C', 'A06' => 'C', 'A07' => 'B', 'A08' => 'C', 'A09' => 'B', 'A10' => 'C', 'A11' => 'B', 'A12' => 'C'];
         $documents = ['D01' => 'A', 'D02' => 'B', 'D03' => 'C', 'D04' => 'C', 'D05' => 'B', 'D06' => 'C', 'D07' => 'D'];
         $sjt = ['S01' => 'B', 'S02' => 'B', 'S03' => 'C', 'S04' => 'B', 'S05' => 'B'];
-        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_index' => 3, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(10), 'answers' => [1 => $answers, 2 => $documents]]);
+        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_index' => 2, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(10), 'answers' => [0 => $answers, 1 => $documents]]);
         $this->loginFor($attempt);
 
-        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'finish', $sjt))->assertJsonPath('completed', true)->assertJsonMissingPath('scores');
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'finish', $sjt))->assertJsonPath('completed', false)->assertJsonPath('section', 3);
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'start'))->assertJsonPath('active', true);
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'finish', ['IPIP01' => '5', 'IPIP06' => '5', 'IPIP11' => '1', 'IPIP16' => '5', 'IPIP21' => '1']))->assertJsonPath('completed', true)->assertJsonMissingPath('scores');
 
         $scores = $attempt->fresh()->scores;
         $this->assertSame(12, $scores['Penalaran']);
@@ -363,6 +768,8 @@ class TechnicalAssessmentTest extends TestCase
         $this->assertSame(7, $scores['SJT']);
         $this->assertSame(87, $scores['IPP pilot']);
         $this->assertSame([], $scores['Perlu verifikasi']);
+        $this->assertSame(5, $scores['E']);
+        $this->assertNull($scores['ES']);
         $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('Jawaban tes telah dikunci')->assertDontSee('IPP pilot');
     }
 
@@ -382,20 +789,126 @@ class TechnicalAssessmentTest extends TestCase
     public function test_form_b_candidate_starts_stages_and_new_facts_stay_hidden_until_initial_decision_is_locked(): void
     {
         $this->freezeTime();
-        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_index' => 2]);
+        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_index' => 1]);
         $this->completeFormAFor($attempt);
         $this->loginFor($attempt);
         $url = route('candidate.technical-assessments.update', $attempt);
-        $this->postJson($url, $this->payload($attempt, 'start'))->assertJsonPath('active', true);
-        $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('keputusan awal')->assertDontSee('berpotensi disusupi');
-        $this->postJson($url, $this->payload($attempt, 'finish', ['priority_1' => 'Tahan pembayaran dan verifikasi independen.']))->assertJsonPath('section', 3)->assertJsonPath('active', false);
-        $this->get(route('candidate.technical-assessments.show', $attempt))->assertDontSee('berpotensi disusupi');
-        $this->postJson($url, $this->payload($attempt, 'start'))->assertJsonPath('section', 3)->assertJsonPath('active', true);
-        $attempt->refresh();
+        $show = route('candidate.technical-assessments.show', $attempt);
+        $answers = $this->simulationAnswers();
+        $this->postJson($url, $this->payload($attempt, 'start'))->assertJsonPath('remaining', 480)->assertJsonPath('active', true);
+        $started = $attempt->fresh()->section_started_at->toIso8601String();
+        $expires = $attempt->fresh()->section_expires_at->toIso8601String();
+        $this->get($show)->assertSee('Prioritas 1')->assertSee('Prioritas 2')->assertSee('Prioritas 3')
+            ->assertSee('Tindakan dan batas')->assertSee('Bukti atau kontrol')->assertSee('PIC dan Koordinasi')
+            ->assertSee('name="answers[priority_1_priority]"', false)->assertSee('name="answers[priority_3_coordination]"', false)
+            ->assertDontSee('berpotensi disusupi')->assertDontSee('name="answers[revised_decision]"', false);
+        $stale = $this->payload($attempt, 'save', $answers);
+        $this->postJson($url, $this->payload($attempt, 'save', $answers))->assertOk();
+        $this->travel(30)->seconds();
 
-        $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('berpotensi disusupi')->assertSee('Tahan pembayaran dan verifikasi independen.');
-        $this->postJson($url, ['action' => 'save', 'section' => 2, 'revision' => $attempt->revision, 'answers' => ['priority_1' => 'Ubah jawaban']])->assertConflict();
-        $this->assertSame('Tahan pembayaran dan verifikasi independen.', $attempt->fresh()->answers[2]['priority_1']);
+        $this->postJson($url, $this->payload($attempt, 'next', $answers))->assertJsonPath('section', 1)
+            ->assertJsonPath('simulation_locked', true)->assertJsonPath('remaining', 450)->assertJsonPath('active', true);
+
+        $this->assertNotNull($attempt->fresh()->simulation_answers_locked_at);
+        $this->assertSame($started, $attempt->fresh()->section_started_at->toIso8601String());
+        $this->assertSame($expires, $attempt->fresh()->section_expires_at->toIso8601String());
+        $this->get($show)->assertSeeInOrder(['Tahan pembayaran dan verifikasi independen.', '<h2>Fakta baru</h2>', 'berpotensi disusupi', 'name="answers[revised_decision]"'], false)
+            ->assertDontSee('name="answers[priority_1_priority]"', false)->assertSee('readonly', false);
+        $this->postJson($url, $stale)->assertConflict();
+        $this->postJson($url, $this->payload($attempt, 'save', ['revised_decision' => 'Simpan bukti dan eskalasi.']))->assertOk();
+        $this->get($show)->assertSee('Simpan bukti dan eskalasi.');
+        $this->assertSame($answers + ['revised_decision' => 'Simpan bukti dan eskalasi.'], $attempt->fresh()->answers[1]);
+        Livewire::actingAs(User::factory()->create(['role' => Role::Admin]))->test(TechnicalAssessments::class)
+            ->call('selectAttempt', $attempt->id)->assertSee('Prioritas 1 - Bukti atau kontrol')->assertSee('Rekening master dan konfirmasi independen.');
+        $this->loginFor($attempt);
+        $this->postJson($url, $this->payload($attempt, 'finish', ['revised_decision' => 'Simpan bukti dan eskalasi.']))
+            ->assertJsonPath('section', 2)->assertJsonPath('active', false);
+        $this->assertSame($answers + ['revised_decision' => 'Simpan bukti dan eskalasi.'], $attempt->fresh()->answers[1]);
+        $this->assertDatabaseHas('audit_logs', ['target_id' => $attempt->id, 'action' => 'technical_assessment.simulation_answers_locked']);
+    }
+
+    #[TestWith(['priority_1_priority', null])]
+    #[TestWith(['priority_3_coordination', ''])]
+    public function test_simulation_requires_every_priority_field_before_revealing_facts(string $field, ?string $value): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_index' => 1, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(8)]);
+        $this->loginFor($attempt);
+        $answers = array_replace($this->simulationAnswers(), [$field => $value]);
+        $original = $attempt->fresh()->getAttributes();
+
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'next', $answers))
+            ->assertJsonValidationErrors('answers.'.$field);
+
+        $this->assertSame($original, $attempt->fresh()->getAttributes());
+        $this->get(route('candidate.technical-assessments.show', $attempt))->assertDontSee('berpotensi disusupi');
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    #[TestWith(['save', ['revised_decision' => 'Jawaban terlalu awal.']])]
+    #[TestWith(['finish', []])]
+    public function test_simulation_rejects_answering_facts_or_finishing_before_the_initial_lock(string $action, array $answers): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_index' => 1, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(8)]);
+        $this->loginFor($attempt);
+        $original = $attempt->fresh()->getAttributes();
+
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, $action, $answers))->assertUnprocessable();
+
+        $this->assertSame($original, $attempt->fresh()->getAttributes());
+        $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    #[TestWith(['save', ['priority_1_action' => 'Ubah setelah melihat fakta baru.']])]
+    #[TestWith(['finish', ['priority_3_coordination' => 'Ganti PIC.', 'revised_decision' => 'Jawaban akhir.']])]
+    public function test_simulation_rejects_changes_to_locked_priorities(string $action, array $answers): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_index' => 1, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(8)]);
+        $this->loginFor($attempt);
+        $url = route('candidate.technical-assessments.update', $attempt);
+        $this->postJson($url, $this->payload($attempt, 'next', $this->simulationAnswers()))->assertOk();
+        $original = $attempt->fresh()->getAttributes();
+
+        $this->postJson($url, $this->payload($attempt, $action, $answers))->assertUnprocessable();
+
+        $this->assertSame($original, $attempt->fresh()->getAttributes());
+        $this->assertSame(1, AuditLog::where('action', 'technical_assessment.simulation_answers_locked')->count());
+    }
+
+    public function test_simulation_duplicate_next_does_not_reset_timer_or_overwrite_priorities(): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_index' => 1, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(8)]);
+        $this->loginFor($attempt);
+        $url = route('candidate.technical-assessments.update', $attempt);
+        $this->postJson($url, $this->payload($attempt, 'next', $this->simulationAnswers()))->assertOk();
+        $original = $attempt->fresh()->getAttributes();
+        $this->travel(30)->seconds();
+
+        $this->postJson($url, $this->payload($attempt, 'next', $this->simulationAnswers()))->assertConflict();
+
+        $this->assertSame($original, $attempt->fresh()->getAttributes());
+        $this->assertSame(1, AuditLog::where('action', 'technical_assessment.simulation_answers_locked')->count());
+    }
+
+    #[TestWith([false])]
+    #[TestWith([true])]
+    public function test_simulation_timeout_preserves_saved_answers_and_rejects_late_changes(bool $locked): void
+    {
+        $this->freezeTime();
+        $answers = $this->simulationAnswers();
+        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_index' => 1, 'section_started_at' => now()->subMinutes(8), 'section_expires_at' => now(),
+            'simulation_answers_locked_at' => $locked ? now()->subMinute() : null, 'answers' => [1 => $answers]]);
+        $this->loginFor($attempt);
+
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, $locked ? 'save' : 'next', $locked ? ['revised_decision' => 'Terlambat.'] : $answers))
+            ->assertJsonPath('section', 2)->assertJsonPath('active', false);
+
+        $this->assertSame([1 => $answers], $attempt->fresh()->answers);
+        $this->assertSame($locked, $attempt->fresh()->simulation_answers_locked_at !== null);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'technical_assessment.simulation_answers_locked']);
     }
 
     public function test_form_b_candidates_progress_independently_without_assessor_actions(): void
@@ -411,8 +924,12 @@ class TechnicalAssessmentTest extends TestCase
         $secondExpires = $second->fresh()->section_expires_at->toIso8601String();
         $this->loginFor($first);
         $url = route('candidate.technical-assessments.update', $first);
-        for ($section = 0; $section < 5; $section++) {
+        $this->postJson($url, $this->payload($first, 'next', ['B01' => 'B', 'B02' => 'C', 'B03' => 'A', 'B04' => 'C']))->assertJsonPath('reasoning_locked', true);
+        for ($section = 0; $section < 3; $section++) {
             $this->postJson($url, $this->payload($first, 'start'))->assertJsonPath('section', $section)->assertJsonPath('active', true);
+            if ($section === 1) {
+                $this->postJson($url, $this->payload($first, 'next', $this->simulationAnswers()))->assertJsonPath('simulation_locked', true);
+            }
             $this->postJson($url, $this->payload($first, 'finish'))->assertJsonPath('section', $section + 1)->assertJsonPath('active', false);
         }
 
@@ -425,7 +942,7 @@ class TechnicalAssessmentTest extends TestCase
 
     public function test_form_b_objective_score_and_manual_review_keep_dimensions_separate(): void
     {
-        $attempt = $this->attempt('B', ['deadline' => now(), 'answers' => [1 => ['B01' => 'B', 'B02' => 'C', 'B03' => 'A', 'B04' => 'C']]]);
+        $attempt = $this->attempt('B', ['deadline' => now(), 'answers' => [0 => ['B01' => 'B', 'B02' => 'C', 'B03' => 'A', 'B04' => 'C']]]);
         $this->artisan('technical-assessments:finalize')->assertSuccessful();
         $this->assertSame(4, $attempt->fresh()->scores['Penalaran objektif']);
         $admin = User::factory()->create(['role' => Role::Admin]);
@@ -450,9 +967,102 @@ class TechnicalAssessmentTest extends TestCase
         $this->assertArrayNotHasKey('IPP pilot', $scores);
     }
 
+    public function test_probe_finishes_three_part_form_b_before_condition_confirmation(): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_index' => 2, 'answers' => [0 => ['B01' => 'B', 'B02' => 'C', 'B03' => 'A', 'B04' => 'C']]]);
+        $this->completeFormAFor($attempt);
+        $this->loginFor($attempt);
+        $url = route('candidate.technical-assessments.update', $attempt);
+        $show = route('candidate.technical-assessments.show', $attempt);
+        $probe = ['probe_1' => 'Pisahkan bukti dan asumsi.', 'probe_2' => 'Kalkulator sederhana.', 'probe_3' => 'Tidak ada.', 'probe_4' => 'Periksa ulang bukti.'];
+        $conditions = ['technical_conditions' => '<script>alert(1)</script>', 'unfinished' => 'Tidak ada.', 'other_conditions' => 'Kondisi stabil.'];
+
+        $this->get($show)->assertSee('Probe konsistensi')->assertSee('Tahap 3 / 3')->assertSee('Alokasi waktu 5 menit.');
+        $this->postJson($url, ['action' => 'conditions', 'conditions' => $conditions, 'confirmation' => true])->assertUnprocessable();
+        $this->postJson($url, $this->payload($attempt, 'start'))->assertJsonPath('remaining', 300);
+        $this->get($show)->assertSee('Bagaimana Anda biasanya membedakan fakta, asumsi, dan informasi yang belum diketahui?')
+            ->assertSee('Pada Form A, alat atau bantuan apa saja yang Anda gunakan?')
+            ->assertSee('Apakah ada kondisi yang dapat menjelaskan hasil yang berbeda antara Form A dan Form B?')
+            ->assertSee('Bila jawaban Anda pada Form A ternyata keliru, bagaimana Anda akan memperbaiki prosesnya?')
+            ->assertDontSee('Apakah ada gangguan teknis?');
+        $this->postJson($url, $this->payload($attempt, 'save', $conditions))->assertUnprocessable();
+        $this->postJson($url, $this->payload($attempt, 'finish', $probe))->assertJsonPath('completed', true);
+
+        $this->assertSame($probe, $attempt->fresh()->answers[2]);
+        $this->assertSame(4, $attempt->fresh()->scores['Penalaran objektif']);
+        $this->get($show)->assertSee('Catatan kondisi dan konfirmasi')->assertSee('name="conditions[technical_conditions]"', false)
+            ->assertSee('Apakah ada gangguan teknis? Tuliskan waktu, bagian, dan dampaknya!')
+            ->assertDontSee('Mulai Kuesioner')->assertDontSee('Tahap 4');
+        $this->postJson($url, ['action' => 'conditions', 'conditions' => $conditions, 'confirmation' => false])->assertJsonValidationErrors('confirmation');
+        $this->assertNull($attempt->fresh()->conditions);
+        $this->postJson($url, ['action' => 'conditions', 'conditions' => $conditions, 'confirmation' => true])->assertOk();
+        $this->assertSame($conditions, $attempt->fresh()->conditions);
+        $this->get($show)->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false)->assertDontSee('<script>alert(1)</script>', false);
+        Livewire::actingAs(User::factory()->create(['role' => Role::Admin]))->test(TechnicalAssessments::class)
+            ->call('selectAttempt', $attempt->id)->assertSee('Probe konsistensi')->assertSee('Kondisi stabil.')
+            ->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false)->assertDontSee('<script>alert(1)</script>', false);
+    }
+
+    public function test_questionnaire_timeout_preserves_saved_notes_and_rejects_late_changes(): void
+    {
+        $this->freezeTime();
+        $package = app(TechnicalAssessmentService::class)->packages()['B'];
+        $package['sections'][] = ['title' => 'Kuesioner', 'kind' => 'questionnaire', 'seconds' => 300, 'material' => [], 'questions' => $package['condition_questions']];
+        $package['condition_questions'] = [];
+        $attempt = $this->attempt('B', ['package' => $package, 'consented_at' => now(), 'section_index' => 3, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(5), 'answers' => [3 => ['technical_conditions' => 'Koneksi sempat terputus.']]]);
+        $this->completeFormAFor($attempt);
+        $this->loginFor($attempt);
+        $this->travel(5)->minutes();
+
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'save', ['technical_conditions' => 'Jawaban terlambat.']))->assertJsonPath('completed', true);
+
+        $this->assertSame('Koneksi sempat terputus.', $attempt->fresh()->answers[3]['technical_conditions']);
+        $this->assertNotNull($attempt->fresh()->completed_at);
+        $this->assertDatabaseHas('audit_logs', ['target_id' => $attempt->id, 'action' => 'technical_assessment.section_closed', 'reason' => 'timeout']);
+    }
+
+    public function test_form_a_completion_does_not_offer_separate_notes_and_questionnaire_still_requires_same_application_form_a(): void
+    {
+        $this->freezeTime();
+        $formA = $this->attempt('A', ['completed_at' => now()]);
+        $this->loginFor($formA);
+        $this->get(route('candidate.technical-assessments.show', $formA))->assertSee('Lanjutkan ke Form B')->assertDontSee('name="conditions[', false);
+        $this->postJson(route('candidate.technical-assessments.update', $formA), ['action' => 'conditions', 'conditions' => ['technical_conditions' => 'Terlalu awal.'], 'confirmation' => true])->assertJsonValidationErrors('conditions');
+        $this->assertNull($formA->fresh()->conditions);
+        $formB = $this->attempt('B', ['consented_at' => now(), 'section_index' => 2]);
+        $this->loginFor($formB);
+
+        $this->postJson(route('candidate.technical-assessments.update', $formB), $this->payload($formB, 'start'))->assertUnprocessable();
+
+        $this->assertNull($formB->fresh()->section_started_at);
+        $this->assertSame([], $formB->fresh()->answers);
+    }
+
+    public function test_legacy_form_a_no_longer_offers_condition_confirmation_or_accepts_note_changes(): void
+    {
+        $this->freezeTime();
+        $package = app(TechnicalAssessmentService::class)->packages()['A'];
+        $package['condition_questions'] = app(TechnicalAssessmentService::class)->packages()['B']['condition_questions'];
+        $package['version'] = '2026-10-21.1';
+        $attempt = $this->attempt('A', ['package' => $package, 'version' => $package['version'], 'completed_at' => now(), 'conditions' => ['technical_conditions' => 'Catatan lama tetap tersimpan.']]);
+        $this->loginFor($attempt);
+
+        $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('Lanjutkan ke Form B')
+            ->assertDontSee('Catatan kondisi dan konfirmasi')->assertDontSee('name="conditions[', false);
+        $this->get(route('candidate.technical-assessments'))->assertSee('Lihat status tes')->assertDontSee('Konfirmasi dan catatan kondisi');
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), ['action' => 'conditions', 'conditions' => ['technical_conditions' => 'Catatan baru.'], 'confirmation' => true])->assertJsonValidationErrors('conditions');
+
+        $this->assertSame(['technical_conditions' => 'Catatan lama tetap tersimpan.'], $attempt->fresh()->conditions);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'technical_assessment.conditions_saved', 'target_id' => $attempt->id]);
+    }
+
     public function test_activity_logs_and_conditions_are_authorized_validated_and_escaped(): void
     {
-        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_started_at' => now(), 'section_expires_at' => now()->addMinute(), 'revision' => 3]);
+        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_started_at' => now(), 'section_expires_at' => now()->addMinute(), 'revision' => 3]);
+        $package = $attempt->package;
+        $package['condition_questions'] = app(TechnicalAssessmentService::class)->packages()['B']['condition_questions'];
+        $attempt->update(['package' => $package]);
         $this->loginFor($attempt);
         $url = route('candidate.technical-assessments.activity', $attempt);
         foreach (['page_loaded', 'tab_hidden', 'window_blur', 'fullscreen_exit', 'connection_restored'] as $event) {
@@ -507,17 +1117,17 @@ class TechnicalAssessmentTest extends TestCase
     public function test_admin_extension_preserves_answers_and_revision_and_cannot_reopen_expired_stage(): void
     {
         $this->freezeTime();
-        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_index' => 1, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15), 'answers' => [1 => ['A01' => 'C']]]);
+        $attempt = $this->attempt('A', ['consented_at' => now(), 'section_index' => 0, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(15), 'answers' => [0 => ['A01' => 'C']]]);
         $admin = User::factory()->create(['role' => Role::Admin]);
         $expires = $attempt->section_expires_at->copy()->addMinutes(5);
-        Livewire::actingAs($admin)->test(TechnicalAssessments::class)->call('selectAttempt', $attempt->id)->set('extraMinutes', 5)->set('extensionReason', 'Koneksi terputus saat bagian penalaran.')->call('extend', 1, 0)->assertHasNoErrors();
+        Livewire::actingAs($admin)->test(TechnicalAssessments::class)->call('selectAttempt', $attempt->id)->set('extraMinutes', 5)->set('extensionReason', 'Koneksi terputus saat bagian penalaran.')->call('extend', 0, 0)->assertHasNoErrors();
         $this->assertSame($expires->toIso8601String(), $attempt->fresh()->section_expires_at->toIso8601String());
         $this->assertSame(0, $attempt->fresh()->revision);
-        $this->assertSame([1 => ['A01' => 'C']], $attempt->fresh()->answers);
+        $this->assertSame([0 => ['A01' => 'C']], $attempt->fresh()->answers);
         $this->assertDatabaseHas('audit_logs', ['action' => 'technical_assessment.time_extended', 'reason' => 'Koneksi terputus saat bagian penalaran.']);
         $this->travel(20)->minutes();
-        Livewire::actingAs($admin)->test(TechnicalAssessments::class)->call('selectAttempt', $attempt->id)->set('extensionReason', 'Permintaan memperpanjang tahap lama.')->call('extend', 1, 0)->assertConflict();
-        $this->assertSame(2, $attempt->fresh()->section_index);
+        Livewire::actingAs($admin)->test(TechnicalAssessments::class)->call('selectAttempt', $attempt->id)->set('extensionReason', 'Permintaan memperpanjang tahap lama.')->call('extend', 0, 0)->assertConflict();
+        $this->assertSame(1, $attempt->fresh()->section_index);
     }
 
     #[TestWith(['A'])]
@@ -611,18 +1221,19 @@ class TechnicalAssessmentTest extends TestCase
     public function test_existing_active_form_b_stage_can_be_saved_and_finished_but_next_stage_requires_form_a(): void
     {
         $this->freezeTime();
-        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_index' => 2, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(10)]);
+        $attempt = $this->attempt('B', ['consented_at' => now(), 'section_index' => 1, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(10)]);
         $this->loginFor($attempt);
         $url = route('candidate.technical-assessments.update', $attempt);
-        $answers = ['priority_1' => 'Tahan pembayaran dan verifikasi independen.'];
+        $answers = $this->simulationAnswers();
 
         $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('data-assessment-form', false)->assertDontSee('Tes terkunci');
         $this->postJson($url, $this->payload($attempt, 'save', $answers))->assertOk();
-        $this->postJson($url, $this->payload($attempt, 'finish', $answers))->assertJsonPath('section', 3)->assertJsonPath('active', false);
+        $this->postJson($url, $this->payload($attempt, 'next', $answers))->assertJsonPath('simulation_locked', true);
+        $this->postJson($url, $this->payload($attempt, 'finish'))->assertJsonPath('section', 2)->assertJsonPath('active', false);
         $this->postJson($url, $this->payload($attempt, 'start'))->assertUnprocessable();
         $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('Tes terkunci');
 
-        $this->assertSame($answers, $attempt->fresh()->answers[2]);
+        $this->assertSame($answers, $attempt->fresh()->answers[1]);
         $this->assertNull($attempt->fresh()->section_started_at);
     }
 
@@ -632,6 +1243,9 @@ class TechnicalAssessmentTest extends TestCase
     {
         $this->freezeTime();
         $attempt = $this->attempt($form, ['completed_at' => now()]);
+        $package = $attempt->package;
+        $package['condition_questions'] = app(TechnicalAssessmentService::class)->packages()['B']['condition_questions'];
+        $attempt->update(['package' => $package]);
         $this->loginFor($attempt);
 
         $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('Catatan kondisi dan konfirmasi')->assertDontSee('Tes terkunci');

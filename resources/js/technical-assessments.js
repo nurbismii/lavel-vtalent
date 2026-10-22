@@ -43,18 +43,22 @@ if (form) {
     let stopped = false;
     let finishing = false;
     let lastTimeoutCheck = 0;
+    const warningKey = `technical-assessment-two-minute:${form.dataset.endpoint}:${section}`;
+    let warnedAtTwoMinutes = false;
+    try { warnedAtTwoMinutes = window.sessionStorage.getItem(warningKey) === '1'; } catch { /* Continue when browser storage is unavailable. */ }
     let debounce;
     const fields = [...form.querySelectorAll('[name^="answers["]')];
     const headers = { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token };
     const collect = () => Object.fromEntries([...new FormData(form)].filter(([name]) => name.startsWith('answers[')).map(([name, value]) => [name.slice(8, -1), value]));
     const progress = () => {
         const answered = Object.values(collect()).filter(value => value.trim() !== '').length;
-        form.querySelector('[data-assessment-progress]').textContent = `${answered} / ${form.querySelectorAll('.assessment-question').length} jawaban terisi`;
+        form.querySelector('[data-assessment-progress]').textContent = `${answered} / ${new Set(fields.map(field => field.name)).size} jawaban terisi`;
     };
     const lock = () => { fields.forEach(field => field.disabled = true); form.querySelectorAll('[name="action"]').forEach(button => button.disabled = true); };
     const applyState = (state, allowRevision = false) => {
-        if (state.completed || state.section !== section || !state.active) {
+        if (state.completed || state.section !== section || !state.active || Boolean(state.reasoning_locked) !== (form.dataset.reasoningLocked === 'true') || Boolean(state.simulation_locked) !== (form.dataset.simulationLocked === 'true')) {
             stopped = true;
+            if (state.simulation_locked && form.dataset.simulationLocked !== 'true') window.location.hash = 'simulation-facts';
             window.location.reload();
             return false;
         }
@@ -75,7 +79,7 @@ if (form) {
         dirty = false;
         status.textContent = 'Menyimpan jawaban…';
         const answers = collect();
-        if (action === 'finish') { finishing = true; fields.forEach(field => field.disabled = true); }
+        if (action === 'finish' || action === 'next') { finishing = true; fields.forEach(field => field.disabled = true); }
         try {
             const response = await fetch(form.dataset.endpoint, { method: 'POST', headers, credentials: 'same-origin', signal: AbortSignal.timeout(15000), body: JSON.stringify({ action, section, revision, answers }) });
             const data = await response.json();
@@ -106,12 +110,13 @@ if (form) {
         event.preventDefault();
         if (pending || stopped || finishing) return;
         const action = event.submitter?.value || 'save';
-        if (action === 'finish') {
+        if (action === 'finish' || action === 'next') {
             finishing = true;
-            const result = await Swal.fire({ title: 'Kunci tahap ini?', text: 'Jawaban kosong tetap dianggap kosong. Anda tidak dapat kembali ke tahap ini.', icon: 'question', showCancelButton: true, confirmButtonText: 'Selesaikan tahap', cancelButtonText: 'Periksa lagi' });
+            const simulation = form.dataset.simulation === 'true';
+            const result = await Swal.fire({ title: action === 'next' ? (simulation ? 'Kunci jawaban prioritas?' : 'Kunci jawaban B01–B04?') : 'Kunci tahap ini?', text: action === 'next' ? (simulation ? 'Jawaban awal tidak dapat diubah lagi. Fakta baru dibuka di bawah dengan sisa waktu dari total 8 menit.' : 'Keempat jawaban tidak dapat diubah lagi. Penjelasan proses ditampilkan dengan timer tahap yang sama.') : 'Jawaban kosong tetap dianggap kosong. Anda tidak dapat kembali ke tahap ini.', icon: 'question', showCancelButton: true, confirmButtonText: action === 'next' ? (simulation ? 'Lanjut' : 'Next') : 'Selesaikan tahap', cancelButtonText: 'Periksa lagi' });
             finishing = false;
             if (!result.isConfirmed) return;
-            if (pending) { status.textContent = 'Tunggu penyimpanan selesai, lalu tekan Selesaikan lagi.'; return; }
+            if (pending) { status.textContent = 'Tunggu penyimpanan selesai, lalu tekan tombol kembali.'; return; }
         }
         clearTimeout(debounce);
         await save(action);
@@ -148,6 +153,11 @@ if (form) {
         const remaining = Math.max(0, Math.ceil((endsAt - performance.now()) / 1000));
         timer.textContent = `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
         timer.classList.toggle('assessment-time-low', remaining <= 60);
+        if (form.dataset.twoMinuteWarning === 'true' && remaining > 0 && remaining <= 120 && !warnedAtTwoMinutes) {
+            warnedAtTwoMinutes = true;
+            try { window.sessionStorage.setItem(warningKey, '1'); } catch { /* Keep the reminder once per page when storage is unavailable. */ }
+            Swal.fire({ icon: 'warning', title: 'Sisa waktu 2 menit', text: 'Segera selesaikan bagian Kecenderungan Perilaku. Timer tetap berjalan.', confirmButtonText: 'Lanjutkan mengerjakan' });
+        }
         if (!remaining && !pending && !finishing && performance.now() - lastTimeoutCheck >= 5000) {
             lastTimeoutCheck = performance.now();
             status.textContent = 'Waktu berakhir. Memeriksa penguncian tahap di server…';

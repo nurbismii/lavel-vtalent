@@ -35,8 +35,8 @@ class TechnicalAssessmentController extends Controller
     public function update(Request $request, int $attempt): Response
     {
         $data = $request->validate([
-            'action' => ['required', 'in:consent,start,save,finish,conditions'],
-            'section' => ['sometimes', 'integer', 'min:0', 'max:4'], 'revision' => ['sometimes', 'integer', 'min:0'],
+            'action' => ['required', 'in:consent,start,save,next,finish,conditions'],
+            'section' => ['sometimes', 'integer', 'min:0', 'max:5'], 'revision' => ['sometimes', 'integer', 'min:0'],
             'answers' => ['sometimes', 'array'], 'consent' => ['sometimes'], 'conditions' => ['sometimes', 'array'], 'confirmation' => ['sometimes'],
         ]);
         foreach (['section', 'revision'] as $key) {
@@ -54,7 +54,7 @@ class TechnicalAssessmentController extends Controller
 
     public function activity(Request $request, int $attempt): Response
     {
-        $data = $request->validate(['event' => ['required', 'string'], 'section' => ['required', 'integer', 'min:0', 'max:4']]);
+        $data = $request->validate(['event' => ['required', 'string'], 'section' => ['required', 'integer', 'min:0', 'max:5']]);
         $this->service->activity($request->user(), $attempt, $data['event'], (int) $data['section']);
 
         return response()->noContent()->header('Cache-Control', 'private, no-store');
@@ -65,6 +65,8 @@ class TechnicalAssessmentController extends Controller
         return response()->json([
             'section' => $attempt->section_index, 'revision' => $attempt->revision,
             'active' => $attempt->section_started_at !== null, 'completed' => $attempt->completed_at !== null,
+            'simulation_locked' => $attempt->isSimulationSection() && $attempt->simulation_answers_locked_at !== null,
+            'reasoning_locked' => $attempt->isReasoningSection() && $attempt->reasoning_answers_locked_at !== null,
             'remaining' => $attempt->section_expires_at ? max(0, (int) ceil(now()->diffInSeconds($attempt->section_expires_at, false))) : null,
         ])->header('Cache-Control', 'private, no-store');
     }

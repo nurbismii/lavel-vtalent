@@ -20,17 +20,17 @@
         <section class="panel task-panel technical_test">
             <div class="icon-box"><x-heroicon-o-code-bracket /></div>
             <h2>Tes Teknis</h2>
-            <p class="muted">Kerjakan tes teknis online dan ikuti verifikasi langsung sesuai penugasan tim rekrutmen.</p>
+            <p class="muted">Kerjakan Tes kompatibilitas melalui Form A dan Form B sesuai penugasan HR. Penguasaan Bidang belum tersedia.</p>
             <hr><small>TENGGAT TES</small>
             @forelse($technicalAttempts as $attempt)
-                <p><small>Form {{ $attempt->form }}</small><br><strong>{{ $attempt->deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}</strong></p>
+            <p><small>Form {{ $attempt->form }}</small><br><strong>{{ $attempt->deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}</strong></p>
             @empty
-                <p class="muted">Belum ditetapkan.</p>
+            <p class="muted">Belum ditetapkan.</p>
             @endforelse
             @if(App\Services\TechnicalAssessmentService::available())
-                <a class="button primary full" href="{{ route('candidate.technical-assessments') }}">Buka tes teknis online</a>
+            <a class="button primary full" href="{{ route('candidate.technical-assessments') }}">Buka Tes Teknis</a>
             @else
-                <p class="muted">Tes teknis online belum tersedia. Hubungi HR untuk informasi lebih lanjut.</p>
+            <p class="muted">Tes teknis online belum tersedia. Hubungi HR untuk informasi lebih lanjut.</p>
             @endif
         </section>
         <section class="panel task-panel psychometric">
@@ -39,17 +39,27 @@
             <p class="muted">Kerjakan psikotes sesuai jadwal dan penugasan tim rekrutmen. Siapkan koneksi stabil dan waktu tanpa gangguan.</p>
             <hr><small>TENGGAT TES</small>
             @forelse($psychometricAttempts as $attempt)
-                <p><small>{{ $attempt->test->title }}</small><br><strong>{{ $attempt->deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}</strong></p>
+            <p><small>{{ $attempt->test->title }}</small><br><strong>{{ $attempt->deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}</strong></p>
             @empty
-                <p class="muted">Belum ditetapkan.</p>
+            <p class="muted">Belum ditetapkan.</p>
             @endforelse
             @if(App\Services\PsychometricService::available())
-                <a class="button primary full" href="{{ route('candidate.psychometrics') }}">Buka tes psikotes</a>
+            <a class="button primary full" href="{{ route('candidate.psychometrics') }}">Buka tes psikotes</a>
             @else
-                <p class="muted">Psikotes belum tersedia. Hubungi HR untuk informasi lebih lanjut.</p>
+            <p class="muted">Psikotes belum tersedia. Hubungi HR untuk informasi lebih lanjut.</p>
             @endif
         </section>
     </div>
     <div class="notice"><strong>Pengumpulan portofolio: simpan draf, periksa, lalu kirim final.</strong><br>Dokumen draf belum dianggap dikumpulkan. Tanda terima tersedia setelah pengiriman final berhasil.</div>@endif
-    @if($candidateForms->isNotEmpty())<section class="panel"><div class="row"><h2>Formulir kandidat</h2><a href="{{ route('candidate.forms') }}">Lihat semua</a></div>@foreach($candidateForms as $formResponse)<div class="form-intake-row"><div class="row"><div><h3>{{ $formResponse->intake->version->title }}</h3><span class="badge {{ $formResponse->status }}">{{ ['draft'=>'Draf','revision'=>'Revisi diminta','submitted'=>'Terkirim'][$formResponse->status] }}</span>@if($formResponse->status === 'revision')<p>{{ $formResponse->revision_note }}</p><small>Tenggat revisi: {{ $formResponse->revision_deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i') }}</small>@endif</div><a class="button" href="{{ route('forms.response', $formResponse->reference) }}">{{ $formResponse->editable() ? 'Perbaiki jawaban' : 'Lihat jawaban' }}</a></div></div>@endforeach</section>@endif
+    @if($candidateForms->isNotEmpty())<section class="panel">
+        <div class="row">
+            <h2>Formulir kandidat</h2><a href="{{ route('candidate.forms') }}">Lihat semua</a>
+        </div>@foreach($candidateForms as $formResponse)<div class="form-intake-row">
+            <div class="row">
+                <div>
+                    <h3>{{ $formResponse->intake->version->title }}</h3><span class="badge {{ $formResponse->status }}">{{ ['draft'=>'Draf','revision'=>'Revisi diminta','submitted'=>'Terkirim'][$formResponse->status] }}</span>@if($formResponse->status === 'revision')<p>{{ $formResponse->revision_note }}</p><small>Tenggat revisi: {{ $formResponse->revision_deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i') }}</small>@endif
+                </div><a class="button" href="{{ route('forms.response', $formResponse->reference) }}">{{ $formResponse->editable() ? 'Perbaiki jawaban' : 'Lihat jawaban' }}</a>
+            </div>
+        </div>@endforeach
+    </section>@endif
 </x-layouts.portal>

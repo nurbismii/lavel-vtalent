@@ -22,6 +22,31 @@
         @if($errors->any())<div class="errors" role="alert">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
 
         <section id="technical-assignment" x-show="workspace === 'assignment'">
+            <details class="technical-disclosure technical-package-editor" wire:key="package-editor-{{ $form }}">
+                <summary><x-heroicon-o-pencil-square /><span>Edit nama paket dan soal<small>{{ $package['title'] }}</small></span></summary>
+                <div class="technical-disclosure-body">
+                    <p class="technical-help">Pilih paket melalui Paket asesmen di bawah. Perubahan berlaku untuk penugasan baru; materi dan jawaban sesi yang sudah ditugaskan tetap tersimpan.</p>
+                    <form wire:submit="savePackage">
+                        <label class="field">Nama paket tes<input type="text" wire:model="packageTitle" maxlength="255" required></label>
+                        @foreach($package['sections'] as $index => $stage)
+                            <details class="technical-disclosure" wire:key="package-stage-{{ $form }}-{{ $index }}">
+                                <summary>{{ $stage['title'] }} <span class="badge">{{ count($stage['questions']) }} soal</span></summary>
+                                <div class="technical-disclosure-body">
+                                    <label class="field">Judul tahap {{ $index + 1 }}<input type="text" wire:model="sectionTitles.{{ $index }}" maxlength="255" required></label>
+                                    @foreach($stage['questions'] as $question)
+                                        <div class="technical-question-editor" wire:key="package-question-{{ $form }}-{{ $question['id'] }}">
+                                            <strong>{{ $question['id'] }}</strong>
+                                            <label class="field">Judul soal {{ $question['id'] }}<input type="text" wire:model="questionTitles.{{ $question['id'] }}.label" maxlength="255" required></label>
+                                            <label class="field">Teks pertanyaan {{ $question['id'] }}<textarea wire:model="questionTitles.{{ $question['id'] }}.prompt" rows="3" maxlength="5000" required></textarea></label>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </details>
+                        @endforeach
+                        <div><button class="button primary" wire:loading.attr="disabled" wire:target="savePackage"><x-heroicon-o-check /> Simpan perubahan paket</button></div>
+                    </form>
+                </div>
+            </details>
             <form wire:submit="assign" class="panel technical-assignment">
                 <header class="technical-section-heading">
                     <div><h2>Penugasan kandidat</h2><p>Pilih paket, periksa durasi, lalu tentukan kandidat dan jadwal.</p></div>
@@ -36,7 +61,7 @@
                             <div class="technical-package-icon"><x-heroicon-o-clipboard-document-check /></div>
                             <div>
                                 <strong>{{ match($form) { 'A' => 'Screening mandiri', 'B' => 'Verifikasi langsung', default => 'Kecenderungan perilaku' } }}</strong>
-                                <p>{{ match($form) { 'A' => 'Kandidat mengerjakan penalaran, pemeriksaan dokumen, dan judgment kerja.', 'B' => 'Kandidat memulai setiap tahap sendiri sesuai jadwal. Assessor memantau dan menilai hasil sesi.', default => 'Modul opsional untuk konteks wawancara; bukan penentu kelulusan.' } }}</p>
+                                <p>{{ match($form) { 'A' => 'Kandidat mengerjakan penalaran, pemeriksaan dokumen, judgment kerja, lalu kecenderungan perilaku (lanjutan A2).', 'B' => 'Kandidat memulai setiap tahap sendiri sesuai jadwal, lalu mengisi kuesioner penutup setelah seluruh soal Form A dan Form B selesai. Assessor memantau dan menilai hasil sesi.', default => 'Modul opsional untuk konteks wawancara; bukan penentu kelulusan.' } }}</p>
                                 <div class="technical-package-meta"><span><x-heroicon-o-clock /> {{ array_sum(array_column($package['sections'], 'seconds')) / 60 }} menit standar</span><span>{{ count($package['sections']) }} tahap</span></div>
                             </div>
                         </div>
@@ -96,6 +121,8 @@
                                 <div class="technical-disclosure-body">
                                     @include('candidate.technical-assessment-material', ['material' => $stage['material']])
                                     @foreach($stage['questions'] as $question)
+                                        @if(!empty($question['material']))@include('candidate.technical-assessment-material', ['material' => $question['material']])@endif
+                                        @if($question['id'] === 'revised_decision' && !empty($stage['followup_material']))<h4>Fakta baru</h4>@include('candidate.technical-assessment-material', ['material' => $stage['followup_material']])@endif
                                         <article class="technical-answer"><strong>{{ $question['label'] ?? $question['id'] }}</strong><p>{{ $question['prompt'] }}</p>@foreach($question['options'] ?? [] as $value => $label)<p>{{ $value }}. {{ $label }}</p>@endforeach</article>
                                     @endforeach
                                 </div>
@@ -106,7 +133,7 @@
                 </details>
 
                 <footer class="technical-assignment-footer">
-                    <label class="technical-confirm"><input type="checkbox" wire:model="reviewed" required><span><strong>Saya sudah meninjau materi dan pengaturan.</strong><small>Soal, kunci, durasi, dan prosedur telah diperiksa. Form B dilakukan langsung; A2 bukan penentu kelulusan.</small></span></label>
+                    <label class="technical-confirm"><input type="checkbox" wire:model="reviewed" required><span><strong>Saya sudah meninjau materi dan pengaturan.</strong><small>Soal, kunci, durasi, dan prosedur telah diperiksa. Form B dilakukan langsung; kecenderungan perilaku pada Form A bukan penentu kelulusan.</small></span></label>
                     <button class="button primary" wire:loading.attr="disabled" wire:target="assign"><x-heroicon-o-user-plus /><span wire:loading.remove wire:target="assign">Buat penugasan</span><span wire:loading wire:target="assign">Menyimpan penugasan…</span></button>
                 </footer>
             </form>
@@ -128,7 +155,9 @@
                                 <tr wire:key="result-{{ $attempt->id }}" @class(['is-selected' => $attemptId === $attempt->id])>
                                     <td><strong>{{ $attempt->application->user->name }}</strong><small>{{ $attempt->application->user->email }}</small><small>{{ $attempt->application->position->name }}</small></td>
                                     <td><span class="badge">Form {{ $attempt->form }}</span><small>Versi {{ $attempt->version }}</small></td>
-                                    <td><span class="badge {{ $attempt->completed_at ? 'clean' : 'pending' }}">{{ $attempt->completed_at ? 'Selesai' : (now()->gte($attempt->deadline) ? 'Tenggat berakhir' : ($attempt->section_started_at ? 'Berlangsung' : 'Menunggu mulai')) }}</span>@unless($attempt->completed_at)<small>Tahap {{ $attempt->section_index + 1 }} / {{ count($attempt->package['sections']) }}</small>@endunless</td>
+                                    <td><span class="badge {{ $attempt->completed_at ? 'clean' : 'pending' }}">{{ $attempt->completed_at ? 'Selesai' : (now()->gte($attempt->deadline) ? 'Tenggat berakhir' : ($attempt->section_started_at ? 'Berlangsung' : 'Menunggu mulai')) }}</span>@unless($attempt->completed_at)<small>@if(($attempt->package['sections'][$attempt->section_index]['kind'] ?? null) === 'questionnaire')Catatan kondisi dan konfirmasi
+                                        @else
+                                        Tahap {{ $attempt->section_index + 1 }} / {{ count($attempt->sectionsForDisplay()) }}@endif</small>@endunless</td>
                                     <td><small>Dibuka {{ $attempt->opens_at->timezone($zone)->format('d M Y H:i') }}</small><small>Batas {{ $attempt->deadline->timezone($zone)->format('d M Y H:i') }}</small></td>
                                     <td><details><summary>Catatan aktivitas</summary><dl><dt>Beralih tab</dt><dd>{{ $attempt->tab_hidden_count }} kali</dd><dt>Kehilangan fokus</dt><dd>{{ $attempt->window_blur_count }} kali</dd><dt>Keluar layar penuh</dt><dd>{{ $attempt->fullscreen_exit_count }} kali</dd></dl><small>Indikator pemeriksaan, bukan bukti kecurangan. Satu tindakan dapat memicu beberapa kejadian.</small></details></td>
                                     <td><span class="technical-review-status">{{ $attempt->review['status'] ?? 'Belum dinilai' }}</span></td>
@@ -148,13 +177,13 @@
                     <header class="technical-section-heading"><div><div class="eyebrow">Sesi #{{ $selected->id }}</div><h2>{{ $selected->application->user->name }}</h2><p>{{ $selected->package['title'] }}</p></div><button class="button small" wire:click="selectAttempt({{ $selected->id }})" wire:loading.attr="disabled"><x-heroicon-o-arrow-path /> Perbarui status sesi</button></header>
                     <dl class="technical-session-meta">
                         <div><dt>Kesiapan kandidat</dt><dd>{{ $selected->consented_at ? 'Sudah dikonfirmasi' : 'Menunggu konfirmasi' }}</dd></div>
-                        <div><dt>Pengerjaan</dt><dd>{{ $selected->completed_at ? 'Jawaban telah dikunci' : 'Tahap '.($selected->section_index + 1).' dari '.count($selected->package['sections']) }}</dd></div>
+                        <div><dt>Pengerjaan</dt><dd>{{ $selected->completed_at ? 'Jawaban telah dikunci' : (($selected->package['sections'][$selected->section_index]['kind'] ?? null) === 'questionnaire' ? 'Catatan kondisi dan konfirmasi' : 'Tahap '.($selected->section_index + 1).' dari '.count($selected->sectionsForDisplay())) }}</dd></div>
                         <div><dt>Tenggat penugasan</dt><dd>{{ $selected->deadline->timezone($zone)->format('d M Y H:i T') }}</dd></div>
                     </dl>
 
                     @if(!$selected->completed_at)
                         <section class="technical-session-control">
-                            <div><span class="badge {{ $selected->section_started_at ? 'clean' : 'pending' }}">{{ $selected->section_started_at ? 'Tahap aktif' : 'Menunggu mulai' }}</span><h3>{{ $selected->package['sections'][$selected->section_index]['title'] }}</h3><p>{{ $selected->section_expires_at ? 'Waktu tahap berakhir '.$selected->section_expires_at->timezone($zone)->format('H:i:s T') : 'Timer dimulai saat tahap dibuka.' }}</p></div>
+                            <div><span class="badge {{ $selected->section_started_at ? 'clean' : 'pending' }}">{{ $selected->section_started_at ? 'Tahap aktif' : 'Menunggu mulai' }}</span><h3>{{ $selected->sectionTitle($selected->package['sections'][$selected->section_index]) }}</h3><p>{{ $selected->section_expires_at ? 'Waktu tahap berakhir '.$selected->section_expires_at->timezone($zone)->format('H:i:s T') : 'Timer dimulai saat tahap dibuka.' }}</p></div>
                             @if($selected->isWaitingForFormA())
                                 <p class="notice">Terkunci · Kandidat harus menyelesaikan Form A terlebih dahulu sebelum memulai Form B atau Form A2.</p>
                             @elseif($selected->form === 'B' && !$selected->application->archived_at)
@@ -190,16 +219,20 @@
                     <div class="technical-session-evidence">
                         <details class="technical-disclosure"><summary><x-heroicon-o-document-text /><span>Jawaban tersimpan dan catatan kandidat<small>Periksa respons per tahap dan kondisi pengerjaan.</small></span></summary>
                             <div class="technical-disclosure-body">
-                                @foreach($selected->package['sections'] as $index => $stage)
+                                @foreach($selected->sectionsForDisplay() as $index => $stage)
                                     <h3>{{ $stage['title'] }}</h3>
                                     @forelse($stage['questions'] as $question)
                                         @php($answer = $selected->answers[$index][$question['id']] ?? '')
+                                        @if(!empty($question['material']))@include('candidate.technical-assessment-material', ['material' => $question['material']])@endif
+                                        @if($question['id'] === 'revised_decision' && !empty($stage['followup_material']))<h4>Fakta baru</h4>@include('candidate.technical-assessment-material', ['material' => $stage['followup_material']])@endif
                                         <article class="technical-answer"><strong>{{ $question['label'] ?? $question['id'] }}</strong><p>{{ $question['prompt'] }}</p><div class="technical-answer-value assessment-material-text">{{ $answer !== null && $answer !== '' ? $answer : 'Belum dijawab' }}@if($question['type'] === 'choice' && isset($question['options'][$answer])) · {{ $question['options'][$answer] }}@endif</div></article>
                                     @empty
                                         <p class="muted">Tahap orientasi tidak memerlukan jawaban.</p>
                                     @endforelse
                                 @endforeach
-                                <h3>Catatan kondisi</h3>@foreach($selected->package['condition_questions'] as $question)<article class="technical-answer"><p>{{ $question['prompt'] }}</p><div class="technical-answer-value assessment-material-text">{{ $selected->conditions[$question['id']] ?? 'Belum diisi' }}</div></article>@endforeach
+                                @if(!empty($selected->conditionQuestions()))
+                                <h3>Catatan kondisi</h3>@foreach(collect($selected->conditionQuestions())->where('id', '!=', 'accommodations') as $question)<article class="technical-answer"><p>{{ $question['prompt'] }}</p><div class="technical-answer-value assessment-material-text">{{ $selected->conditionAnswers()[$question['id']] ?? 'Belum diisi' }}</div></article>@endforeach
+                                @endif
                             </div>
                         </details>
                         <details class="technical-disclosure"><summary><x-heroicon-o-lock-closed /><span>Kunci dan rubrik versi penugasan<small>Materi terbatas untuk assessor.</small></span></summary><div class="technical-disclosure-body">@include('candidate.technical-assessment-material', ['material' => $selected->package['assessor_material']])</div></details>

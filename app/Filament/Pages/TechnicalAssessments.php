@@ -31,6 +31,12 @@ class TechnicalAssessments extends Page
 
     public array $durations = [];
 
+    public string $packageTitle = '';
+
+    public array $sectionTitles = [];
+
+    public array $questionTitles = [];
+
     public string $opensAt = '';
 
     public string $deadline = '';
@@ -91,7 +97,27 @@ class TechnicalAssessments extends Page
         $packages = app(TechnicalAssessmentService::class)->packages();
         abort_unless(isset($packages[$this->form]), 422);
         $this->durations = array_map(fn (array $section): int => $section['seconds'], $packages[$this->form]['sections']);
+        $this->packageTitle = $packages[$this->form]['title'];
+        $this->sectionTitles = array_column($packages[$this->form]['sections'], 'title');
+        $this->questionTitles = [];
+        foreach ($packages[$this->form]['sections'] as $section) {
+            foreach ($section['questions'] as $question) {
+                $this->questionTitles[$question['id']] = ['label' => $question['label'] ?? $question['id'], 'prompt' => $question['prompt']];
+            }
+        }
+        $this->resetValidation();
         $this->reviewed = false;
+    }
+
+    public function savePackage(): void
+    {
+        $this->actor();
+        $this->resetValidation();
+        app(TechnicalAssessmentService::class)->updatePackageLabels(auth()->user(), $this->form, [
+            'title' => $this->packageTitle, 'sections' => $this->sectionTitles, 'questions' => $this->questionTitles,
+        ]);
+        $this->reviewed = false;
+        $this->feedback = 'Nama paket dan soal berhasil diperbarui untuk penugasan baru. Sesi yang sudah ditugaskan tetap menggunakan materi sebelumnya.';
     }
 
     public function assign(): void

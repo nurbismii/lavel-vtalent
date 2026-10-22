@@ -1,158 +1,12 @@
 {
   "A": {
-    "title": "Form A · Screening penalaran dan judgment kerja",
-    "version": "2026-10-15.1",
+    "title": "Form A · Penalaran, judgment kerja, dan kecenderungan perilaku",
+    "version": "2026-10-21.2",
     "sections": [
-      {
-        "title": "Orientasi dan latihan",
-        "seconds": 300,
-        "material": [
-          {
-            "text": "Form A mengumpulkan bukti awal tentang cara kandidat memahami informasi, menggunakan angka, menarik kesimpulan, memeriksa dokumen, dan memilih tindakan dalam situasi kerja. Form ini bukan tes IQ resmi, diagnosis, layanan psikologi klinis, atau alat untuk menyatakan seseorang jujur maupun tidak jujur."
-          },
-          {
-            "text": "Hasil dipakai bersama riwayat kerja, verifikasi langsung, wawancara terstruktur, dan bukti lain yang relevan."
-          },
-          {
-            "text": "Kebutuhan akomodasi, bahasa, disabilitas, kesehatan, perangkat, atau koneksi harus dapat disampaikan tanpa dianggap sebagai ketidakjujuran."
-          },
-          {
-            "text": "Organisasi wajib menjelaskan tujuan, retensi data, akses hasil, dan cara mengajukan pertanyaan atau koreksi data."
-          },
-          {
-            "text": "Jadwal Tes Inti"
-          },
-          {
-            "rows": [
-              [
-                "Tahap",
-                "Durasi",
-                "Isi",
-                "Dinilai"
-              ],
-              [
-                "Orientasi dan latihan",
-                "5 menit",
-                "Aturan, contoh, pemeriksaan perangkat",
-                "Tidak"
-              ],
-              [
-                "Penalaran kerja",
-                "15 menit",
-                "12 soal verbal, numerik, dan logis",
-                "Ya"
-              ],
-              [
-                "Pemeriksaan dokumen",
-                "15 menit",
-                "2 dokumen dan 7 soal objektif",
-                "Ya"
-              ],
-              [
-                "Situational judgment",
-                "10 menit",
-                "5 skenario kerja",
-                "Ya"
-              ]
-            ]
-          },
-          {
-            "text": "Aturan Pengerjaan"
-          },
-          {
-            "text": "Kerjakan sendiri. Internet, mesin pencari, AI, bank soal, bantuan orang lain, dan materi jawaban tidak boleh digunakan."
-          },
-          {
-            "text": "Kalkulator sederhana boleh digunakan untuk soal numerik. Kertas kosong untuk coretan boleh digunakan dan harus dimusnahkan setelah tes."
-          },
-          {
-            "text": "Gunakan satu perangkat yang stabil, tutup aplikasi komunikasi, dan matikan notifikasi sebelum timer dimulai."
-          },
-          {
-            "text": "Jangan menyalin, memotret, merekam, mengunggah, atau membagikan soal."
-          },
-          {
-            "text": "Bila terjadi gangguan teknis, catat bagian dan waktunya lalu laporkan. Jangan memulai ulang atau meminta bantuan jawaban."
-          },
-          {
-            "text": "Pilih jawaban yang paling didukung informasi; jangan menambah asumsi yang tidak diberikan."
-          },
-          {
-            "text": "Saya memahami aturan dan menyatakan bahwa jawaban saya kerjakan sendiri dalam kondisi yang saya laporkan. Saya memahami bahwa kemampuan akan diverifikasi kembali secara singkat dalam sesi langsung yang terkontrol."
-          },
-          {
-            "text": "Latihan yang Tidak Dinilai"
-          },
-          {
-            "text": "Kerjakan tiga contoh berikut sebelum timer tes inti dimulai. Jawaban dan penjelasan tersedia tepat di bawah contoh."
-          },
-          {
-            "rows": [
-              [
-                "Contoh",
-                "Pertanyaan",
-                "Jawaban",
-                "Penjelasan"
-              ],
-              [
-                "L1 Verbal",
-                "Aturan menyatakan semua tiket prioritas tinggi harus ditinjau supervisor. Tiket X berprioritas tinggi. Apa yang harus dilakukan?",
-                "Ditinjau supervisor",
-                "Aturan umum langsung berlaku pada Tiket X."
-              ],
-              [
-                "L2 Numerik",
-                "Jika 40 dari 50 berkas selesai, berapa tingkat penyelesaiannya?",
-                "80%",
-                "40 dibagi 50 sama dengan 0,8 atau 80%."
-              ],
-              [
-                "L3 Logis",
-                "Urutan wajib adalah Verifikasi sebelum Pelepasan. Urutan mana yang benar?",
-                "Verifikasi lalu Pelepasan",
-                "Prasyarat harus terjadi lebih dahulu."
-              ]
-            ]
-          }
-        ],
-        "questions": []
-      },
       {
         "title": "Penalaran kerja",
         "seconds": 900,
-        "material": [
-          {
-            "text": "Gunakan tabel berikut untuk A05–A07. Kalkulator sederhana diperbolehkan."
-          },
-          {
-            "rows": [
-              [
-                "Minggu",
-                "Masuk",
-                "Selesai",
-                "Dikembalikan"
-              ],
-              [
-                "1",
-                "120",
-                "96",
-                "6"
-              ],
-              [
-                "2",
-                "150",
-                "135",
-                "9"
-              ],
-              [
-                "3",
-                "130",
-                "117",
-                "4"
-              ]
-            ]
-          }
-        ],
+        "material": [],
         "questions": [
           {
             "id": "A01",
@@ -207,7 +61,40 @@
               "C": "90%",
               "D": "92%"
             },
-            "type": "choice"
+            "type": "choice",
+            "material": [
+              {
+                "text": "Tabel kinerja tiga minggu (A05–A07)"
+              },
+              {
+                "rows": [
+                  [
+                    "Minggu",
+                    "Masuk",
+                    "Selesai",
+                    "Dikembalikan"
+                  ],
+                  [
+                    "1",
+                    "120",
+                    "96",
+                    "6"
+                  ],
+                  [
+                    "2",
+                    "150",
+                    "135",
+                    "9"
+                  ],
+                  [
+                    "3",
+                    "130",
+                    "117",
+                    "4"
+                  ]
+                ]
+              }
+            ]
           },
           {
             "id": "A06",
@@ -296,101 +183,109 @@
             "text": "Seluruh nama, nomor, dan organisasi pada simulasi berikut bersifat fiktif."
           },
           {
-            "text": "Dokumen A Permintaan Pembayaran"
-          },
-          {
-            "rows": [
-              [
-                "Bidang",
-                "Isi"
-              ],
-              [
-                "Tanggal penelaahan",
-                "9 Oktober 2026"
-              ],
-              [
-                "Nomor kasus",
-                "PV-4827"
-              ],
-              [
-                "Vendor",
-                "PT Tunas Sarana"
-              ],
-              [
-                "Nomor invoice",
-                "INV-381"
-              ],
-              [
-                "Tanggal invoice",
-                "3 Oktober 2026"
-              ],
-              [
-                "Jumlah",
-                "Rp486.500.000"
-              ],
-              [
-                "Rekening tujuan",
-                "Bank Nusantara •••• 7178"
-              ],
-              [
-                "Bukti penerimaan",
-                "GR-1492"
-              ],
-              [
-                "Rencana pelepasan",
-                "12 Oktober 2026"
-              ]
-            ]
-          },
-          {
-            "text": "Dokumen B Register Kontrol"
-          },
-          {
-            "rows": [
-              [
-                "Bidang",
-                "Isi"
-              ],
-              [
-                "Nomor kasus",
-                "PV-4827"
-              ],
-              [
-                "Master vendor",
-                "PT Tunas Sarana"
-              ],
-              [
-                "Nomor invoice",
-                "INV-318"
-              ],
-              [
-                "Jumlah tercatat",
-                "Rp468.500.000"
-              ],
-              [
-                "Rekening master",
-                "Bank Nusantara •••• 7718"
-              ],
-              [
-                "Permintaan perubahan rekening",
-                "Diterima 8 Oktober; verifikasi independen belum selesai"
-              ],
-              [
-                "Penerimaan barang",
-                "GR-1492; tervalidasi 7 Oktober"
-              ],
-              [
-                "Persetujuan Manager",
-                "Ada; 8 Oktober 2026"
-              ],
-              [
-                "Persetujuan Finance",
-                "Belum tercatat"
-              ],
-              [
-                "Dokumen pajak",
-                "Berlaku sampai 30 September 2026"
-              ]
+            "columns": [
+              {
+                "title": "Dokumen A Permintaan Pembayaran",
+                "material": [
+                  {
+                    "rows": [
+                      [
+                        "Bidang",
+                        "Isi"
+                      ],
+                      [
+                        "Tanggal penelaahan",
+                        "9 Oktober 2026"
+                      ],
+                      [
+                        "Nomor kasus",
+                        "PV-4827"
+                      ],
+                      [
+                        "Vendor",
+                        "PT Tunas Sarana"
+                      ],
+                      [
+                        "Nomor invoice",
+                        "INV-381"
+                      ],
+                      [
+                        "Tanggal invoice",
+                        "3 Oktober 2026"
+                      ],
+                      [
+                        "Jumlah",
+                        "Rp486.500.000"
+                      ],
+                      [
+                        "Rekening tujuan",
+                        "Bank Nusantara •••• 7178"
+                      ],
+                      [
+                        "Bukti penerimaan",
+                        "GR-1492"
+                      ],
+                      [
+                        "Rencana pelepasan",
+                        "12 Oktober 2026"
+                      ]
+                    ]
+                  }
+                ]
+              },
+              {
+                "title": "Dokumen B Register Kontrol",
+                "material": [
+                  {
+                    "rows": [
+                      [
+                        "Bidang",
+                        "Isi"
+                      ],
+                      [
+                        "Nomor kasus",
+                        "PV-4827"
+                      ],
+                      [
+                        "Master vendor",
+                        "PT Tunas Sarana"
+                      ],
+                      [
+                        "Nomor invoice",
+                        "INV-318"
+                      ],
+                      [
+                        "Jumlah tercatat",
+                        "Rp468.500.000"
+                      ],
+                      [
+                        "Rekening master",
+                        "Bank Nusantara •••• 7718"
+                      ],
+                      [
+                        "Permintaan perubahan rekening",
+                        "Diterima 8 Oktober; verifikasi independen belum selesai"
+                      ],
+                      [
+                        "Penerimaan barang",
+                        "GR-1492; tervalidasi 7 Oktober"
+                      ],
+                      [
+                        "Persetujuan Manager",
+                        "Ada; 8 Oktober 2026"
+                      ],
+                      [
+                        "Persetujuan Finance",
+                        "Belum tercatat"
+                      ],
+                      [
+                        "Dokumen pajak",
+                        "Berlaku sampai 30 September 2026"
+                      ]
+                    ]
+                  }
+                ]
+              }
             ]
           },
           {
@@ -492,11 +387,7 @@
       {
         "title": "Situational judgment",
         "seconds": 600,
-        "material": [
-          {
-            "text": "Pilih tindakan yang paling aman dan efektif bagi pekerjaan."
-          }
-        ],
+        "material": [],
         "questions": [
           {
             "id": "S01",
@@ -552,6 +443,313 @@
               "D": "Tanyakan kepada vendor lain apakah mereka juga curiga."
             },
             "type": "choice"
+          }
+        ]
+      },
+      {
+        "title": "Kecenderungan perilaku",
+        "seconds": 420,
+        "material": [],
+        "questions": [
+          {
+            "id": "IPIP01",
+            "prompt": "Menghidupkan suasana dalam suatu acara",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP02",
+            "prompt": "Peduli dengan orang lain",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP03",
+            "prompt": "Selalu mempersiapkan segala hal",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP04",
+            "prompt": "Mudah merasa tertekan",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP05",
+            "prompt": "Kesulitan memahami ide yang bersifat abstrak",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP06",
+            "prompt": "Memulai suatu percakapan",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP07",
+            "prompt": "Bersimpati dengan perasaan orang lain",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP08",
+            "prompt": "Segera mengerjakan tugas yang diberikan",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP09",
+            "prompt": "Mudah khawatir",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP10",
+            "prompt": "Memiliki imajinasi yang sangat kuat",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP11",
+            "prompt": "Sedikit berkata",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP12",
+            "prompt": "Meluangkan waktu untuk orang lain",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP13",
+            "prompt": "Menyukai keteraturan",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP14",
+            "prompt": "Memiliki perasaan yang berubah-ubah",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP15",
+            "prompt": "Tidak tertarik dengan ide-ide abstrak",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP16",
+            "prompt": "Berinteraksi dengan banyak orang dalam suatu acara",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP17",
+            "prompt": "Memahami perasaan orang lain",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP18",
+            "prompt": "Melakukan aktivitas sesuai jadwal atau agenda",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP19",
+            "prompt": "Memiliki suasana hati yang sering cepat berubah",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP20",
+            "prompt": "Tidak memiliki imajinasi yang baik",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP21",
+            "prompt": "Tidak suka menjadi pusat perhatian",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP22",
+            "prompt": "Membuat orang lain merasa nyaman",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP23",
+            "prompt": "Telaten dalam mengerjakan tugas",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP24",
+            "prompt": "Mudah merasa jengkel",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
+          },
+          {
+            "id": "IPIP25",
+            "prompt": "Memiliki banyak ide",
+            "type": "choice",
+            "options": {
+              "1": "Sangat tidak sesuai",
+              "2": "Tidak sesuai",
+              "3": "Netral atau ragu",
+              "4": "Sesuai",
+              "5": "Sangat sesuai"
+            }
           }
         ]
       }
@@ -913,58 +1111,369 @@
       },
       {
         "text": "SJT dapat dipakai sebagai bukti tambahan dan sumber probe. Pilihan berisiko tinggi tidak menjadi auto-fail tanpa verifikasi job-related dan aturan yang telah ditetapkan."
-      }
-    ],
-    "condition_questions": [
-      {
-        "id": "technical_conditions",
-        "label": "technical_conditions",
-        "prompt": "Apakah ada gangguan teknis? Tuliskan waktu, bagian, dan dampaknya.",
-        "type": "text"
       },
       {
-        "id": "accommodations",
-        "label": "accommodations",
-        "prompt": "Apakah akomodasi yang disepakati telah tersedia?",
-        "type": "text"
+        "text": "IPIP BFM 25 Indonesia adalah inventori self-report singkat yang dapat memberi konteks tentang Extraversion, Agreeableness, Conscientiousness, Emotional Stability, dan Intellect. Modul ini menjadi tahap lanjutan Form A dengan timer tersendiri. Item kepribadian transparan dan respons dapat dikelola untuk terlihat ideal; karena itu hasil tidak dibobot dalam IPP, tidak menjadi cutoff, dan tidak digunakan untuk diagnosis."
       },
       {
-        "id": "unfinished",
-        "label": "unfinished",
-        "prompt": "Apakah ada bagian yang tidak selesai karena waktu?",
-        "type": "text"
+        "text": "6.2 Cara Skor"
       },
       {
-        "id": "other_conditions",
-        "label": "other_conditions",
-        "prompt": "Apakah ada kondisi lain yang relevan untuk menafsirkan hasil?",
-        "type": "text"
-      }
-    ]
-  },
-  "B": {
-    "title": "Form B · Verifikasi langsung bersama assessor",
-    "version": "2026-10-15.1",
-    "sections": [
+        "text": "Respons 1 sampai 5 mengikuti skala pada tahap kecenderungan perilaku Form A."
+      },
       {
-        "title": "Identitas dan kondisi",
-        "seconds": 120,
-        "material": [
-          {
-            "text": "Sesi langsung bersama assessor. Internet, AI, Form A, catatan jawaban, dan bantuan orang lain tidak digunakan. Anda boleh meminta instruksi diulang."
-          }
-        ],
-        "questions": [
-          {
-            "id": "identity_conditions",
-            "label": "Identitas dan kondisi",
-            "prompt": "Konfirmasi identitas secara proporsional; catat kondisi audio, koneksi, akomodasi, dan gangguan bersama assessor.",
-            "type": "text"
-          }
+        "text": "Item positif diberi skor sama dengan respons. Item negatif diberi skor balik: 6 dikurangi respons."
+      },
+      {
+        "text": "Hitung rata-rata lima item setiap faktor. Jangan menghitung faktor bila ada item yang kosong; minta penyelesaian bila prosedur memungkinkan."
+      },
+      {
+        "text": "Simpan raw response terbatas pada assessor. Sampaikan kepada hiring manager hanya ringkasan yang relevan beserta batasnya."
+      },
+      {
+        "rows": [
+          [
+            "No.",
+            "Faktor",
+            "Arah",
+            "Item"
+          ],
+          [
+            "1",
+            "E",
+            "+",
+            "Menghidupkan suasana dalam suatu acara"
+          ],
+          [
+            "2",
+            "A",
+            "+",
+            "Peduli dengan orang lain"
+          ],
+          [
+            "3",
+            "C",
+            "+",
+            "Selalu mempersiapkan segala hal"
+          ],
+          [
+            "4",
+            "ES",
+            "−",
+            "Mudah merasa tertekan"
+          ],
+          [
+            "5",
+            "I",
+            "−",
+            "Kesulitan memahami ide yang bersifat abstrak"
+          ],
+          [
+            "6",
+            "E",
+            "+",
+            "Memulai suatu percakapan"
+          ],
+          [
+            "7",
+            "A",
+            "+",
+            "Bersimpati dengan perasaan orang lain"
+          ],
+          [
+            "8",
+            "C",
+            "+",
+            "Segera mengerjakan tugas yang diberikan"
+          ],
+          [
+            "9",
+            "ES",
+            "−",
+            "Mudah khawatir"
+          ],
+          [
+            "10",
+            "I",
+            "+",
+            "Memiliki imajinasi yang sangat kuat"
+          ],
+          [
+            "11",
+            "E",
+            "−",
+            "Sedikit berkata"
+          ],
+          [
+            "12",
+            "A",
+            "+",
+            "Meluangkan waktu untuk orang lain"
+          ],
+          [
+            "13",
+            "C",
+            "+",
+            "Menyukai keteraturan"
+          ],
+          [
+            "14",
+            "ES",
+            "−",
+            "Memiliki perasaan yang berubah-ubah"
+          ],
+          [
+            "15",
+            "I",
+            "−",
+            "Tidak tertarik dengan ide-ide abstrak"
+          ],
+          [
+            "16",
+            "E",
+            "+",
+            "Berinteraksi dengan banyak orang dalam suatu acara"
+          ],
+          [
+            "17",
+            "A",
+            "+",
+            "Memahami perasaan orang lain"
+          ],
+          [
+            "18",
+            "C",
+            "+",
+            "Melakukan aktivitas sesuai jadwal atau agenda"
+          ],
+          [
+            "19",
+            "ES",
+            "−",
+            "Memiliki suasana hati yang sering cepat berubah"
+          ],
+          [
+            "20",
+            "I",
+            "−",
+            "Tidak memiliki imajinasi yang baik"
+          ],
+          [
+            "21",
+            "E",
+            "−",
+            "Tidak suka menjadi pusat perhatian"
+          ],
+          [
+            "22",
+            "A",
+            "+",
+            "Membuat orang lain merasa nyaman"
+          ],
+          [
+            "23",
+            "C",
+            "+",
+            "Telaten dalam mengerjakan tugas"
+          ],
+          [
+            "24",
+            "ES",
+            "−",
+            "Mudah merasa jengkel"
+          ],
+          [
+            "25",
+            "I",
+            "+",
+            "Memiliki banyak ide"
+          ]
         ]
       },
       {
-        "title": "Penalaran paralel dan penjelasan proses",
+        "rows": [
+          [
+            "Faktor",
+            "Item"
+          ],
+          [
+            "Extraversion",
+            "1, 6, 11R, 16, 21R"
+          ],
+          [
+            "Agreeableness",
+            "2, 7, 12, 17, 22"
+          ],
+          [
+            "Conscientiousness",
+            "3, 8, 13, 18, 23"
+          ],
+          [
+            "Emotional Stability",
+            "4R, 9R, 14R, 19R, 24R"
+          ],
+          [
+            "Intellect",
+            "5R, 10, 15R, 20R, 25"
+          ]
+        ]
+      },
+      {
+        "text": "R berarti reverse score. Nama Emotional Stability dipakai dalam arah positif; item tekanan dan perubahan suasana diberi skor balik."
+      },
+      {
+        "text": "6.3 Interpretasi yang Diperbolehkan"
+      },
+      {
+        "rows": [
+          [
+            "Temuan",
+            "Penggunaan yang tepat",
+            "Penggunaan yang dilarang"
+          ],
+          [
+            "Conscientiousness relatif tinggi",
+            "Tanyakan sistem perencanaan, pengecekan, dan contoh kesalahan",
+            "Menyatakan kandidat pasti teliti atau jujur"
+          ],
+          [
+            "Emotional Stability relatif rendah",
+            "Tanyakan strategi tekanan dan kondisi administrasi",
+            "Menyebut kandidat tidak stabil secara klinis"
+          ],
+          [
+            "Profil ekstrem atau seragam",
+            "Catat sebagai pola self-report dan minta contoh perilaku",
+            "Menyimpulkan kandidat berbohong"
+          ],
+          [
+            "Perbedaan dengan interview",
+            "Uji konteks, contoh, dan sumber lain",
+            "Memilih sumber yang paling menguntungkan keputusan"
+          ]
+        ]
+      }
+    ],
+    "condition_questions": [],
+    "ipip_factors": {
+      "E": [
+        {
+          "id": "IPIP01",
+          "reverse": false
+        },
+        {
+          "id": "IPIP06",
+          "reverse": false
+        },
+        {
+          "id": "IPIP11",
+          "reverse": true
+        },
+        {
+          "id": "IPIP16",
+          "reverse": false
+        },
+        {
+          "id": "IPIP21",
+          "reverse": true
+        }
+      ],
+      "A": [
+        {
+          "id": "IPIP02",
+          "reverse": false
+        },
+        {
+          "id": "IPIP07",
+          "reverse": false
+        },
+        {
+          "id": "IPIP12",
+          "reverse": false
+        },
+        {
+          "id": "IPIP17",
+          "reverse": false
+        },
+        {
+          "id": "IPIP22",
+          "reverse": false
+        }
+      ],
+      "C": [
+        {
+          "id": "IPIP03",
+          "reverse": false
+        },
+        {
+          "id": "IPIP08",
+          "reverse": false
+        },
+        {
+          "id": "IPIP13",
+          "reverse": false
+        },
+        {
+          "id": "IPIP18",
+          "reverse": false
+        },
+        {
+          "id": "IPIP23",
+          "reverse": false
+        }
+      ],
+      "ES": [
+        {
+          "id": "IPIP04",
+          "reverse": true
+        },
+        {
+          "id": "IPIP09",
+          "reverse": true
+        },
+        {
+          "id": "IPIP14",
+          "reverse": true
+        },
+        {
+          "id": "IPIP19",
+          "reverse": true
+        },
+        {
+          "id": "IPIP24",
+          "reverse": true
+        }
+      ],
+      "I": [
+        {
+          "id": "IPIP05",
+          "reverse": true
+        },
+        {
+          "id": "IPIP10",
+          "reverse": false
+        },
+        {
+          "id": "IPIP15",
+          "reverse": true
+        },
+        {
+          "id": "IPIP20",
+          "reverse": true
+        },
+        {
+          "id": "IPIP25",
+          "reverse": false
+        }
+      ]
+    }
+  },
+  "B": {
+    "title": "Form B · Verifikasi langsung bersama assessor",
+    "version": "2026-10-21.5",
+    "sections": [
+      {
+        "title": "Penalaran paralel",
         "seconds": 300,
         "material": [],
         "questions": [
@@ -1021,11 +1530,12 @@
         ]
       },
       {
-        "title": "Simulasi dinamis · keputusan awal",
-        "seconds": 240,
+        "title": "Simulasi dinamis",
+        "kind": "dynamic_simulation",
+        "seconds": 480,
         "material": [
           {
-            "text": "Saat ini pukul 14.00. Anda bertugas mengendalikan tiga pekerjaan. Assessor akan memberi waktu empat menit untuk keputusan awal, lalu menambahkan fakta baru. Susun prioritas, tindakan, bukti yang dibutuhkan, owner, dan komunikasi."
+            "text": "Saat ini pukul 14.00. Anda bertugas mengendalikan tiga pekerjaan."
           },
           {
             "rows": [
@@ -1048,59 +1558,96 @@
             ]
           }
         ],
-        "questions": [
-          {
-            "id": "priority_1",
-            "label": "Prioritas 1",
-            "prompt": "Prioritas 1: tindakan dan batas, bukti atau kontrol, owner dan komunikasi.",
-            "type": "text"
-          },
-          {
-            "id": "priority_2",
-            "label": "Prioritas 2",
-            "prompt": "Prioritas 2: tindakan dan batas, bukti atau kontrol, owner dan komunikasi.",
-            "type": "text"
-          },
-          {
-            "id": "priority_3",
-            "label": "Prioritas 3",
-            "prompt": "Prioritas 3: tindakan dan batas, bukti atau kontrol, owner dan komunikasi.",
-            "type": "text"
-          }
-        ]
-      },
-      {
-        "title": "Simulasi dinamis · fakta baru",
-        "seconds": 240,
-        "material": [
-          {
-            "text": "Saat ini pukul 14.00. Anda bertugas mengendalikan tiga pekerjaan. Assessor akan memberi waktu empat menit untuk keputusan awal, lalu menambahkan fakta baru. Susun prioritas, tindakan, bukti yang dibutuhkan, owner, dan komunikasi."
-          },
-          {
-            "rows": [
-              [
-                "Isu",
-                "Informasi awal"
-              ],
-              [
-                "Pembayaran",
-                "Rp620 juta dijadwalkan pukul 16.00. Manager dan Finance sudah menyetujui. Rekening master berakhir 4432, sedangkan permintaan berakhir 4342. Email pengirim menyebut rekening baru, tetapi belum ada verifikasi independen."
-              ],
-              [
-                "Laporan",
-                "Ringkasan untuk rapat pukul 17.00 memiliki dua angka berbeda, 7,2% dan 7,8%. Pemilik data tersedia pukul 15.00."
-              ],
-              [
-                "Administrasi",
-                "Rekap kehadiran pelatihan internal jatuh tempo besok. Data lengkap tersedia."
-              ]
-            ]
-          },
+        "followup_material": [
           {
             "text": "Pada pukul 14.05, panggilan ke nomor perusahaan yang tersimpan pada master mengonfirmasi bahwa rekening 4432 masih benar. Rekening 4342 berasal dari email yang kemudian ditandai berpotensi disusupi. Pada saat yang sama, vendor menyatakan layanan akan berhenti pukul 16.30 bila pembayaran belum diterima."
           }
         ],
         "questions": [
+          {
+            "id": "priority_1_priority",
+            "group": "Prioritas 1",
+            "label": "Prioritas 1 - Prioritas",
+            "prompt": "Prioritas",
+            "type": "text"
+          },
+          {
+            "id": "priority_1_action",
+            "group": "Prioritas 1",
+            "label": "Prioritas 1 - Tindakan dan batas",
+            "prompt": "Tindakan dan batas",
+            "type": "text"
+          },
+          {
+            "id": "priority_1_evidence",
+            "group": "Prioritas 1",
+            "label": "Prioritas 1 - Bukti atau kontrol",
+            "prompt": "Bukti atau kontrol",
+            "type": "text"
+          },
+          {
+            "id": "priority_1_coordination",
+            "group": "Prioritas 1",
+            "label": "Prioritas 1 - PIC dan Koordinasi",
+            "prompt": "PIC dan Koordinasi",
+            "type": "text"
+          },
+          {
+            "id": "priority_2_priority",
+            "group": "Prioritas 2",
+            "label": "Prioritas 2 - Prioritas",
+            "prompt": "Prioritas",
+            "type": "text"
+          },
+          {
+            "id": "priority_2_action",
+            "group": "Prioritas 2",
+            "label": "Prioritas 2 - Tindakan dan batas",
+            "prompt": "Tindakan dan batas",
+            "type": "text"
+          },
+          {
+            "id": "priority_2_evidence",
+            "group": "Prioritas 2",
+            "label": "Prioritas 2 - Bukti atau kontrol",
+            "prompt": "Bukti atau kontrol",
+            "type": "text"
+          },
+          {
+            "id": "priority_2_coordination",
+            "group": "Prioritas 2",
+            "label": "Prioritas 2 - PIC dan Koordinasi",
+            "prompt": "PIC dan Koordinasi",
+            "type": "text"
+          },
+          {
+            "id": "priority_3_priority",
+            "group": "Prioritas 3",
+            "label": "Prioritas 3 - Prioritas",
+            "prompt": "Prioritas",
+            "type": "text"
+          },
+          {
+            "id": "priority_3_action",
+            "group": "Prioritas 3",
+            "label": "Prioritas 3 - Tindakan dan batas",
+            "prompt": "Tindakan dan batas",
+            "type": "text"
+          },
+          {
+            "id": "priority_3_evidence",
+            "group": "Prioritas 3",
+            "label": "Prioritas 3 - Bukti atau kontrol",
+            "prompt": "Bukti atau kontrol",
+            "type": "text"
+          },
+          {
+            "id": "priority_3_coordination",
+            "group": "Prioritas 3",
+            "label": "Prioritas 3 - PIC dan Koordinasi",
+            "prompt": "PIC dan Koordinasi",
+            "type": "text"
+          },
           {
             "id": "revised_decision",
             "label": "Keputusan setelah fakta baru",
@@ -1116,25 +1663,25 @@
         "questions": [
           {
             "id": "probe_1",
-            "label": "Probe 1",
+            "label": "1",
             "prompt": "Bagaimana Anda biasanya membedakan fakta, asumsi, dan informasi yang belum diketahui?",
             "type": "text"
           },
           {
             "id": "probe_2",
-            "label": "Probe 2",
+            "label": "2",
             "prompt": "Pada Form A, alat atau bantuan apa saja yang Anda gunakan?",
             "type": "text"
           },
           {
             "id": "probe_3",
-            "label": "Probe 3",
-            "prompt": "Apakah ada kondisi yang dapat menjelaskan hasil yang berbeda antara Form A dan sesi ini?",
+            "label": "3",
+            "prompt": "Apakah ada kondisi yang dapat menjelaskan hasil yang berbeda antara Form A dan Form B?",
             "type": "text"
           },
           {
             "id": "probe_4",
-            "label": "Probe 4",
+            "label": "4",
             "prompt": "Bila jawaban Anda pada Form A ternyata keliru, bagaimana Anda akan memperbaiki prosesnya?",
             "type": "text"
           }
@@ -1401,724 +1948,19 @@
     "condition_questions": [
       {
         "id": "technical_conditions",
-        "label": "technical_conditions",
-        "prompt": "Apakah ada gangguan teknis? Tuliskan waktu, bagian, dan dampaknya.",
-        "type": "text"
-      },
-      {
-        "id": "accommodations",
-        "label": "accommodations",
-        "prompt": "Apakah akomodasi yang disepakati telah tersedia?",
+        "label": "1",
+        "prompt": "Apakah ada gangguan teknis? Tuliskan waktu, bagian, dan dampaknya!",
         "type": "text"
       },
       {
         "id": "unfinished",
-        "label": "unfinished",
+        "label": "2",
         "prompt": "Apakah ada bagian yang tidak selesai karena waktu?",
         "type": "text"
       },
       {
         "id": "other_conditions",
-        "label": "other_conditions",
-        "prompt": "Apakah ada kondisi lain yang relevan untuk menafsirkan hasil?",
-        "type": "text"
-      }
-    ]
-  },
-  "A2": {
-    "title": "Form A2 · IPIP BFM 25 opsional",
-    "version": "2026-10-15.1",
-    "sections": [
-      {
-        "title": "Kecenderungan perilaku",
-        "seconds": 420,
-        "material": [
-          {
-            "text": "Modul opsional terpisah. Nilai kesesuaian pernyataan dengan diri Anda pada umumnya. Tidak ada jawaban benar atau salah. Hasil hanya memberi konteks wawancara, bukan diagnosis atau penentu kelulusan."
-          }
-        ],
-        "questions": [
-          {
-            "id": "IPIP01",
-            "prompt": "Menghidupkan suasana dalam suatu acara",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP02",
-            "prompt": "Peduli dengan orang lain",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP03",
-            "prompt": "Selalu mempersiapkan segala hal",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP04",
-            "prompt": "Mudah merasa tertekan",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP05",
-            "prompt": "Kesulitan memahami ide yang bersifat abstrak",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP06",
-            "prompt": "Memulai suatu percakapan",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP07",
-            "prompt": "Bersimpati dengan perasaan orang lain",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP08",
-            "prompt": "Segera mengerjakan tugas yang diberikan",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP09",
-            "prompt": "Mudah khawatir",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP10",
-            "prompt": "Memiliki imajinasi yang sangat kuat",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP11",
-            "prompt": "Sedikit berkata",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP12",
-            "prompt": "Meluangkan waktu untuk orang lain",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP13",
-            "prompt": "Menyukai keteraturan",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP14",
-            "prompt": "Memiliki perasaan yang berubah-ubah",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP15",
-            "prompt": "Tidak tertarik dengan ide-ide abstrak",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP16",
-            "prompt": "Berinteraksi dengan banyak orang dalam suatu acara",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP17",
-            "prompt": "Memahami perasaan orang lain",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP18",
-            "prompt": "Melakukan aktivitas sesuai jadwal atau agenda",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP19",
-            "prompt": "Memiliki suasana hati yang sering cepat berubah",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP20",
-            "prompt": "Tidak memiliki imajinasi yang baik",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP21",
-            "prompt": "Tidak suka menjadi pusat perhatian",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP22",
-            "prompt": "Membuat orang lain merasa nyaman",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP23",
-            "prompt": "Telaten dalam mengerjakan tugas",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP24",
-            "prompt": "Mudah merasa jengkel",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          },
-          {
-            "id": "IPIP25",
-            "prompt": "Memiliki banyak ide",
-            "type": "choice",
-            "options": {
-              "1": "Sangat tidak sesuai",
-              "2": "Tidak sesuai",
-              "3": "Netral atau ragu",
-              "4": "Sesuai",
-              "5": "Sangat sesuai"
-            }
-          }
-        ]
-      }
-    ],
-    "scoring": {},
-    "ipip_factors": {
-      "E": [
-        {
-          "id": "IPIP01",
-          "reverse": false
-        },
-        {
-          "id": "IPIP06",
-          "reverse": false
-        },
-        {
-          "id": "IPIP11",
-          "reverse": true
-        },
-        {
-          "id": "IPIP16",
-          "reverse": false
-        },
-        {
-          "id": "IPIP21",
-          "reverse": true
-        }
-      ],
-      "A": [
-        {
-          "id": "IPIP02",
-          "reverse": false
-        },
-        {
-          "id": "IPIP07",
-          "reverse": false
-        },
-        {
-          "id": "IPIP12",
-          "reverse": false
-        },
-        {
-          "id": "IPIP17",
-          "reverse": false
-        },
-        {
-          "id": "IPIP22",
-          "reverse": false
-        }
-      ],
-      "C": [
-        {
-          "id": "IPIP03",
-          "reverse": false
-        },
-        {
-          "id": "IPIP08",
-          "reverse": false
-        },
-        {
-          "id": "IPIP13",
-          "reverse": false
-        },
-        {
-          "id": "IPIP18",
-          "reverse": false
-        },
-        {
-          "id": "IPIP23",
-          "reverse": false
-        }
-      ],
-      "ES": [
-        {
-          "id": "IPIP04",
-          "reverse": true
-        },
-        {
-          "id": "IPIP09",
-          "reverse": true
-        },
-        {
-          "id": "IPIP14",
-          "reverse": true
-        },
-        {
-          "id": "IPIP19",
-          "reverse": true
-        },
-        {
-          "id": "IPIP24",
-          "reverse": true
-        }
-      ],
-      "I": [
-        {
-          "id": "IPIP05",
-          "reverse": true
-        },
-        {
-          "id": "IPIP10",
-          "reverse": false
-        },
-        {
-          "id": "IPIP15",
-          "reverse": true
-        },
-        {
-          "id": "IPIP20",
-          "reverse": true
-        },
-        {
-          "id": "IPIP25",
-          "reverse": false
-        }
-      ]
-    },
-    "assessor_material": [
-      {
-        "text": "IPIP BFM 25 Indonesia adalah inventori self-report singkat yang dapat memberi konteks tentang Extraversion, Agreeableness, Conscientiousness, Emotional Stability, dan Intellect. Tempatkan modul ini setelah shortlist atau di luar timer Form A. Item kepribadian transparan dan respons dapat dikelola untuk terlihat ideal; karena itu hasil tidak dibobot dalam IPP, tidak menjadi cutoff, dan tidak digunakan untuk diagnosis."
-      },
-      {
-        "text": "6.2 Cara Skor"
-      },
-      {
-        "text": "Respons 1 sampai 5 mengikuti skala pada Form A2."
-      },
-      {
-        "text": "Item positif diberi skor sama dengan respons. Item negatif diberi skor balik: 6 dikurangi respons."
-      },
-      {
-        "text": "Hitung rata-rata lima item setiap faktor. Jangan menghitung faktor bila ada item yang kosong; minta penyelesaian bila prosedur memungkinkan."
-      },
-      {
-        "text": "Simpan raw response terbatas pada assessor. Sampaikan kepada hiring manager hanya ringkasan yang relevan beserta batasnya."
-      },
-      {
-        "rows": [
-          [
-            "No.",
-            "Faktor",
-            "Arah",
-            "Item"
-          ],
-          [
-            "1",
-            "E",
-            "+",
-            "Menghidupkan suasana dalam suatu acara"
-          ],
-          [
-            "2",
-            "A",
-            "+",
-            "Peduli dengan orang lain"
-          ],
-          [
-            "3",
-            "C",
-            "+",
-            "Selalu mempersiapkan segala hal"
-          ],
-          [
-            "4",
-            "ES",
-            "−",
-            "Mudah merasa tertekan"
-          ],
-          [
-            "5",
-            "I",
-            "−",
-            "Kesulitan memahami ide yang bersifat abstrak"
-          ],
-          [
-            "6",
-            "E",
-            "+",
-            "Memulai suatu percakapan"
-          ],
-          [
-            "7",
-            "A",
-            "+",
-            "Bersimpati dengan perasaan orang lain"
-          ],
-          [
-            "8",
-            "C",
-            "+",
-            "Segera mengerjakan tugas yang diberikan"
-          ],
-          [
-            "9",
-            "ES",
-            "−",
-            "Mudah khawatir"
-          ],
-          [
-            "10",
-            "I",
-            "+",
-            "Memiliki imajinasi yang sangat kuat"
-          ],
-          [
-            "11",
-            "E",
-            "−",
-            "Sedikit berkata"
-          ],
-          [
-            "12",
-            "A",
-            "+",
-            "Meluangkan waktu untuk orang lain"
-          ],
-          [
-            "13",
-            "C",
-            "+",
-            "Menyukai keteraturan"
-          ],
-          [
-            "14",
-            "ES",
-            "−",
-            "Memiliki perasaan yang berubah-ubah"
-          ],
-          [
-            "15",
-            "I",
-            "−",
-            "Tidak tertarik dengan ide-ide abstrak"
-          ],
-          [
-            "16",
-            "E",
-            "+",
-            "Berinteraksi dengan banyak orang dalam suatu acara"
-          ],
-          [
-            "17",
-            "A",
-            "+",
-            "Memahami perasaan orang lain"
-          ],
-          [
-            "18",
-            "C",
-            "+",
-            "Melakukan aktivitas sesuai jadwal atau agenda"
-          ],
-          [
-            "19",
-            "ES",
-            "−",
-            "Memiliki suasana hati yang sering cepat berubah"
-          ],
-          [
-            "20",
-            "I",
-            "−",
-            "Tidak memiliki imajinasi yang baik"
-          ],
-          [
-            "21",
-            "E",
-            "−",
-            "Tidak suka menjadi pusat perhatian"
-          ],
-          [
-            "22",
-            "A",
-            "+",
-            "Membuat orang lain merasa nyaman"
-          ],
-          [
-            "23",
-            "C",
-            "+",
-            "Telaten dalam mengerjakan tugas"
-          ],
-          [
-            "24",
-            "ES",
-            "−",
-            "Mudah merasa jengkel"
-          ],
-          [
-            "25",
-            "I",
-            "+",
-            "Memiliki banyak ide"
-          ]
-        ]
-      },
-      {
-        "rows": [
-          [
-            "Faktor",
-            "Item"
-          ],
-          [
-            "Extraversion",
-            "1, 6, 11R, 16, 21R"
-          ],
-          [
-            "Agreeableness",
-            "2, 7, 12, 17, 22"
-          ],
-          [
-            "Conscientiousness",
-            "3, 8, 13, 18, 23"
-          ],
-          [
-            "Emotional Stability",
-            "4R, 9R, 14R, 19R, 24R"
-          ],
-          [
-            "Intellect",
-            "5R, 10, 15R, 20R, 25"
-          ]
-        ]
-      },
-      {
-        "text": "R berarti reverse score. Nama Emotional Stability dipakai dalam arah positif; item tekanan dan perubahan suasana diberi skor balik."
-      },
-      {
-        "text": "6.3 Interpretasi yang Diperbolehkan"
-      },
-      {
-        "rows": [
-          [
-            "Temuan",
-            "Penggunaan yang tepat",
-            "Penggunaan yang dilarang"
-          ],
-          [
-            "Conscientiousness relatif tinggi",
-            "Tanyakan sistem perencanaan, pengecekan, dan contoh kesalahan",
-            "Menyatakan kandidat pasti teliti atau jujur"
-          ],
-          [
-            "Emotional Stability relatif rendah",
-            "Tanyakan strategi tekanan dan kondisi administrasi",
-            "Menyebut kandidat tidak stabil secara klinis"
-          ],
-          [
-            "Profil ekstrem atau seragam",
-            "Catat sebagai pola self-report dan minta contoh perilaku",
-            "Menyimpulkan kandidat berbohong"
-          ],
-          [
-            "Perbedaan dengan interview",
-            "Uji konteks, contoh, dan sumber lain",
-            "Memilih sumber yang paling menguntungkan keputusan"
-          ]
-        ]
-      }
-    ],
-    "condition_questions": [
-      {
-        "id": "technical_conditions",
-        "label": "technical_conditions",
-        "prompt": "Apakah ada gangguan teknis? Tuliskan waktu, bagian, dan dampaknya.",
-        "type": "text"
-      },
-      {
-        "id": "accommodations",
-        "label": "accommodations",
-        "prompt": "Apakah akomodasi yang disepakati telah tersedia?",
-        "type": "text"
-      },
-      {
-        "id": "unfinished",
-        "label": "unfinished",
-        "prompt": "Apakah ada bagian yang tidak selesai karena waktu?",
-        "type": "text"
-      },
-      {
-        "id": "other_conditions",
-        "label": "other_conditions",
+        "label": "3",
         "prompt": "Apakah ada kondisi lain yang relevan untuk menafsirkan hasil?",
         "type": "text"
       }
