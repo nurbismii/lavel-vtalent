@@ -1158,7 +1158,7 @@ class TechnicalAssessmentTest extends TestCase
 
         $this->get(route('candidate.technical-assessments'))->assertSee('Selesaikan Form A terlebih dahulu')->assertDontSee(route('candidate.technical-assessments.show', $attempt));
         $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('Tes terkunci')->assertDontSee('data-assessment-start', false);
-        $this->postJson($url, ['action' => 'consent', 'consent' => true])->assertUnprocessable()->assertJsonPath('message', 'Selesaikan Form A terlebih dahulu sebelum memulai Form B atau Form A2.');
+        $this->postJson($url, ['action' => 'consent', 'consent' => true])->assertUnprocessable()->assertJsonPath('message', 'Selesaikan Form A terlebih dahulu sebelum memulai Form B');
 
         $this->assertNull($attempt->fresh()->consented_at);
         $this->assertNull($attempt->fresh()->section_started_at);
@@ -1176,7 +1176,7 @@ class TechnicalAssessmentTest extends TestCase
         $this->attempt('A', ['recruitment_application_id' => $otherApplication->id, 'completed_at' => now()]);
         $this->loginFor($attempt);
 
-        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'start'))->assertUnprocessable()->assertJsonPath('message', 'Selesaikan Form A terlebih dahulu sebelum memulai Form B atau Form A2.');
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'start'))->assertUnprocessable()->assertJsonPath('message', 'Selesaikan Form A terlebih dahulu sebelum memulai Form B');
         $this->get(route('candidate.technical-assessments'))->assertSee('Selesaikan Form A terlebih dahulu')->assertDontSee(route('candidate.technical-assessments.show', $attempt));
 
         $this->assertNull($attempt->fresh()->section_started_at);
