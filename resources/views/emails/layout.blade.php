@@ -26,6 +26,7 @@
                             <h1 style="margin:0 0 24px;font-size:27px;line-height:1.3;color:#18263b;">{{ $title }}</h1>
                             <p style="margin:0 0 18px;font-size:15px;line-height:1.7;">Halo {{ $name }},</p>
                             <div style="font-size:14px;line-height:1.8;color:#526078;">@yield('content')</div>
+                            @if(!empty($actionUrl))
                             <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:24px;">
                                 <tr>
                                     <td bgcolor="#415e9e" style="border-radius:8px;text-align:center;mso-padding-alt:14px 24px;">
@@ -33,8 +34,10 @@
                                     </td>
                                 </tr>
                             </table>
+                            @endif
                             <div style="margin-top:22px;font-size:12px;line-height:1.8;color:#637187;">@yield('note')</div>
                             <p style="margin:24px 0 0;font-size:14px;line-height:1.7;color:#18263b;">Salam,<br><strong>Tim HR · VDNI</strong></p>
+                            @if(!empty($actionUrl))
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">
                                 <tr>
                                     <td style="border-top:1px solid #e2e8f0;padding-top:18px;">
@@ -43,10 +46,11 @@
                                     </td>
                                 </tr>
                             </table>
+                            @endif
                         </td>
                     </tr>
                     <tr>
-                        <td style="padding:22px 16px;text-align:center;font-size:11px;line-height:1.8;color:#637187;">V Talent · Portal Rekrutmen VDNI<br>Email otomatis terkait akun dan proses rekrutmen Anda.<br>Untuk bantuan, hubungi HR melalui kanal komunikasi rekrutmen yang telah diberikan.</td>
+                        <td style="padding:22px 16px;text-align:center;font-size:11px;line-height:1.8;color:#637187;">V Talent · Portal Rekrutmen VDNI<br>{{ $footerDescription ?? 'Email otomatis terkait akun dan proses rekrutmen Anda.' }}<br>{{ $footerHelp ?? 'Untuk bantuan, hubungi HR melalui kanal komunikasi rekrutmen yang telah diberikan.' }}</td>
                     </tr>
                 </table>
             </td>

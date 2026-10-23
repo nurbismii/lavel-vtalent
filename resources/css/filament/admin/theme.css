@@ -92,3 +92,30 @@
         min-height: 48px;
     }
 }
+
+/* Internal employee email workspace */
+.broadcast-compose{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:32px;align-items:start}
+.broadcast-fields{min-width:0}
+.employee-emails .fi-fo-rich-editor-content{min-height:240px}
+.broadcast-guide{padding:24px;background:#f5f7fb;border:1px solid var(--line);border-radius:12px}
+.broadcast-guide-icon{display:grid;place-items:center;width:42px;height:42px;margin-bottom:16px;background:#e7eefb;color:var(--brand);border-radius:10px}
+.broadcast-guide-icon svg{width:22px;height:22px}
+.broadcast-guide h3{font-size:16px;margin-bottom:16px}
+.broadcast-guide ol{padding-left:18px;list-style:decimal;font-size:13px;color:#526078;line-height:1.8}
+.broadcast-guide li+li{margin-top:10px}
+.broadcast-guide p{font-size:12px;line-height:1.8;color:var(--muted);margin-top:18px}
+.broadcast-privacy{display:flex;align-items:flex-start;gap:9px;margin:22px 0;padding-top:20px;border-top:1px solid var(--line);font-size:12px;line-height:1.7;color:#526078}
+.broadcast-privacy svg{width:17px;height:17px;flex-shrink:0;margin-top:2px}
+.broadcast-guide .button{width:100%}
+.broadcast-preview-frame{display:block;width:100%;height:680px;border:1px solid var(--line);border-radius:10px;background:#f5f7fb;margin:20px 0}
+.broadcast-recipients{border:1px solid var(--line);padding:14px 18px;border-radius:8px;font-size:13px}
+.broadcast-recipients summary{cursor:pointer;color:var(--brand);font-weight:600}
+.broadcast-recipients>div{display:flex;flex-wrap:wrap;gap:8px 18px;max-height:180px;overflow-y:auto;margin-top:14px;overflow-wrap:anywhere}
+.broadcast-recipients span{color:var(--muted)}
+.broadcast-subject{max-width:330px;overflow-wrap:anywhere;white-space:normal}
+.broadcast-selected{background:#f4f7fd}
+.broadcast-delivery-note{max-width:360px;white-space:normal}
+.employee-emails .notice{margin:0}
+.employee-emails .broadcast-preview .tools-status-heading p{margin:6px 0 0;font-size:13px}
+@media(max-width:1100px){.broadcast-compose{grid-template-columns:1fr;gap:24px}.broadcast-guide{padding:20px}.broadcast-guide ol{display:flex;flex-wrap:wrap;gap:10px 30px;padding-left:18px}.broadcast-guide li+li{margin-top:0}.broadcast-guide .button{width:auto}.broadcast-privacy{margin:16px 0}}
+@media(max-width:720px){.broadcast-guide ol{display:block}.broadcast-guide li+li{margin-top:8px}.broadcast-guide .button{width:100%}.broadcast-preview-frame{height:600px}.broadcast-subject{min-width:190px}.broadcast-delivery-note{min-width:230px}}

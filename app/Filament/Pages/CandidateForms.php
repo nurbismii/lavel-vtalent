@@ -35,6 +35,10 @@ class CandidateForms extends Page
 
     protected static ?string $navigationLabel = 'Formulir kandidat';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Persiapan rekrutmen';
+
+    protected static ?int $navigationSort = 30;
+
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-text';
 
     #[Locked]

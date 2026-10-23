@@ -66,7 +66,7 @@ class RecruitmentToolsService
     {
         $transport = config('mail.mailers.'.config('mail.default').'.transport');
         if (! in_array($transport, ['smtp', 'ses', 'ses-v2', 'postmark', 'resend', 'mailgun'], true) && ! (app()->environment('testing') && $transport === 'array')) {
-            throw ValidationException::withMessages(['message' => 'Konfigurasikan mailer pengiriman (misalnya SMTP) sebelum mengirim password. Mailer log tidak diizinkan.']);
+            throw ValidationException::withMessages(['message' => 'Konfigurasikan mailer pengiriman (misalnya SMTP) sebelum mengirim email. Mailer log tidak diizinkan.']);
         }
     }
 

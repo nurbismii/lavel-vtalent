@@ -33,9 +33,11 @@ class Psychometrics extends Page
 
     protected static ?string $title = 'TES IQ';
 
-    protected static ?string $navigationLabel = 'TES IQ';
+    protected static ?string $navigationLabel = 'Tes IQ';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Psikotes';
+    protected static string|\UnitEnum|null $navigationGroup = 'Proses seleksi';
+
+    protected static ?int $navigationSort = 30;
 
     public $questionImage;
 

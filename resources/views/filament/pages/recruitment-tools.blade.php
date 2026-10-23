@@ -1,6 +1,6 @@
 <div class="recruitment-tools" x-data="{ workspace: 'deadlines' }">
 <header class="tools-heading">
-    <div><div class="eyebrow">Administrasi rekrutmen</div><h1>Pengelolaan massal</h1><p>Atur tenggat portofolio dan kirim akses kandidat dari satu tempat.</p><span class="tools-timezone"><x-heroicon-o-clock/> Zona waktu {{ App\Models\AppSetting::valueFor('timezone') }}</span></div>
+    <div><div class="eyebrow">Administrasi rekrutmen</div><h1>Akses & tenggat kandidat</h1><p>Atur tenggat portofolio dan kirim akses kandidat dari satu tempat.</p><span class="tools-timezone"><x-heroicon-o-clock/> Zona waktu {{ App\Models\AppSetting::valueFor('timezone') }}</span></div>
     <a class="button" href="{{ route('filament.admin.pages.recruitment', ['section' => 'applications']) }}"><x-heroicon-o-arrow-left/> Kembali ke lamaran</a>
 </header>
 <nav class="tools-navigation" aria-label="Pilih pengelolaan">

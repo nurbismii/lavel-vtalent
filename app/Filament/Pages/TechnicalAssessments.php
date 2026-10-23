@@ -23,6 +23,10 @@ class TechnicalAssessments extends Page
 
     protected static ?string $title = 'Tes teknis online';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Proses seleksi';
+
+    protected static ?int $navigationSort = 40;
+
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-check';
 
     public string $form = 'A';

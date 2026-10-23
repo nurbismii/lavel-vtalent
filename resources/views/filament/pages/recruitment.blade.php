@@ -23,7 +23,7 @@
                 <div class="form-actions"><button type="button" class="button" wire:click="cancelCandidateDeactivation" wire:loading.attr="disabled">Batal</button><button type="button" class="button danger" wire:click="deactivateCandidate" wire:loading.attr="disabled">Ya, nonaktifkan & hapus file</button></div>
             </section>
         @endif
-        @if($section !== 'tools')<div class="row"><a class="button" href="{{ route('filament.admin.pages.recruitment', ['section' => 'tools']) }}">Pengelolaan massal</a></div>@endif
+        @if($section !== 'tools')<div class="row"><a class="button" href="{{ route('filament.admin.pages.recruitment', ['section' => 'tools']) }}">Akses & tenggat kandidat</a></div>@endif
         @if($section === 'tools')
         @include('filament.pages.recruitment-tools')
         @elseif(in_array($section,['dashboard','applications']))
