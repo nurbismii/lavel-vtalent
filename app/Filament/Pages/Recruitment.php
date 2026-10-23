@@ -49,6 +49,8 @@ class Recruitment extends Page
 
     public string $recipientPeriodFilter = '';
 
+    public string $accessStatusFilter = '';
+
     public string $hrMessage = '';
 
     public bool $confirmAccess = false;
@@ -305,6 +307,11 @@ class Recruitment extends Page
 
     public function updated(string $property): void
     {
+        if ($property === 'accessStatusFilter') {
+            $this->resetPage('accessPage');
+
+            return;
+        }
         if (in_array($property, ['recipientPositionFilter', 'recipientPeriodFilter'], true)) {
             $this->reset('recipientIds', 'confirmAccess');
         }
@@ -596,7 +603,7 @@ class Recruitment extends Page
         return [
             'portfolioExports' => in_array($this->section, ['dashboard', 'applications'], true) ? PortfolioExport::where('actor_id', auth()->id())->where('expires_at', '>', now())->latest()->limit(5)->get() : collect(),
             'recipients' => $this->section === 'tools' ? $this->eligibleRecipients()->when($this->recipientSearch, fn ($q) => $q->where(fn ($s) => $s->where('name', 'like', '%'.mb_substr($this->recipientSearch, 0, 255).'%')->orWhere('email', 'like', '%'.mb_substr($this->recipientSearch, 0, 255).'%')))->orderBy('name')->orderBy('id')->limit(100)->get() : collect(),
-            'accessDeliveries' => $this->section === 'tools' ? AccessDelivery::latest()->paginate(15, pageName: 'accessPage') : collect(),
+            'accessDeliveries' => $this->section === 'tools' ? AccessDelivery::when($this->accessStatusFilter !== '', fn (Builder $query) => $query->where('status', $this->accessStatusFilter))->latest()->paginate(15, pageName: 'accessPage') : collect(),
             'bulkCount' => $this->section === 'tools' ? Submission::where('type', $this->bulk['type'])->whereIn('status', ['not_started', 'draft', 'revision'])->whereHas('application', fn ($q) => $q->whereNull('archived_at')->where('position_id', $this->bulk['position_id'])->where('recruitment_period_id', $this->bulk['recruitment_period_id']))->count() : 0,
             'candidateOptions' => $candidateOptions, 'statusCounts' => (clone $base)->selectRaw('type, status, count(*) as total')->groupBy('type', 'status')->get(), 'applications' => in_array($this->section, ['dashboard', 'applications'], true) ? $query->latest()->paginate(15) : null, 'positions' => Position::orderBy('name')->get(), 'periods' => RecruitmentPeriod::latest()->get(), 'application' => $application, 'submission' => $submission, 'versions' => $versions, 'version' => $version,
             'stats' => ['active' => RecruitmentApplication::whereNull('archived_at')->count(), 'portfolio' => (clone $base)->where('type', 'portfolio')->where('status', 'submitted')->count(), 'test' => TechnicalAssessmentService::available() ? TechnicalAssessmentAttempt::whereNotNull('completed_at')->whereHas('application', fn ($q) => $q->whereNull('archived_at')->whereNull('purged_at'))->count() : 0, 'overdue' => (clone $base)->where('deadline', '<', now())->whereIn('status', ['not_started', 'draft', 'revision'])->count()],

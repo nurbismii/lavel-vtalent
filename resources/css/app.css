@@ -56,7 +56,7 @@ body{font-family:var(--font-sans);font-size:15px;line-height:1.65;color:var(--in
 .tools-heading>.button{flex-shrink:0;margin-top:8px}
 .recruitment-tools .button svg,.tools-timezone svg{width:17px;height:17px;flex-shrink:0}
 .tools-timezone{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
-.tools-navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.tools-navigation{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .tools-navigation button{display:flex;align-items:center;gap:12px;text-align:left;padding:18px;background:white;border:1px solid var(--line);border-radius:12px;color:var(--ink);min-width:0;transition:border-color .15s,background .15s}
 .tools-navigation button:hover{border-color:#9aafcf;background:#f9fbff}
 .tools-navigation button.is-active{border-color:var(--brand);background:#edf2fc;box-shadow:inset 0 0 0 1px var(--brand)}
@@ -101,6 +101,8 @@ body{font-family:var(--font-sans);font-size:15px;line-height:1.65;color:var(--in
 .tools-send .button{width:100%}
 .tools-send small{text-align:center;font-size:11px}
 .recruitment-tools .notice{font-size:12px;line-height:1.8;margin:18px 0;background:#f4f6fa;border:1px solid #e6ebf2}
+.tools-status-heading{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:16px}
+.tools-status-heading .field{width:260px;max-width:100%}
 .tools-table-panel .table-wrap{margin:22px -28px 0}
 .tools-table-panel .portal-table{min-width:600px}
 .tools-table-panel .portal-table th{font-size:10px;letter-spacing:.7px;padding:13px 24px}
@@ -115,7 +117,7 @@ body{font-family:var(--font-sans);font-size:15px;line-height:1.65;color:var(--in
 .tools-empty p{color:var(--muted);margin:6px 0 0;font-size:12px}
 .tools-table-panel nav{margin-top:20px}
 @media(max-width:1100px){.tools-navigation{gap:10px}.tools-navigation button{padding:14px;gap:9px}.tools-navigation small{display:none}.tools-nav-arrow{display:none}.tools-heading{flex-direction:column;gap:8px}.tools-heading>.button{margin:0}.tools-email-grid{gap:22px}.tools-recipients{padding-right:22px}}
-@media(max-width:720px){.recruitment-tools{gap:18px}.recruitment-tools .panel{padding:20px}.tools-heading h1{font-size:25px}.tools-navigation{grid-template-columns:1fr;gap:8px}.tools-navigation button{padding:12px 14px}.tools-navigation small{display:block}.tools-nav-arrow{display:block}.tools-nav-icon{width:35px;height:35px}.tools-form-grid,.tools-email-grid{grid-template-columns:1fr;gap:18px}.tools-full,.tools-form-footer,.tools-form-hint{grid-column:auto}.tools-scope{min-height:70px}.tools-form-footer{flex-direction:column;align-items:stretch;gap:14px}.tools-form-footer .button{width:100%}.tools-recipients{border-right:0;padding:0 0 22px;border-bottom:1px solid var(--line)}.tools-table-panel .table-wrap{margin:18px -20px 0}.recruitment-tools .field input,.recruitment-tools .field select,.recruitment-tools .field textarea{font-size:16px}.tools-table-panel .portal-table .tools-empty{white-space:normal;max-width:300px}.tools-table-panel .portal-table:has(.tools-empty){min-width:100%}.tools-table-panel .portal-table th,.tools-table-panel .portal-table td{padding-left:18px;padding-right:18px}}
+@media(max-width:720px){.recruitment-tools{gap:18px}.recruitment-tools .panel{padding:20px}.tools-heading h1{font-size:25px}.tools-navigation{grid-template-columns:1fr;gap:8px}.tools-navigation button{padding:12px 14px}.tools-navigation small{display:block}.tools-nav-arrow{display:block}.tools-nav-icon{width:35px;height:35px}.tools-form-grid,.tools-email-grid{grid-template-columns:1fr;gap:18px}.tools-full,.tools-form-footer,.tools-form-hint{grid-column:auto}.tools-scope{min-height:70px}.tools-form-footer{flex-direction:column;align-items:stretch;gap:14px}.tools-form-footer .button{width:100%}.tools-recipients{border-right:0;padding:0 0 22px;border-bottom:1px solid var(--line)}.tools-status-heading{flex-direction:column;align-items:stretch}.tools-status-heading .field{width:100%}.tools-table-panel .table-wrap{margin:18px -20px 0}.recruitment-tools .field input,.recruitment-tools .field select,.recruitment-tools .field textarea{font-size:16px}.tools-table-panel .portal-table .tools-empty{white-space:normal;max-width:300px}.tools-table-panel .portal-table:has(.tools-empty){min-width:100%}.tools-table-panel .portal-table th,.tools-table-panel .portal-table td{padding-left:18px;padding-right:18px}}
 
 .psych-page { display: block; width: 100%; max-width: 900px; height: auto; margin: 1rem auto; border: 1px solid #e2e8f0; border-radius: 8px; }
 .psych-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(290px, 1fr); gap: 24px; align-items: start; }

@@ -8,6 +8,7 @@ use App\Jobs\SendCandidateAccess;
 use App\Models\AccessDelivery;
 use App\Models\RecruitmentApplication;
 use App\Models\Submission;
+use App\Models\UploadedFile;
 use App\Models\User;
 use App\Services\RecruitmentToolsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\TestWith;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
@@ -39,7 +41,7 @@ class RecruitmentToolsTest extends TestCase
         $page->call('selectRecipientsByEmail', $other->user->email)->assertHasErrors('recipientSearch')
             ->assertSet('recipientIds', [(string) $first->user_id, (string) $second->user_id]);
         $submission = Submission::factory()->create(['recruitment_application_id' => $second->id]);
-        \App\Models\UploadedFile::factory()->create(['submission_id' => $submission->id, 'recruitment_application_id' => $second->id, 'uploader_id' => $second->user_id]);
+        UploadedFile::factory()->create(['submission_id' => $submission->id, 'recruitment_application_id' => $second->id, 'uploader_id' => $second->user_id]);
         $page->call('selectRecipientsByEmail', $second->user->email)->assertHasErrors('recipientSearch');
         $this->assertDatabaseCount('access_deliveries', 0);
     }
@@ -50,6 +52,52 @@ class RecruitmentToolsTest extends TestCase
         $admin->saveAppAuthenticationSecret('TESTSECRET');
 
         return $admin;
+    }
+
+    #[TestWith(['sent'])]
+    #[TestWith(['retrying'])]
+    #[TestWith(['pending'])]
+    #[TestWith(['processing'])]
+    #[TestWith(['failed'])]
+    #[TestWith(['cancelled'])]
+    public function test_access_email_status_filter_only_shows_matching_deliveries(string $status): void
+    {
+        $user = User::factory()->create();
+        $deliveries = collect(['sent', 'retrying', 'pending', 'processing', 'failed', 'cancelled'])
+            ->mapWithKeys(fn (string $deliveryStatus): array => [$deliveryStatus => AccessDelivery::create([
+                'user_id' => $user->id, 'email' => $user->email, 'password' => null,
+                'message' => 'Pesan HR', 'status' => $deliveryStatus, 'expires_at' => now()->addDay(),
+            ])]);
+
+        Livewire::actingAs($this->admin())->test(Recruitment::class)->call('navigate', 'tools')
+            ->assertViewHas('accessDeliveries', fn ($deliveries): bool => $deliveries->total() === 6)
+            ->set('recipientIds', [$user->id])->set('confirmAccess', true)
+            ->set('accessStatusFilter', $status)
+            ->assertViewHas('accessDeliveries', fn ($matches): bool => $matches->getCollection()->modelKeys() === [$deliveries[$status]->id])
+            ->assertSet('recipientIds', [$user->id])->assertSet('confirmAccess', true)
+            ->set('accessStatusFilter', '')
+            ->assertViewHas('accessDeliveries', fn ($deliveries): bool => $deliveries->total() === 6);
+    }
+
+    public function test_access_email_filter_resets_its_pagination_and_shows_empty_results(): void
+    {
+        $user = User::factory()->create();
+        foreach (range(1, 16) as $attempt) {
+            AccessDelivery::create([
+                'user_id' => $user->id, 'email' => $user->email, 'password' => null,
+                'message' => 'Pesan HR', 'status' => 'pending', 'expires_at' => now()->addDay(),
+            ]);
+        }
+
+        Livewire::actingAs($this->admin())->test(Recruitment::class)->call('navigate', 'tools')
+            ->call('setPage', 2, 'accessPage')->assertSet('paginators.accessPage', 2)
+            ->set('accessStatusFilter', 'sent')->assertSet('paginators.accessPage', 1)
+            ->assertViewHas('accessDeliveries', fn ($deliveries): bool => $deliveries->total() === 0)
+            ->assertSee('Tidak ada email dengan status ini')
+            ->set('accessStatusFilter', 'pending')
+            ->assertViewHas('accessDeliveries', fn ($deliveries): bool => $deliveries->total() === 16 && $deliveries->count() === 15)
+            ->set('accessStatusFilter', "sent' OR 1=1 --")
+            ->assertViewHas('accessDeliveries', fn ($deliveries): bool => $deliveries->total() === 0);
     }
 
     public function test_email_recipients_filter_by_position_batch_and_search_and_clear_selection(): void
@@ -82,7 +130,7 @@ class RecruitmentToolsTest extends TestCase
         $password = $user->password;
         $page = Livewire::actingAs($this->admin())->test(Recruitment::class)->call('navigate', 'tools')
             ->assertSee($user->email)->set('recipientIds', [$user->id]);
-        $file = \App\Models\UploadedFile::factory()->create([
+        $file = UploadedFile::factory()->create([
             'submission_id' => $submission->id,
             'recruitment_application_id' => $submission->recruitment_application_id,
             'uploader_id' => $user->id,
@@ -101,11 +149,11 @@ class RecruitmentToolsTest extends TestCase
 
     public function test_archived_portfolio_and_technical_upload_do_not_hide_current_candidate(): void
     {
-        $file = \App\Models\UploadedFile::factory()->create();
+        $file = UploadedFile::factory()->create();
         $application = $file->submission->application;
         $application->update(['archived_at' => now(), 'active_user_id' => null]);
         $current = RecruitmentApplication::factory()->create(['user_id' => $application->user_id, 'active_user_id' => $application->user_id]);
-        $technical = \App\Models\UploadedFile::factory()->create(['purpose' => 'technical_result']);
+        $technical = UploadedFile::factory()->create(['purpose' => 'technical_result']);
 
         Livewire::actingAs($this->admin())->test(Recruitment::class)->call('navigate', 'tools')
             ->assertSee($current->user->email)->assertSee($technical->submission->application->user->email);

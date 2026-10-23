@@ -51,12 +51,15 @@
     </form>
 </section>
 <section class="panel tools-table-panel" wire:poll.10s x-show="workspace === 'email'" x-cloak>
-    <h2>Status email akses</h2>
+    <div class="tools-status-heading">
+        <h2>Status email akses</h2>
+        <label class="field">Status pengiriman<select wire:model.live="accessStatusFilter"><option value="">Semua status</option><option value="sent">Terkirim</option><option value="retrying">Mencoba ulang</option><option value="pending">Menunggu antrean</option><option value="processing">Mengirim</option><option value="failed">Gagal</option><option value="cancelled">Dibatalkan</option></select></label>
+    </div>
     <p class="muted">Terkirim berarti diterima layanan email, bukan konfirmasi masuk inbox. Jika kedaluwarsa atau dibatalkan, buat pengiriman baru.</p>
     <div class="table-wrap"><table class="portal-table"><thead><tr><th>Penerima</th><th>Status</th><th>Percobaan</th><th>Aksi</th></tr></thead><tbody>
     @forelse($accessDeliveries as $delivery)
         <tr><td>{{ $delivery->email }}</td><td><span class="badge {{ match($delivery->status) { 'sent' => 'clean', 'failed' => 'failed', 'pending', 'retrying', 'processing' => 'pending', default => '' } }}">{{ ['pending'=>'Menunggu antrean','processing'=>'Mengirim','retrying'=>'Mencoba ulang','sent'=>'Terkirim','failed'=>'Gagal','cancelled'=>'Dibatalkan'][$delivery->status] ?? $delivery->status }}</span></td><td>{{ $delivery->attempts }}</td><td>@if($delivery->status === 'failed' && $delivery->expires_at->isFuture())<button class="button small" wire:click="retryAccess({{ $delivery->id }})" wire:loading.attr="disabled">Coba kirim ulang</button>@endif</td></tr>
-    @empty<tr><td colspan="4" class="tools-empty"><x-heroicon-o-envelope/><strong>Belum ada pengiriman akses</strong><p>Status email akan muncul setelah Anda mengirim akses kandidat.</p></td></tr>@endforelse
+    @empty<tr><td colspan="4" class="tools-empty"><x-heroicon-o-envelope/><strong>{{ $accessStatusFilter !== '' ? 'Tidak ada email dengan status ini' : 'Belum ada pengiriman akses' }}</strong><p>{{ $accessStatusFilter !== '' ? 'Pilih status lain atau tampilkan semua status pengiriman.' : 'Status email akan muncul setelah Anda mengirim akses kandidat.' }}</p></td></tr>@endforelse
     </tbody></table></div>{{ $accessDeliveries->links() }}
 </section>
 

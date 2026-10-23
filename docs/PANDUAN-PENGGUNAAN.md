@@ -4,10 +4,10 @@ Panduan penggunaan aplikasi rekrutmen
 
 Panduan kandidat dan HR admin
 
-Versi 3.0
-Edisi 17 Oktober 2026
+Versi 3.1
+Edisi 23 Oktober 2026
 
-Panduan ini menjelaskan pengisian formulir pendaftaran, penggunaan akun portal, pengumpulan portofolio, psikotes, serta tes teknis online untuk kandidat dan HR. Edisi ini mencakup Form A, Form B, Form A2, ekspor portofolio offline, ekspor hasil TES IQ, dan pengelolaan file kandidat.
+Panduan ini menjelaskan pengisian formulir pendaftaran, penggunaan akun portal, pengumpulan portofolio, psikotes, serta Tes Teknis untuk kandidat dan HR. Edisi ini menyesuaikan alur Tes kompatibilitas Form A dan Form B, pernyataan persetujuan, pengeditan paket, penghapusan hasil tes, serta pengaturan jawaban unik pada formulir. Bagian ekspor portofolio, ekspor TES IQ, dan pengelolaan file tetap disertakan.
 
 Gunakan alamat aplikasi yang diberikan perusahaan. Ikuti jadwal, zona waktu, batas unggahan, dan petunjuk yang tampil pada portal. Selesaikan pengiriman final dan periksa bukti penerimaan sebelum mengakhiri kegiatan.
 
@@ -27,7 +27,7 @@ Kandidat dapat mulai dari Bab 2 untuk akun dan portofolio, Bab 4 untuk formulir 
 
 5. [Psikotes dan TES IQ](#5-psikotes-dan-tes-iq)
 
-6. [Tes teknis online](#6-tes-teknis-online)
+6. [Tes Teknis](#6-tes-teknis)
 
 7. [Arti status dan batas dokumen](#7-arti-status-dan-batas-dokumen)
 
@@ -75,7 +75,7 @@ Akun portal dibuat atau dihubungkan oleh HR. Formulir publik dapat diisi tanpa a
 | Profil | Melihat nama/email, mengubah nomor telepon, dan mengganti password. |
 | Formulir saya | Membuka formulir yang telah dihubungkan HR ke akun dan lamaran. |
 | Psikotes | Melihat jadwal dan mengerjakan tes yang ditugaskan HR. |
-| Tes teknis online | Mengerjakan Form A, Form B, atau Form A2 sesuai penugasan HR. |
+| Tes Teknis | Membuka Tes kompatibilitas Form A dan Form B sesuai penugasan HR. Penguasaan Bidang belum tersedia. |
 | Privasi & bantuan | Membaca informasi privasi serta kontak bantuan yang tersedia. |
 | Keluar | Mengakhiri sesi penggunaan akun. |
 
@@ -113,15 +113,15 @@ Dokumen utama wajib satu PDF. Bukti tambahan bersifat opsional; tidak perlu meng
 
 Untuk mengganti dokumen utama sebelum final, unggah PDF pengganti lalu klik Unggah file pada file baru. Pilihan dokumen utama sebelumnya akan diganti. Untuk melepas file dari pilihan draf, gunakan Lepaskan, lalu simpan kembali. Melepas file dari draf tidak berarti menghapus seluruh riwayat file.
 
-### 2.4 Membuka tes teknis online
+### 2.4 Membuka Tes Teknis
 
 1. Pada Beranda, periksa kartu Tes Teknis dan tenggat untuk masing-masing Form.
 
-2. Klik Buka tes teknis online, atau buka menu Tes teknis online.
+2. Klik Buka Tes Teknis, atau buka menu Tes Teknis, lalu lihat kategori Tes kompatibilitas. Penguasaan Bidang masih dinonaktifkan.
 
-3. Periksa paket, versi, jadwal, jumlah tahap, dan alokasi waktu, lalu klik Buka tes.
+3. Periksa nama paket, jadwal, waktu pengerjaan, dan total tahap, lalu klik Buka tes. Versi paket tidak ditampilkan kepada kandidat.
 
-4. Ikuti langkah pada Bab 6. Form B menunggu assessor membuka setiap tahap; Form A dan A2 dimulai oleh kandidat.
+4. Selesaikan Form A terlebih dahulu. Form B terkunci sampai Form A selesai; setelah terbuka, kandidat dapat memulai setiap tahap Form B sendiri. Ikuti langkah pada Bab 6.
 
 Penugasan tes online dibuat tersendiri oleh HR dan tidak otomatis muncul saat lamaran dibuat. Tes online tidak memerlukan pengiriman portofolio final sebagai syarat mulai. Jika daftar kosong, hubungi HR untuk memeriksa penugasan.
 
@@ -193,7 +193,7 @@ Halaman /login diperuntukkan bagi kandidat. Jika akses admin atau autentikator b
 | Formulir kandidat | Menyusun formulir, membuat tautan penerimaan, memeriksa respons, menghubungkan akun, dan mengekspor Excel. |
 | TES IQ | Menyiapkan paket psikotes, menugaskan peserta, memeriksa aktivitas, serta mengekspor hasil tes selesai. |
 | Pengelolaan massal | Membuka pengelolaan tenggat kelompok, soal tes teknis, dan email akses kandidat. |
-| Tes teknis online | Menugaskan paket, mengendalikan sesi Form B, menambah waktu aktif, dan menyimpan penilaian assessor. |
+| Tes teknis online | Mengedit nama paket dan pertanyaan untuk penugasan baru, menugaskan Form A/B, memantau sesi, menambah waktu aktif, menilai hasil, dan menghapus hasil tes sesuai kebutuhan. |
 
 ### 3.3 Menyiapkan posisi dan periode
 
@@ -464,6 +464,8 @@ Tautan akses email berlaku 30 hari pada konfigurasi awal dan dapat dibuka kembal
 
 Dokumen formulir mendukung PDF, JPG, JPEG, PNG, dan DOCX sesuai pilihan HR. Batas awal sistem maksimal 10 MB per file dan 5 file per kolom; batas setiap kolom dapat lebih kecil. Ikuti batas yang ditampilkan pada formulir. Gunakan Lepaskan untuk mengeluarkan pilihan file dan Periksa ulang bila pemeriksaan gagal serta tombol tersedia.
 
+Jika muncul pesan bahwa suatu jawaban sudah digunakan pada penerimaan ini, periksa kembali nilai yang diisi. Kolom tersebut diatur HR agar unik, termasuk terhadap draf pendaftar lain yang sudah tersimpan. Untuk data identitas yang memang benar milik Anda, hubungi HR agar diperiksa; jangan mengubah identitas hanya agar lolos validasi.
+
 ### 4.3 Melanjutkan formulir dan mengirim revisi
 
 1. Gunakan tautan akses yang masih valid, minta tautan baru dengan email yang sama, atau buka Formulir saya setelah HR menghubungkan data ke akun portal.
@@ -484,7 +486,7 @@ Respons final terkunci sampai HR membuka revisi. Jika penerimaan ditutup atau te
 
 3. Klik Tambah field / bagian, isi label dan teks bantuan, lalu pilih jenis input. Identitas nama, email terverifikasi, dan persetujuan sudah tersedia.
 
-4. Tentukan apakah isian wajib. Untuk pilihan, tulis satu opsi per baris. Atur batas karakter, nilai, tanggal, atau jumlah pilihan jika relevan.
+4. Tentukan apakah isian wajib. Aktifkan Jawaban harus unik jika nilai tidak boleh sama antarpendaftar dalam penerimaan yang sama. Untuk pilihan, tulis satu opsi per baris. Atur batas karakter, nilai, tanggal, atau jumlah pilihan jika relevan.
 
 5. Untuk dokumen, tentukan format, ukuran, dan jumlah file yang diperlukan. Hindari meminta data yang tidak diperlukan untuk rekrutmen.
 
@@ -495,6 +497,8 @@ Respons final terkunci sampai HR membuka revisi. Jika penerimaan ditutup atau te
 8. Setelah benar, klik Simpan & terbitkan versi.
 
 Satu formulir dapat memuat maksimal 100 field termasuk bagian. Publikasi versi baru tidak mengubah tautan dan jawaban versi lama. Gunakan versi yang tepat saat membuat tautan penerimaan berikutnya.
+
+Jawaban harus unik diatur terpisah dari Wajib diisi dan tidak tersedia untuk kolom file maupun bagian. Pemeriksaan mencakup respons lain pada tautan penerimaan yang sama, termasuk draf tersimpan; huruf besar/kecil serta spasi di awal/akhir teks dianggap sama. Gunakan hanya untuk isian yang memang harus berbeda, misalnya nomor identitas, bukan pilihan umum seperti pendidikan.
 
 Untuk pertanyaan bersyarat, gunakan Tampilkan jika dan Jawaban pemicu agar pertanyaan muncul saat jawaban sumber cocok. Pilih pertanyaan sumber yang tersedia dan periksa kedua kondisi melalui Pratinjau. Isian wajib hanya berlaku ketika pertanyaannya tampil; kandidat mengikuti pertanyaan yang muncul sesuai jawabannya.
 
@@ -647,43 +651,66 @@ Hapus peserta dari tes menghapus penugasan, jawaban, dan hasil tes tersebut seca
 
 Ekspor berisi ringkasan hasil, bukan rincian kunci jawaban. Simpan pada lokasi terbatas dan bagikan hanya kepada pihak yang berwenang.
 
-## 6 Tes teknis online
+## 6 Tes Teknis
 
-Tes teknis online dikerjakan langsung di browser dan ditugaskan terpisah dari portofolio, psikotes, maupun tugas unggahan PDF. Gunakan paket serta jadwal yang ditentukan HR. Durasi di bawah adalah standar paket versi 2026-10-15.1; durasi penugasan dapat diubah HR untuk akomodasi.
+Pada akun kandidat, buka Tes Teknis lalu kategori Tes kompatibilitas. Kategori ini memuat Form A dan Form B sesuai penugasan HR. Penguasaan Bidang masih dinonaktifkan dan ditandai Belum tersedia. Pada panel HR, menu pengelolaannya tetap bernama Tes teknis online.
 
-| Form | Kegunaan | Tahap | Durasi standar |
+Tes dikerjakan langsung di browser dan memiliki penugasan serta jadwal tersendiri, terpisah dari portofolio, psikotes, dan tugas unggahan PDF. Kandidat wajib menyelesaikan Form A sebelum memulai Form B. Setiap tahap dimulai oleh kandidat; kontrol assessor pada Form B bersifat opsional.
+
+| Form | Isi tes | Total tahap | Durasi standar |
 |---|---|---|---|
-| A | Screening penalaran dan judgment kerja secara mandiri | 4 | 45 menit |
-| B | Verifikasi langsung bersama assessor | 5 | 20 menit |
-| A2 | IPIP BFM 25 opsional untuk konteks wawancara | 1 | 7 menit |
+| A | Penalaran kerja, pemeriksaan dokumen, situational judgment, dan kecenderungan perilaku | 4 | 47 menit |
+| B | Penalaran paralel, simulasi dinamis, dan probe konsistensi | 3 | 18 menit |
+
+| Form | Tahap | Durasi standar |
+|---|---|---|
+| A | Penalaran kerja | 15 menit |
+| A | Pemeriksaan dokumen | 15 menit |
+| A | Situational judgment | 10 menit |
+| A | Kecenderungan perilaku | 7 menit |
+| B | Penalaran paralel | 5 menit |
+| B | Simulasi dinamis | 8 menit |
+| B | Probe konsistensi | 5 menit |
+
+Durasi di atas mengikuti paket bawaan saat edisi ini diperbarui. HR dapat menyesuaikan durasi penugasan untuk akomodasi; ikuti durasi yang tampil pada sesi masing-masing. Kecenderungan perilaku sudah menjadi bagian terakhir Form A dan tidak ditugaskan sebagai Form A2 terpisah pada paket baru. Catatan kondisi diisi setelah Form B selesai dan tidak dihitung sebagai tahap tes pada paket baru.
 
 ### 6.1 Persiapan dan aturan kandidat
 
-Buka Tes teknis online, periksa paket, versi, waktu buka, dan tenggat, lalu pilih Buka tes. Jika Jadwal belum dibuka tampil, tunggu waktu yang tercantum. Gunakan JavaScript, koneksi stabil, dan satu tab pengerjaan. Baca aturan, centang persetujuan, lalu klik Konfirmasi kesiapan.
+Buka Tes Teknis, periksa nama paket, waktu pengerjaan, total tahap, waktu buka, dan tenggat, lalu pilih Buka tes. Halaman kandidat menampilkan waktu pengerjaan dan total tahap tanpa versi paket. Jika Jadwal belum dibuka tampil, tunggu waktu yang tercantum. Gunakan JavaScript, koneksi stabil, dan satu tab pengerjaan.
 
-Kerjakan sendiri tanpa internet, AI, bank soal, atau bantuan orang lain. Kalkulator sederhana dan kertas kosong diperbolehkan pada soal numerik. Jangan menyalin, memotret, atau membagikan soal. Laporkan kebutuhan akomodasi dan gangguan kepada HR melalui kontak rekrutmen atau Privasi & bantuan.
+Pada Pernyataan persetujuan, baca pernyataan berikut sebelum mengonfirmasi kesiapan.
+
+Saya menyatakan telah membaca dan memahami seluruh ketentuan pelaksanaan tes teknis. Saya berkomitmen untuk mengerjakan tes secara mandiri sesuai dengan aturan yang berlaku dan memberikan informasi yang benar mengenai kondisi pengerjaan, termasuk apabila terjadi gangguan teknis atau kendala lainnya.
+
+Saya memahami bahwa aktivitas selama pengerjaan tes dapat dicatat oleh sistem untuk keperluan evaluasi dan klarifikasi, tetapi catatan tersebut tidak secara otomatis membuktikan adanya kecurangan.
+
+Baca Privasi dan retensi data bila diperlukan, centang Saya menyetujui pernyataan di atas, lalu klik Konfirmasi kesiapan. Laporkan kebutuhan akomodasi dan gangguan kepada HR melalui kontak rekrutmen atau Privasi & bantuan.
 
 Perpindahan tab, kehilangan fokus, keluar layar penuh, dan waktu penyimpanan dicatat untuk klarifikasi HR. Catatan tersebut tidak otomatis membuktikan kecurangan. Timer mengikuti waktu server dan tetap berjalan saat halaman ditutup atau koneksi terputus.
 
 ### 6.2 Mengerjakan dan mengunci tahap
 
-1. Baca judul tahap, alokasi waktu, materi, dan batas penugasan. Form A terdiri dari orientasi, penalaran kerja, pemeriksaan dokumen, dan situational judgment. Form A2 berisi pertanyaan kecenderungan perilaku.
+1. Baca judul tahap, alokasi waktu, materi, dan batas penugasan. Form A dimulai dari Penalaran kerja dan diakhiri Kecenderungan perilaku.
 
-2. Pada Form A atau A2, klik Mulai sesuai judul tahap. Pada Form B, konfirmasikan kesiapan lalu tunggu assessor membuka tahap; halaman diperbarui otomatis.
+2. Klik Mulai sesuai judul tahap saat siap. Setelah seluruh tahap Form A dikunci, kembali ke daftar tes dan buka Form B. Form B memerlukan penugasan tersendiri, jadwal yang sudah dibuka, serta konfirmasi kesiapan; kandidat dapat memulai setiap tahap tanpa menunggu assessor.
 
 3. Isi jawaban pilihan atau uraian. Perhatikan indikator Jawaban tersimpan dan gunakan Simpan sekarang untuk memastikan jawaban dikirim. Tombol Layar penuh tersedia pada tahap aktif.
 
-4. Periksa jawaban sebelum memilih Selesaikan dan kunci tahap. Jika assessor akan mengunci tahap Form B, pastikan perubahan sudah tersimpan terlebih dahulu.
+4. Periksa jawaban sebelum memilih Selesaikan dan kunci tahap. Pada Penalaran paralel Form B, jawab seluruh soal B01 sampai B04, lalu tekan Next untuk mengunci pilihan dan membuka penjelasan proses. Pada Simulasi dinamis, isi empat kolom pada setiap prioritas, lalu tekan Lanjut untuk mengunci jawaban awal dan membuka fakta baru. Gunakan sisa waktu tahap yang sama untuk jawaban lanjutan; timer tidak dimulai ulang.
 
 5. Tahap yang ditutup tidak dapat dibuka lagi. Saat timer habis, hanya jawaban yang sudah diterima server yang dapat dipakai. Timer tahap berikutnya dimulai saat tahap tersebut dibuka; tenggat akhir penugasan tetap berlaku.
 
-6. Setelah muncul Jawaban tes telah dikunci, isi Catatan kondisi dan konfirmasi mengenai gangguan, akomodasi, atau pekerjaan yang belum selesai. Centang konfirmasi lalu klik Simpan catatan dan konfirmasi. Skor dan kunci tidak ditampilkan kepada kandidat.
+6. Pada Kecenderungan perilaku Form A, peringatan Sisa waktu 2 menit muncul ketika waktu tahap tersisa dua menit. Timer tetap berjalan saat peringatan ditampilkan; lanjutkan pengerjaan segera.
+
+7. Setelah Form A dikunci, lanjutkan Form B sesuai penugasan. Setelah seluruh soal Form B dikunci, isi Catatan kondisi dan konfirmasi: gangguan teknis beserta waktu, bagian, dan dampaknya; bagian yang tidak selesai karena waktu; serta kondisi lain yang relevan untuk menafsirkan hasil. Setiap isian menerima maksimal 2.000 karakter.
+
+8. Centang konfirmasi pengerjaan mandiri dan kondisi yang dilaporkan, lalu klik Simpan catatan dan konfirmasi. Pastikan pesan tersimpan muncul. Skor dan kunci hanya tersedia bagi assessor.
 
 ### 6.3 Menugaskan tes sebagai HR
 
 1. Buka Tes teknis online → Pengaturan & penugasan.
 
-2. Pilih Paket asesmen Form A, B, atau A2. Periksa tahapan dan isi Durasi per tahap dalam detik, masing-masing 60 sampai 7.200 detik.
+2. Pilih Paket asesmen Form A atau Form B. Periksa nama dan isi tahapan, lalu isi Durasi per tahap dalam detik, masing-masing 60 sampai 7.200 detik. Gunakan Edit nama paket dan soal bila perlu menyesuaikan teks untuk penugasan baru; lihat bagian 6.8.
 
 3. Pilih lamaran kandidat aktif, maksimal 100. Cari nama/email atau paste daftar email dari Excel. Pastikan seluruh kandidat yang dipilih sesuai sasaran.
 
@@ -691,19 +718,19 @@ Perpindahan tab, kehilangan fokus, keluar layar penuh, dan waktu penyimpanan dic
 
 5. Centang pernyataan pemeriksaan paket, durasi, kandidat, dan jadwal, lalu klik Simpan penugasan. Periksa hasil pada Hasil & sesi kandidat dan sampaikan jadwal melalui kanal resmi.
 
-Penugasan dengan lamaran, Form, dan versi yang sama dilewati tanpa mengubah jawaban, durasi, atau jadwal lama. Mengulang pemilihan bukan cara memperbarui penugasan. Form A2 bersifat opsional untuk konteks wawancara dan bukan penentu kelulusan.
+Penugasan dengan lamaran, Form, dan versi yang sama dilewati tanpa mengubah jawaban, durasi, atau jadwal lama. Mengulang pemilihan bukan cara memperbarui penugasan. Buat penugasan Form A dan Form B secara terpisah bila keduanya diperlukan, lalu beri waktu yang cukup agar kandidat menyelesaikan Form A sebelum tenggat Form B. Kecenderungan perilaku dalam Form A digunakan untuk konteks wawancara dan bukan penentu kelulusan.
 
-### 6.4 Mengendalikan sesi langsung Form B
+### 6.4 Memantau Form B dan memakai kontrol assessor
 
 1. Buka Hasil & sesi kandidat, cari nama/email, lalu klik Buka sesi / hasil.
 
-2. Periksa Kesiapan kandidat. Kandidat harus menyelesaikan Konfirmasi kesiapan sebelum sesi dimulai.
+2. Periksa penyelesaian Form A, Kesiapan kandidat, dan jadwal. Kandidat harus menyelesaikan Form A serta Konfirmasi kesiapan sebelum memulai Form B.
 
-3. Pada tahap yang belum dimulai, centang kesiapan kandidat dan assessor lalu klik Mulai tahap untuk kandidat. Timer dimulai dan halaman kandidat diperbarui otomatis.
+3. Kandidat dapat menekan Mulai pada halamannya sendiri. Jika diperlukan untuk pendampingan, assessor dapat mencentang kesiapan kandidat dan assessor lalu menekan Mulai tahap untuk kandidat pada tahap yang belum dimulai. Timer dimulai saat tahap dibuka dan halaman kandidat diperbarui otomatis.
 
 4. Setelah kandidat selesai dan jawaban tersimpan, centang konfirmasi penguncian lalu klik Kunci tahap aktif bila diperlukan. Kandidat juga dapat menyelesaikan tahap dari halamannya.
 
-5. Buka tahap berikutnya secara berurutan. Fakta baru hanya dibuka setelah keputusan awal dikunci. Gunakan Perbarui status sesi untuk melihat kondisi terbaru.
+5. Pantau tahap secara berurutan melalui Perbarui status sesi. Pada Penalaran paralel, kandidat mengunci B01 sampai B04 melalui Next sebelum mengisi penjelasan proses. Pada Simulasi dinamis, kandidat menekan Lanjut untuk mengunci prioritas dan membuka fakta baru dalam tahap yang sama. Setelah Probe konsistensi selesai, kandidat mengisi catatan kondisi.
 
 ### 6.5 Menangani gangguan dan menambah waktu
 
@@ -723,7 +750,7 @@ Tambahan hanya diterima sebelum timer tahap aktif dan tenggat penugasan berakhir
 
 5. Isi alasan dan bukti, termasuk gangguan atau akomodasi, minimal 10 karakter. Klik Simpan penilaian assessor dan pastikan pesan tersimpan muncul.
 
-IPP Form A merupakan indeks prioritas pilot untuk membantu review dan verifikasi, bukan keputusan kelulusan otomatis. Form A2 digunakan sebagai konteks wawancara. Pertimbangkan jawaban, bukti proses, dan kondisi pengerjaan ketika menilai hasil.
+IPP Form A merupakan indeks prioritas pilot untuk membantu review dan verifikasi, bukan keputusan kelulusan otomatis. Kecenderungan perilaku dalam Form A digunakan sebagai konteks wawancara. Pertimbangkan jawaban, bukti proses, dan kondisi pengerjaan ketika menilai hasil. Aktivitas berpindah tab atau keluar layar penuh memerlukan klarifikasi dan tidak otomatis membuktikan kecurangan.
 
 ### 6.7 Tugas teknis berbasis PDF dan unggahan file
 
@@ -750,6 +777,28 @@ Gunakan alur ini hanya jika HR memberikan penugasan berbasis file dan tautan yan
 Minimal satu file hasil pekerjaan wajib saat final. Formulir tes teknis terkunci sampai portofolio berstatus Sudah dikumpulkan atau Tidak diwajibkan oleh HR. Jadwal ketersediaan PDF soal ditentukan tersendiri oleh waktu mulai.
 
 Jika muncul File soal belum diunggah oleh HR, hubungi HR untuk petunjuk tugas. Jangan mengasumsikan soal sudah tersedia hanya karena lamaran telah dibuat.
+
+### 6.8 Mengedit nama paket dan soal
+
+1. Buka Tes teknis online lalu Pengaturan & penugasan. Pilih Paket asesmen yang ingin diperbarui.
+
+2. Buka Edit nama paket dan soal. Ubah Nama paket tes bila diperlukan.
+
+3. Buka tahap terkait, lalu perbarui Judul tahap, Judul soal, atau Teks pertanyaan sesuai kebutuhan. Nama paket, judul tahap, dan judul soal maksimal 255 karakter; teks pertanyaan maksimal 5.000 karakter.
+
+4. Klik Simpan perubahan paket dan pastikan pesan berhasil muncul. Periksa kembali paket serta durasi sebelum membuat penugasan.
+
+Perubahan hanya berlaku bagi penugasan baru. Sesi yang sudah ditugaskan tetap memakai materi yang tersimpan saat penugasan dibuat. Fitur ini mengubah nama dan teks pertanyaan; pilihan jawaban, kunci, rubrik, serta susunan tahap tidak diedit melalui formulir tersebut. Periksa kesesuaian perubahan agar arti soal tetap selaras dengan pilihan dan rubriknya.
+
+### 6.9 Menghapus penugasan dan hasil tes teknis
+
+1. Buka Hasil & sesi kandidat, cari nama atau email, lalu pilih Buka sesi / hasil.
+
+2. Periksa identitas, Form, versi penugasan, serta status sesi. Klik Hapus hasil tes hanya jika seluruh data tes tersebut memang perlu dihapus.
+
+3. Baca ringkasan konfirmasi. Pilih Batal bila sasaran tidak sesuai, atau Ya, hapus hasil tes untuk melanjutkan.
+
+Penghapusan bersifat permanen dan mencakup penugasan, jawaban, skor, catatan kondisi, serta penilaian tes yang dipilih. Sesi yang sedang berjalan kehilangan akses. Akun, lamaran, tes lain, dan riwayat audit tetap tersimpan. Kandidat dapat ditugaskan ulang setelah penghapusan. Jangan memakai penghapusan untuk sekadar memperbarui tampilan; gunakan Perbarui status sesi.
 
 ## 7 Arti status dan batas dokumen
 
@@ -796,10 +845,11 @@ Status tes online berbeda dari status pengumpulan portofolio. Menyimpan jawaban 
 | Status atau tampilan | Arti dan langkah berikutnya |
 |---|---|
 | Jadwal belum dibuka | Tunggu waktu mulai sesuai zona waktu pada penugasan. |
-| Menunggu assessor | Pada Form B, kandidat menunggu assessor membuka tahap setelah kesiapan dikonfirmasi. |
+| Terkunci karena Form A belum selesai | Selesaikan seluruh tahap Form A terlebih dahulu sebelum memulai Form B. Jika Form A belum ditugaskan, hubungi HR. |
 | Menunggu atau berlangsung | Tes belum selesai. Buka penugasan untuk memeriksa tahap dan indikator penyimpanan. |
 | Tenggat berakhir | Batas akhir telah lewat. Jawaban yang sudah tersimpan dipakai saat finalisasi; hubungi HR jika ada kendala. |
-| Jawaban telah dikunci atau Selesai | Seluruh tahap selesai atau batas tes telah berakhir. Jawaban tidak dapat diedit kembali; kandidat tes teknis online masih perlu mengisi catatan kondisi. |
+| Jawaban telah dikunci atau Selesai | Seluruh tahap selesai atau batas tes telah berakhir. Jawaban tidak dapat diedit kembali. Setelah Form A, lanjutkan Form B sesuai penugasan; setelah Form B, simpan catatan kondisi dan konfirmasi. |
+| Penguasaan Bidang belum tersedia | Kategori masih dinonaktifkan; kerjakan Tes kompatibilitas yang sudah ditugaskan. |
 | Formulir Draf | Jawaban belum dikirim final. Lengkapi isian dan kirim sebelum tenggat. |
 | Formulir Revisi diminta | Baca catatan HR dan kirim ulang sebelum tenggat revisi. |
 | Formulir Terkirim | Respons final diterima. Simpan nomor referensi; akun portal tetap diproses tersendiri oleh HR. |
@@ -826,7 +876,11 @@ Status tes online berbeda dari status pengumpulan portofolio. Menyimpan jawaban 
 | Kandidat tidak tersedia untuk dipilih | Periksa apakah akun aktif dan masih memiliki lamaran aktif; gunakan pencarian nama/email. |
 | Email akses tidak diterima | Periksa status pengiriman, spam, alamat email, serta mode pengujian Mailtrap jika ditampilkan. |
 | Tes teknis online belum muncul | HR perlu membuat penugasan melalui Tes teknis online. Lamaran dan jadwal soal PDF tidak otomatis membuat penugasan online. |
-| Form B menunggu assessor | Konfirmasikan kesiapan, lalu tunggu assessor menekan Mulai tahap untuk kandidat. Halaman diperbarui otomatis. |
+| Form B masih terkunci | Pastikan Form A sudah selesai. Bila belum ada Form A, minta HR memeriksa penugasannya. Setelah terbuka dan jadwal dimulai, konfirmasikan kesiapan lalu mulai tahap sendiri. |
+| Penjelasan proses atau fakta baru belum terlihat | Pada Form B, jawab B01 sampai B04 lalu tekan Next, atau lengkapi seluruh prioritas simulasi lalu tekan Lanjut. Jawaban awal dikunci sebelum bagian lanjutan dibuka. |
+| Catatan kondisi belum muncul setelah Form A | Lanjutkan Form B. Pada paket baru, catatan kondisi tersedia setelah Form B selesai dan diisi terpisah dari tiga tahap tesnya. |
+| Perubahan teks paket belum terlihat pada sesi lama | Pengeditan paket berlaku untuk penugasan baru. Sesi lama mempertahankan materi saat penugasan dibuat. |
+| Jawaban formulir sudah digunakan | Periksa nilai pada kolom unik. Untuk identitas yang benar, hubungi HR agar respons dalam penerimaan yang sama diperiksa; jangan mengubah identitas untuk melewati validasi. |
 | Jawaban tes online belum tersimpan | Pulihkan koneksi dan gunakan Simpan sekarang. Timer server tetap berjalan; laporkan waktu serta tahap terdampak kepada HR. |
 | Tambahan waktu tes ditolak | Tambahan hanya dapat diberikan sebelum timer tahap aktif dan tenggat berakhir. Perbarui status sesi; tahap yang telah ditutup tidak dapat dibuka lagi. |
 | Ekspor portofolio menunggu worker | HR meminta pengelola memeriksa worker ekspor portofolio. ZIP dapat diunduh setelah status Siap diunduh; atur filter bila jumlah kandidat melebihi batas. |
@@ -889,12 +943,14 @@ Saat meminta bantuan, sampaikan email akun, posisi/periode, jenis pengumpulan, w
 
 - Penugasan online, versi paket, durasi per tahap, dan tenggat sudah diperiksa.
 
-- Assessor siap membuka tahap Form B dan memahami penguncian tahap.
+- Form A sudah ditugaskan dan selesai sebelum kandidat memulai Form B; kandidat memahami cara memulai tahap sendiri.
 
-- Kandidat memeriksa indikator tersimpan dan mengisi catatan kondisi setelah tes selesai.
+- Kandidat memeriksa indikator tersimpan, mengunci jawaban awal melalui Next atau Lanjut pada Form B, dan menyimpan catatan kondisi setelah Form B selesai.
 
 - HR memeriksa filter dan hasil selesai sebelum mengekspor TES IQ.
 
 - ZIP portofolio diekstrak dan Excel tetap disimpan bersama folder Kandidat.
 
-- Dampak penghapusan file kandidat atau respons formulir telah diperiksa sebelum konfirmasi.
+- Teks paket yang diubah sudah diperiksa sebelum penugasan baru; sesi lama tetap memakai materi sebelumnya.
+
+- Dampak penghapusan file kandidat, respons formulir, atau hasil tes teknis telah diperiksa sebelum konfirmasi.
