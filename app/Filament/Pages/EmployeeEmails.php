@@ -7,6 +7,7 @@ use App\Models\EmailBroadcast;
 use App\Models\EmailBroadcastDelivery;
 use App\Models\User;
 use App\Services\EmailBroadcastService;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -80,6 +81,16 @@ class EmployeeEmails extends Page
                     ['bold', 'italic', 'underline', 'link'], ['h2', 'h3'],
                     ['bulletList', 'orderedList', 'blockquote'], ['undo', 'redo'],
                 ])->required()->maxLength(50000),
+            FileUpload::make('attachment')->label('Lampiran (opsional)')
+                ->placeholder('Drag & Drop')
+                ->helperText('Maksimal 10 file dengan total ukuran 10 MB: PDF, DOCX, XLSX, PPTX, JPG, PNG, ZIP, CSV, atau TXT. Semua lampiran dikirim ke seluruh penerima.')
+                ->multiple()->storeFiles(false)->preventFilePathTampering()->maxFiles(10)->maxSize(10240)
+                ->acceptedFileTypes([
+                    'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    'image/jpeg', 'image/png', 'application/zip', 'text/csv', 'text/plain',
+                ]),
         ]);
     }
 

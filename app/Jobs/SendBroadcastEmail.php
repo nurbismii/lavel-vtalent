@@ -6,6 +6,8 @@ use App\Models\EmailBroadcastDelivery;
 use App\Services\EmailBroadcastService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Mail\Attachment;
+use Illuminate\Mail\Message;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\DB;
@@ -61,7 +63,13 @@ class SendBroadcastEmail implements ShouldQueue
                 $delivery->update(['status' => 'processing']);
                 Mail::send(['html' => 'emails.employee-information', 'text' => 'emails.employee-information-text'], [
                     'subject' => $broadcast->subject, 'body' => $body, 'plainBody' => $plainBody,
-                ], fn ($mail) => $mail->to($delivery->email)->subject($broadcast->subject));
+                ], function (Message $mail) use ($delivery, $broadcast): void {
+                    $mail->to($delivery->email)->subject($broadcast->subject);
+                    foreach ($broadcast->attachmentFiles() as $attachment) {
+                        $mail->attach(Attachment::fromStorageDisk('private', $attachment['path'])
+                            ->as($attachment['name'])->withMime($attachment['mime']));
+                    }
+                });
                 $delivery->update(['status' => 'sent', 'sent_at' => now(), 'last_error' => null, 'attempts' => $delivery->attempts + 1]);
             });
         } catch (\Throwable $exception) {

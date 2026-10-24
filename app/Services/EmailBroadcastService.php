@@ -8,21 +8,30 @@ use App\Models\AuditLog;
 use App\Models\EmailBroadcast;
 use App\Models\EmailBroadcastDelivery;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class EmailBroadcastService
 {
-    /** @return array{emails: list<string>, subject: string, body: string} */
+    /** @return array{emails: list<string>, subject: string, body: string, attachment: list<UploadedFile>} */
     public function prepare(array $data): array
     {
         Validator::make(['data' => $data], [
             'data.recipients' => 'required|string|max:30000',
             'data.subject' => ['required', 'string', 'max:200', 'not_regex:/[\r\n]/'],
             'data.body' => 'required|string|max:50000',
+            'data.attachment' => ['nullable', 'array', 'max:10'],
+            'data.attachment.*' => ['required', 'file', 'max:10240', 'extensions:pdf,docx,xlsx,pptx,jpg,jpeg,png,zip,csv,txt', 'mimes:pdf,docx,xlsx,pptx,jpg,jpeg,png,zip,csv,txt'],
         ])->validate();
+
+        $attachments = array_values($data['attachment'] ?? []);
+        if (array_sum(array_map(fn (UploadedFile $upload): int => $upload->getSize(), $attachments)) > 10 * 1024 * 1024) {
+            throw ValidationException::withMessages(['data.attachment' => 'Total ukuran lampiran maksimal 10 MB.']);
+        }
 
         $emails = array_values(array_unique(preg_split('/[\s,;]+/u', mb_strtolower(trim($data['recipients'])), -1, PREG_SPLIT_NO_EMPTY) ?: []));
         $validator = Validator::make(['emails' => $emails], [
@@ -39,7 +48,7 @@ class EmailBroadcastService
             throw ValidationException::withMessages(['data.body' => 'Isi pesan tidak boleh kosong.']);
         }
 
-        return ['emails' => $emails, 'subject' => trim($data['subject']), 'body' => $body];
+        return ['emails' => $emails, 'subject' => trim($data['subject']), 'body' => $body, 'attachment' => $attachments];
     }
 
     public function validateDeliveryConfiguration(): void
@@ -51,35 +60,53 @@ class EmailBroadcastService
         }
     }
 
-    /** @param array{emails: list<string>, subject: string, body: string} $content */
+    /** @param array{emails: list<string>, subject: string, body: string, attachment?: list<UploadedFile>} $content */
     public function queue(User $actor, array $content, string $submissionKey): EmailBroadcast
     {
         $this->authorizeAdmin($actor);
         Validator::make(['submission_key' => $submissionKey], ['submission_key' => 'required|uuid'])->validate();
-        $content = $this->prepare(['recipients' => implode("\n", $content['emails']), 'subject' => $content['subject'], 'body' => $content['body']]);
+        $content = $this->prepare(['recipients' => implode("\n", $content['emails']), 'subject' => $content['subject'], 'body' => $content['body'], 'attachment' => $content['attachment'] ?? null]);
         $this->validateDeliveryConfiguration();
 
-        return DB::transaction(function () use ($actor, $content, $submissionKey): EmailBroadcast {
-            User::whereKey($actor->id)->lockForUpdate()->firstOrFail();
-            $existing = EmailBroadcast::where('submission_key', $submissionKey)->first();
-            if ($existing) {
-                abort_unless($existing->created_by === $actor->id, 403);
+        $paths = [];
+        try {
+            return DB::transaction(function () use ($actor, $content, $submissionKey, &$paths): EmailBroadcast {
+                User::whereKey($actor->id)->lockForUpdate()->firstOrFail();
+                $existing = EmailBroadcast::where('submission_key', $submissionKey)->first();
+                if ($existing) {
+                    abort_unless($existing->created_by === $actor->id, 403);
 
-                return $existing;
+                    return $existing;
+                }
+
+                $attachments = [];
+                foreach ($content['attachment'] as $upload) {
+                    $path = $upload->store('email-broadcasts', 'private');
+                    $paths[] = $path;
+                    $attachments[] = [
+                        'path' => $path,
+                        'name' => Str::limit(basename(str_replace('\\', '/', $upload->getClientOriginalName())), 240, ''),
+                        'mime' => $upload->getMimeType(),
+                    ];
+                }
+                $broadcast = EmailBroadcast::create([
+                    'created_by' => $actor->id, 'submission_key' => $submissionKey,
+                    'subject' => $content['subject'], 'body' => $content['body'], 'attachment' => $attachments,
+                ]);
+                foreach ($content['emails'] as $email) {
+                    $delivery = $broadcast->deliveries()->create(['email' => $email]);
+                    DB::afterCommit(fn () => $this->dispatch($delivery));
+                }
+                AuditLog::record('employee_email.queued', $broadcast, $actor, null, ['recipients' => count($content['emails'])]);
+
+                return $broadcast;
+            });
+        } catch (\Throwable $exception) {
+            if ($paths) {
+                Storage::disk('private')->delete($paths);
             }
-
-            $broadcast = EmailBroadcast::create([
-                'created_by' => $actor->id, 'submission_key' => $submissionKey,
-                'subject' => $content['subject'], 'body' => $content['body'],
-            ]);
-            foreach ($content['emails'] as $email) {
-                $delivery = $broadcast->deliveries()->create(['email' => $email]);
-                DB::afterCommit(fn () => $this->dispatch($delivery));
-            }
-            AuditLog::record('employee_email.queued', $broadcast, $actor, null, ['recipients' => count($content['emails'])]);
-
-            return $broadcast;
-        });
+            throw $exception;
+        }
     }
 
     public function retry(User $actor, int $deliveryId): void

@@ -12,11 +12,14 @@ use App\Models\User;
 use App\Services\EmailBroadcastService;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Pipeline\Pipeline;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Mockery;
 use PHPUnit\Framework\Attributes\TestWith;
@@ -63,9 +66,13 @@ class EmailBroadcastTest extends TestCase
     public function test_repeated_submission_key_does_not_queue_the_same_blast_twice(): void
     {
         Queue::fake([SendBroadcastEmail::class]);
+        Storage::fake('private');
         $admin = $this->admin();
         $service = app(EmailBroadcastService::class);
-        $content = $service->prepare($this->message());
+        $content = $service->prepare([...$this->message(), 'attachment' => [
+            UploadedFile::fake()->create('panduan.pdf', 10, 'application/pdf'),
+            UploadedFile::fake()->create('jadwal.pdf', 10, 'application/pdf'),
+        ]]);
         $key = (string) Str::uuid();
         $first = $service->queue($admin, $content, $key);
 
@@ -74,7 +81,224 @@ class EmailBroadcastTest extends TestCase
         $this->assertSame($first->id, $second->id);
         $this->assertDatabaseCount('email_broadcasts', 1);
         $this->assertDatabaseCount('email_broadcast_deliveries', 1);
+        Storage::disk('private')->assertExists(array_column($first->attachmentFiles(), 'path'));
+        $this->assertCount(2, Storage::disk('private')->allFiles('email-broadcasts'));
         Queue::assertPushed(SendBroadcastEmail::class, 1);
+    }
+
+    public function test_all_attachments_are_previewed_stored_privately_and_sent_to_every_recipient_even_on_retry(): void
+    {
+        Storage::fake('private');
+        Queue::fake([SendBroadcastEmail::class]);
+        $contents = "%PDF-1.7\nPanduan wawancara kandidat";
+        $schedule = "%PDF-1.7\nJadwal wawancara kandidat";
+        $uploads = [
+            UploadedFile::fake()->createWithContent('panduan wawancara.pdf', $contents)->size(6144),
+            UploadedFile::fake()->createWithContent('jadwal.pdf', $schedule)->size(4096),
+        ];
+        $admin = $this->admin();
+        $page = Livewire::actingAs($admin)->test(EmployeeEmails::class)
+            ->set('data', [...$this->message(), 'recipients' => "first@example.test\nsecond@example.test"])
+            ->set('data.attachment', $uploads)->call('previewEmail')->assertHasNoErrors()
+            ->assertSee('Lampiran:')->assertSee('panduan wawancara.pdf')->assertSee('jadwal.pdf');
+        $this->assertSame([], Storage::disk('private')->allFiles('email-broadcasts'));
+
+        $page->call('send')->assertHasNoErrors()->assertSet('preview', null);
+
+        $broadcast = EmailBroadcast::sole();
+        $attachments = $broadcast->attachmentFiles();
+        $this->assertSame(['panduan wawancara.pdf', 'jadwal.pdf'], array_column($attachments, 'name'));
+        $this->assertSame(['application/pdf', 'application/pdf'], array_column($attachments, 'mime'));
+        Storage::disk('private')->assertExists(array_column($attachments, 'path'));
+        $this->assertSame($contents, Storage::disk('private')->get($attachments[0]['path']));
+        $this->assertSame($schedule, Storage::disk('private')->get($attachments[1]['path']));
+        Storage::disk('private')->deleteDirectory('livewire-tmp');
+        $deliveries = $broadcast->deliveries()->orderBy('id')->get();
+        (new SendBroadcastEmail($deliveries[0]->id))->handle();
+        $deliveries[1]->update(['status' => 'failed']);
+        app(EmailBroadcastService::class)->retry($admin, $deliveries[1]->id);
+        (new SendBroadcastEmail($deliveries[1]->id))->handle();
+
+        $messages = Mail::mailer()->getSymfonyTransport()->messages()->map(fn ($sent) => $sent->getOriginalMessage());
+        $this->assertCount(2, $messages);
+        foreach ($messages as $mail) {
+            $attachments = array_values(array_filter($mail->getAttachments(), fn ($part): bool => $part->getDisposition() === 'attachment'));
+            $this->assertCount(2, $attachments);
+            $this->assertSame('panduan wawancara.pdf', $attachments[0]->getFilename());
+            $this->assertSame('application', $attachments[0]->getMediaType());
+            $this->assertSame('pdf', $attachments[0]->getMediaSubtype());
+            $this->assertSame($contents, $attachments[0]->getBody());
+            $this->assertSame('jadwal.pdf', $attachments[1]->getFilename());
+            $this->assertSame('application', $attachments[1]->getMediaType());
+            $this->assertSame('pdf', $attachments[1]->getMediaSubtype());
+            $this->assertSame($schedule, $attachments[1]->getBody());
+        }
+        $this->assertSame(2, $broadcast->deliveries()->where('status', 'sent')->count());
+        Queue::assertPushed(SendBroadcastEmail::class, 3);
+    }
+
+    #[TestWith(['panduan.pdf', 10241, 'application/pdf', 'data.attachment'])]
+    #[TestWith(['script.exe', 10, 'application/pdf', 'data.attachment.0'])]
+    public function test_invalid_attachment_never_creates_or_queues_a_blast(string $name, int $kilobytes, string $mime, string $error): void
+    {
+        Storage::fake('private');
+        Queue::fake();
+        $upload = UploadedFile::fake()->create($name, $kilobytes, $mime);
+
+        Livewire::actingAs($this->admin())->test(EmployeeEmails::class)->set('data', $this->message())
+            ->set('data.attachment', [$upload])->call('previewEmail')
+            ->assertHasErrors($error)->assertSet('preview', null);
+
+        $this->assertDatabaseCount('email_broadcasts', 0);
+        $this->assertSame([], Storage::disk('private')->allFiles('email-broadcasts'));
+        Queue::assertNothingPushed();
+    }
+
+    public function test_attachment_with_spoofed_pdf_extension_is_rejected_before_queueing(): void
+    {
+        Storage::fake('private');
+        Queue::fake();
+        $source = UploadedFile::fake()->createWithContent('panduan.pdf', '<html><script>alert(1)</script></html>');
+        $upload = new UploadedFile($source->getRealPath(), 'panduan.pdf', 'application/pdf', null, true);
+
+        try {
+            app(EmailBroadcastService::class)->queue($this->admin(), [
+                'emails' => ['employee@example.test'], 'subject' => 'Informasi kandidat',
+                'body' => '<p>Informasi</p>', 'attachment' => [$upload],
+            ], (string) Str::uuid());
+            $this->fail('Expected an invalid attachment to stop queueing.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('data.attachment.0', $exception->errors());
+        }
+
+        $this->assertDatabaseCount('email_broadcasts', 0);
+        $this->assertSame([], Storage::disk('private')->allFiles('email-broadcasts'));
+        Queue::assertNothingPushed();
+    }
+
+    public function test_more_than_ten_attachments_are_rejected(): void
+    {
+        Storage::fake('private');
+        Queue::fake();
+
+        Livewire::actingAs($this->admin())->test(EmployeeEmails::class)->set('data', $this->message())
+            ->set('data.attachment', array_map(fn (int $number): UploadedFile => UploadedFile::fake()->create("lampiran-$number.pdf", 10, 'application/pdf'), range(1, 11)))
+            ->call('previewEmail')->assertHasErrors('data.attachment')->assertSet('preview', null);
+
+        $this->assertDatabaseCount('email_broadcasts', 0);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_ten_attachments_can_be_previewed(): void
+    {
+        Storage::fake('private');
+        Queue::fake();
+
+        $page = Livewire::actingAs($this->admin())->test(EmployeeEmails::class)->set('data', $this->message())
+            ->set('data.attachment', array_map(fn (int $number): UploadedFile => UploadedFile::fake()->create("lampiran-$number.pdf", 10, 'application/pdf'), range(1, 10)))
+            ->call('previewEmail')->assertHasNoErrors();
+
+        $this->assertCount(10, $page->get('preview')['attachment']);
+        $this->assertDatabaseCount('email_broadcasts', 0);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_attachments_with_combined_size_over_ten_megabytes_are_rejected(): void
+    {
+        Storage::fake('private');
+        Queue::fake();
+
+        Livewire::actingAs($this->admin())->test(EmployeeEmails::class)->set('data', $this->message())
+            ->set('data.attachment', [
+                UploadedFile::fake()->create('panduan.pdf', 6144, 'application/pdf'),
+                UploadedFile::fake()->create('jadwal.pdf', 4097, 'application/pdf'),
+            ])->call('previewEmail')->assertHasErrors('data.attachment')->assertSet('preview', null)
+            ->assertSee('Total ukuran lampiran maksimal 10 MB.');
+
+        $this->assertDatabaseCount('email_broadcasts', 0);
+        $this->assertSame([], Storage::disk('private')->allFiles('email-broadcasts'));
+        Queue::assertNothingPushed();
+    }
+
+    public function test_existing_single_attachment_still_appears_in_history_and_is_sent(): void
+    {
+        $contents = "%PDF-1.7\nPanduan sebelumnya";
+        Storage::fake('private')->put('email-broadcasts/previous.pdf', $contents);
+        $broadcast = EmailBroadcast::factory()->create(['attachment' => [
+            'path' => 'email-broadcasts/previous.pdf', 'name' => 'panduan sebelumnya.pdf', 'mime' => 'application/pdf',
+        ]]);
+        $delivery = EmailBroadcastDelivery::factory()->create(['email_broadcast_id' => $broadcast->id]);
+
+        Livewire::actingAs($this->admin())->test(EmployeeEmails::class)
+            ->call('selectBroadcast', $broadcast->id)->assertSee('panduan sebelumnya.pdf');
+        (new SendBroadcastEmail($delivery->id))->handle();
+
+        $mail = Mail::mailer()->getSymfonyTransport()->messages()->sole()->getOriginalMessage();
+        $attachments = array_values(array_filter($mail->getAttachments(), fn ($part): bool => $part->getDisposition() === 'attachment'));
+        $this->assertCount(1, $attachments);
+        $this->assertSame('panduan sebelumnya.pdf', $attachments[0]->getFilename());
+        $this->assertSame($contents, $attachments[0]->getBody());
+        $this->assertDatabaseHas('email_broadcast_deliveries', ['id' => $delivery->id, 'status' => 'sent']);
+    }
+
+    public function test_existing_private_file_path_cannot_be_used_as_an_attachment(): void
+    {
+        Storage::fake('private')->put('candidate-forms/private.pdf', 'Confidential candidate information');
+        Queue::fake();
+
+        Livewire::actingAs($this->admin())->test(EmployeeEmails::class)->set('data', $this->message())
+            ->set('data.attachment', ['candidate-forms/private.pdf'])->call('previewEmail')
+            ->assertHasErrors('data.attachment')->assertSet('preview', null);
+
+        $this->assertDatabaseCount('email_broadcasts', 0);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_all_attachments_are_removed_when_creating_the_blast_fails(): void
+    {
+        Storage::fake('private');
+        Queue::fake();
+        $admin = $this->admin();
+        $service = app(EmailBroadcastService::class);
+        $content = $service->prepare([...$this->message(), 'attachment' => [
+            UploadedFile::fake()->create('panduan.pdf', 10, 'application/pdf'),
+            UploadedFile::fake()->create('jadwal.pdf', 10, 'application/pdf'),
+        ]]);
+        EmailBroadcast::creating(function (): void {
+            throw new \RuntimeException('Broadcast could not be saved.');
+        });
+
+        try {
+            $service->queue($admin, $content, (string) Str::uuid());
+            $this->fail('Expected broadcast persistence to fail.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Broadcast could not be saved.', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('email_broadcasts', 0);
+        $this->assertDatabaseCount('email_broadcast_deliveries', 0);
+        $this->assertSame([], Storage::disk('private')->allFiles('email-broadcasts'));
+        Queue::assertNothingPushed();
+    }
+
+    public function test_missing_attachment_keeps_delivery_retrying_without_sending_an_incomplete_email(): void
+    {
+        Storage::fake('private')->put('email-broadcasts/available.pdf', '%PDF-1.7');
+        $broadcast = EmailBroadcast::factory()->create(['attachment' => [
+            ['path' => 'email-broadcasts/available.pdf', 'name' => 'panduan.pdf', 'mime' => 'application/pdf'],
+            ['path' => 'email-broadcasts/missing.pdf', 'name' => 'jadwal.pdf', 'mime' => 'application/pdf'],
+        ]]);
+        $delivery = EmailBroadcastDelivery::factory()->create(['email_broadcast_id' => $broadcast->id]);
+
+        try {
+            (new SendBroadcastEmail($delivery->id))->handle();
+            $this->fail('Expected missing attachment to stop delivery.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('Sistem akan mencoba ulang', $exception->getMessage());
+        }
+
+        $this->assertCount(0, Mail::mailer()->getSymfonyTransport()->messages());
+        $this->assertDatabaseHas('email_broadcast_deliveries', ['id' => $delivery->id, 'status' => 'retrying', 'attempts' => 1]);
     }
 
     #[TestWith(['recipients', 'wrong-email', 'data.recipients'])]

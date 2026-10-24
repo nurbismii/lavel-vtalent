@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div class="portal-admin recruitment-tools employee-emails">
+    <div class="portal-admin recruitment-tools employee-emails" x-data="{ uploadingAttachment: false }">
         <header class="tools-heading">
             <div>
                 <div class="eyebrow">Komunikasi kandidat</div>
@@ -21,7 +21,7 @@
             <div class="eyebrow">Email baru</div>
             <h2>Siapkan informasi kandidat</h2>
             <p class="muted">Paste email penerima, isi subjek, lalu susun pesan. Periksa pratinjau sebelum mengirim.</p>
-            <form wire:submit="previewEmail" class="broadcast-compose">
+            <form wire:submit="previewEmail" class="broadcast-compose" x-on:form-processing-started="uploadingAttachment = true" x-on:form-processing-finished="uploadingAttachment = false">
                 <div class="broadcast-fields">{{ $this->form }}</div>
                 <aside class="broadcast-guide">
                     <div class="broadcast-guide-icon"><x-heroicon-o-document-duplicate /></div>
@@ -33,7 +33,7 @@
                     </ol>
                     <p>Baris baru, tab, spasi, koma, dan titik koma dapat digunakan sebagai pemisah. Email duplikat dihitung satu kali.</p>
                     <div class="broadcast-privacy"><x-heroicon-o-lock-closed /><span>Email dikirim satu per satu. Penerima lain tidak terlihat.</span></div>
-                    <button type="submit" class="button primary" wire:loading.attr="disabled" wire:target="previewEmail,send">
+                    <button type="submit" class="button primary" x-bind:disabled="uploadingAttachment" wire:loading.attr="disabled" wire:target="previewEmail,send">
                         <x-heroicon-o-eye /><span wire:loading.remove wire:target="previewEmail">Periksa pratinjau</span><span wire:loading wire:target="previewEmail">Menyiapkan…</span>
                     </button>
                 </aside>
@@ -50,10 +50,13 @@
                     <summary>Lihat daftar penerima ({{ count($preview['emails']) }})</summary>
                     <div>@foreach($preview['emails'] as $email)<span>{{ $email }}</span>@endforeach</div>
                 </details>
+                @foreach($preview['attachment'] as $attachment)
+                    <p class="muted"><strong>Lampiran:</strong> {{ $attachment->getClientOriginalName() }}</p>
+                @endforeach
                 <iframe title="Pratinjau email informasi kandidat" sandbox="" srcdoc="{{ view('emails.employee-information', ['subject' => $preview['subject'], 'body' => $preview['body']])->render() }}" class="broadcast-preview-frame"></iframe>
                 <div class="tools-form-footer">
-                    <small>Subjek, isi pesan, dan seluruh penerima sudah saya periksa.</small>
-                    <button type="button" class="button primary" wire:click="send" wire:loading.attr="disabled" wire:target="send,previewEmail">
+                    <small>Subjek, isi pesan, lampiran, dan seluruh penerima sudah saya periksa.</small>
+                    <button type="button" class="button primary" wire:click="send" x-bind:disabled="uploadingAttachment" wire:loading.attr="disabled" wire:target="send,previewEmail">
                         <x-heroicon-o-paper-airplane /><span wire:loading.remove wire:target="send">Kirim ke {{ count($preview['emails']) }} penerima</span><span wire:loading wire:target="send">Menyiapkan pengiriman…</span>
                     </button>
                 </div>
@@ -92,6 +95,9 @@
                     <label class="field">Status pengiriman<select wire:model.live="statusFilter"><option value="">Semua status</option><option value="pending">Menunggu antrean</option><option value="processing">Mengirim</option><option value="retrying">Mencoba ulang</option><option value="sent">Terkirim</option><option value="failed">Gagal</option></select></label>
                 </div>
                 <p class="muted">Terkirim berarti pesan diterima layanan email. Status ini belum memastikan pesan masuk inbox atau dibaca.</p>
+                @foreach($selectedBroadcast->attachmentFiles() as $attachment)
+                    <p class="muted"><strong>Lampiran:</strong> {{ $attachment['name'] }}</p>
+                @endforeach
                 <div class="table-wrap">
                     <table class="portal-table">
                         <thead><tr><th>Email penerima</th><th>Status / keterangan</th><th>Percobaan</th><th>Aksi</th></tr></thead>
