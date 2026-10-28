@@ -215,8 +215,38 @@ function otp(secret) {
         await admin.evaluate(() => scrollTo(0, 0));
         await admin.screenshot({ path: path.join(output, 'technical-admin-results-mobile.png'), fullPage: true, animations: 'disabled' });
         assert.equal(await admin.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+
+        await candidate.getByRole('button', { name: 'Selesaikan dan kunci tahap' }).click();
+        await candidate.getByRole('button', { name: 'Selesaikan tahap', exact: true }).click();
+        await candidate.getByRole('button', { name: 'Mulai Probe konsistensi', exact: true }).click();
+        await candidate.getByRole('button', { name: 'Mulai', exact: true }).click();
+        await candidate.locator('[name="answers[probe_1]"]').fill('Fakta diperiksa dengan dokumen sumber. '.repeat(95) + 'BUKTI'.repeat(60));
+        await candidate.getByText('Jawaban tersimpan', { exact: true }).waitFor();
+        await candidate.getByRole('button', { name: 'Selesaikan dan kunci tahap' }).click();
+        await candidate.getByRole('button', { name: 'Selesaikan tahap', exact: true }).click();
+        await candidate.getByRole('heading', { name: 'Jawaban tes telah dikunci' }).waitFor();
+        await candidate.locator('[name="conditions[technical_conditions]"]').fill('Tidak ada gangguan teknis.');
+        await candidate.locator('[name="confirmation"]').check();
+        await candidate.getByRole('button', { name: 'Simpan catatan dan konfirmasi' }).click();
+        await candidate.getByText('Catatan kondisi dan konfirmasi tersimpan.', { exact: true }).waitFor();
+        const reportPromise = admin.waitForEvent('popup');
+        await admin.getByRole('link', { name: /PDF kandidat/ }).click();
+        const report = await reportPromise;
+        await report.getByRole('heading', { name: 'Laporan hasil tes teknis' }).waitFor();
+        assert.equal(await report.locator('.attempt').count(), 2);
+        assert.equal((await candidate.request.get(report.url())).status(), 403);
+        await report.getByText('Ringkasan poin Form A', { exact: true }).waitFor();
+        await report.getByText('Ringkasan poin Form B', { exact: true }).waitFor();
+        await report.getByText('Tidak ada gangguan teknis.', { exact: true }).waitFor();
+        assert.equal(await report.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+        await report.evaluate(() => { window.print = () => { document.body.dataset.printRequested = '1'; }; });
+        await report.getByRole('button', { name: 'Cetak / Simpan PDF' }).click();
+        assert.equal(await report.locator('body').getAttribute('data-print-requested'), '1');
+        await report.emulateMedia({ media: 'print' });
+        assert.equal(await report.locator('.toolbar').isVisible(), false);
+        await report.pdf({ path: path.join(output, 'technical-candidate-report.pdf'), format: 'A4', preferCSSPageSize: true, printBackground: true });
         assert.deepEqual(errors, []);
-        console.log('Browser passed: admin MFA, candidate starts Form B stages, autosave, persisted choices/text, Form A transitions, visible countdown, responsive assignment/results tabs, manual review, mobile tables, no JavaScript errors.');
+        console.log('Browser passed: admin MFA, Form A and B completion, autosave, responsive assignment/results, manual review, candidate PDF report with long answers, print action, candidate access denied, no JavaScript errors.');
     } catch (error) {
         const page = browser?.contexts().at(-1)?.pages().at(-1);
         if (page) {

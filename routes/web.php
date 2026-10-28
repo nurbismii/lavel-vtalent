@@ -7,6 +7,7 @@ use App\Http\Controllers\PortfolioExportController;
 use App\Http\Controllers\PsychometricController;
 use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\TechnicalAssessmentController;
+use App\Http\Controllers\TechnicalAssessmentReportController;
 use App\Http\Middleware\EnsurePortalAccess;
 use App\Http\Middleware\FormHeaders;
 use App\Livewire\Candidate\SubmissionForm;
@@ -47,6 +48,7 @@ Route::middleware([FormHeaders::class, 'throttle:forms-public'])->group(function
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 Route::middleware(['auth', EnsurePortalAccess::class])->group(function () {
     Route::get('/portal/portfolio-exports/{export}/download', PortfolioExportController::class)->whereNumber('export')->name('portfolio-exports.download');
+    Route::get('/portal/technical-assessment-results/{application}/report', TechnicalAssessmentReportController::class)->whereNumber('application')->name('technical-assessments.report');
     Route::get('/portal/psychometrics', [PsychometricController::class, 'index'])->name('candidate.psychometrics');
     Route::get('/portal/technical-assessments', [TechnicalAssessmentController::class, 'index'])->name('candidate.technical-assessments');
     Route::get('/portal/technical-assessments/{attempt}', [TechnicalAssessmentController::class, 'show'])->whereNumber('attempt')->name('candidate.technical-assessments.show');

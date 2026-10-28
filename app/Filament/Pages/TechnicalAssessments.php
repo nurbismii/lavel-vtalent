@@ -7,6 +7,7 @@ use App\Models\AppSetting;
 use App\Models\RecruitmentApplication;
 use App\Models\TechnicalAssessmentAttempt;
 use App\Services\RecruitmentService;
+use App\Services\TechnicalAssessmentResultExportService;
 use App\Services\TechnicalAssessmentService;
 use Carbon\Carbon;
 use Filament\Pages\Page;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Locked;
 use Livewire\WithPagination;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TechnicalAssessments extends Page
 {
@@ -242,6 +244,20 @@ class TechnicalAssessments extends Page
         abort_unless($this->attemptId, 422);
         app(TechnicalAssessmentService::class)->review(auth()->user(), $this->attemptId, ['status' => $this->reviewStatus, 'notes' => $this->reviewNotes, 'ratings' => $this->ratings]);
         $this->feedback = 'Penilaian assessor tersimpan.';
+    }
+
+    public function exportResults(?int $applicationId = null): StreamedResponse
+    {
+        $this->actor();
+        $this->validate(['resultSearch' => ['string', 'max:255']]);
+        $actor = auth()->user();
+        $search = $applicationId === null ? $this->resultSearch : '';
+
+        return response()->streamDownload(function () use ($actor, $search, $applicationId): void {
+            app(TechnicalAssessmentResultExportService::class)->write($actor, $search, 'php://output', $applicationId);
+        }, 'hasil-tes-teknis-'.($applicationId === null ? '' : 'lamaran-'.$applicationId.'-').now()->format('Ymd-His').'.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Cache-Control' => 'no-store',
+        ]);
     }
 
     protected function getViewData(): array

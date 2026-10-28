@@ -144,8 +144,10 @@
                 <header class="technical-section-heading"><div><h2>Penugasan dan hasil</h2><p>Cari kandidat untuk membuka sesi, memeriksa jawaban, atau menyelesaikan penilaian.</p></div><span class="badge">{{ $attempts->total() }} penugasan</span></header>
                 <div class="technical-results-toolbar">
                     <label class="field">Cari hasil tes<input type="search" wire:model.live.debounce.400ms="resultSearch" maxlength="255" placeholder="Nama atau email kandidat"></label>
+                    <button type="button" class="button small" wire:click="exportResults" wire:loading.attr="disabled" wire:target="exportResults"><x-heroicon-o-arrow-down-tray /><span wire:loading.remove wire:target="exportResults">Ekspor hasil (Excel)</span><span wire:loading wire:target="exportResults" role="status">Menyiapkan ekspor…</span></button>
                     @if($selected)<a class="button small" href="#technical-session">Ke sesi terpilih ↓</a>@endif
                 </div>
+                <p class="technical-help">Ekspor mengikuti pencarian dan hanya memuat tes selesai. File berisi ringkasan poin serta soal dan jawaban Form A dan Form B.</p>
                 <p class="technical-table-hint"><x-heroicon-o-arrows-right-left /> Geser tabel untuk melihat jadwal dan tombol aksi.</p>
                 <div class="assessment-table-scroll" role="region" aria-label="Penugasan dan hasil kandidat" tabindex="0">
                     <table class="assessment-table technical-results-table">
@@ -174,7 +176,14 @@
 
             @if($selected)
                 <section id="technical-session" class="panel technical-session" wire:key="attempt-{{ $selected->id }}" tabindex="-1" aria-label="Sesi kandidat terpilih" x-init="$nextTick(() => { $el.focus({ preventScroll: true }); $el.scrollIntoView({ block: 'start' }); })">
-                    <header class="technical-section-heading"><div><div class="eyebrow">Sesi #{{ $selected->id }}</div><h2>{{ $selected->application->user->name }}</h2><p>{{ $selected->package['title'] }}</p></div><button class="button small" wire:click="selectAttempt({{ $selected->id }})" wire:loading.attr="disabled"><x-heroicon-o-arrow-path /> Perbarui status sesi</button></header>
+                    <header class="technical-section-heading">
+                        <div><div class="eyebrow">Sesi #{{ $selected->id }}</div><h2>{{ $selected->application->user->name }}</h2><p>{{ $selected->package['title'] }}</p></div>
+                        <div class="row">
+                            <a class="button small" href="{{ route('technical-assessments.report', $selected->recruitment_application_id) }}" target="_blank" rel="noopener"><x-heroicon-o-document-text /> PDF kandidat (Form A + B)<span class="sr-only"> - buka di tab baru</span></a>
+                            <button type="button" class="button small" wire:click="exportResults({{ $selected->recruitment_application_id }})" wire:loading.attr="disabled" wire:target="exportResults"><x-heroicon-o-arrow-down-tray /> Ekspor kandidat (Form A + B)</button>
+                            <button class="button small" wire:click="selectAttempt({{ $selected->id }})" wire:loading.attr="disabled"><x-heroicon-o-arrow-path /> Perbarui status sesi</button>
+                        </div>
+                    </header>
                     <dl class="technical-session-meta">
                         <div><dt>Kesiapan kandidat</dt><dd>{{ $selected->consented_at ? 'Sudah dikonfirmasi' : 'Menunggu konfirmasi' }}</dd></div>
                         <div><dt>Pengerjaan</dt><dd>{{ $selected->completed_at ? 'Jawaban telah dikunci' : (($selected->package['sections'][$selected->section_index]['kind'] ?? null) === 'questionnaire' ? 'Catatan kondisi dan konfirmasi' : 'Tahap '.($selected->section_index + 1).' dari '.count($selected->sectionsForDisplay())) }}</dd></div>
