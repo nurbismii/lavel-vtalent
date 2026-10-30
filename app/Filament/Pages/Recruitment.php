@@ -534,6 +534,12 @@ class Recruitment extends Page
         $query->when($this->testFilter, fn ($q) => $q->whereHas('technicalAssessmentAttempts', function (Builder $attempts): void {
             match ($this->testFilter) {
                 'completed' => $attempts->whereNotNull('completed_at'),
+                'completed_answered', 'completed_unanswered' => $attempts->whereNotNull('completed_at')->whereRaw(
+                    $attempts->getConnection()->getDriverName() === 'sqlite'
+                        ? "exists (select 1 from json_tree(technical_assessment_attempts.answers) where type = 'text' and value <> '') = ?"
+                        : "(json_search(technical_assessment_attempts.answers, 'one', '_%') is not null) = ?",
+                    [$this->testFilter === 'completed_answered'],
+                ),
                 'in_progress' => $attempts->whereNull('completed_at')->whereNotNull('section_started_at'),
                 default => $attempts->whereNull('completed_at')->whereNull('section_started_at'),
             };

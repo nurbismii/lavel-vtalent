@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\TestWith;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
@@ -123,20 +124,23 @@ class PortfolioExportTest extends TestCase
         }
     }
 
-    public function test_page_export_uses_all_filters(): void
+    #[TestWith(['waiting', false, []])]
+    #[TestWith(['completed_answered', true, [0 => ['A01' => 'C']]])]
+    #[TestWith(['completed_unanswered', true, []])]
+    public function test_page_export_uses_all_filters(string $testStatus, bool $completed, array $answers): void
     {
         Storage::fake('private');
         Queue::fake();
         $application = RecruitmentApplication::factory()->create();
         $application->user->update(['name' => 'Export Match']);
         Submission::factory()->create(['recruitment_application_id' => $application->id, 'type' => 'portfolio', 'status' => 'draft', 'deadline' => now()->subDay()]);
-        TechnicalAssessmentAttempt::factory()->create(['recruitment_application_id' => $application->id]);
+        TechnicalAssessmentAttempt::factory()->create(['recruitment_application_id' => $application->id, 'completed_at' => $completed ? now() : null, 'answers' => $answers]);
         RecruitmentApplication::factory()->create();
         RecruitmentApplication::factory()->create([...$application->only('position_id', 'recruitment_period_id'), 'archived_at' => now()]);
         $page = Livewire::actingAs($this->admin())->test(Recruitment::class)
             ->set('search', 'Export Match')->set('positionFilter', (string) $application->position_id)
             ->set('periodFilter', (string) $application->recruitment_period_id)->set('portfolioFilter', 'draft')
-            ->set('testFilter', 'waiting')->set('overdue', true)
+            ->set('testFilter', $testStatus)->set('overdue', true)
             ->call('exportPortfolios')->assertHasNoErrors();
         $export = PortfolioExport::firstOrFail();
         $this->assertSame([$application->id], $export->application_ids);

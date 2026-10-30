@@ -17,6 +17,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class AdminWorkflowTest extends TestCase
@@ -39,6 +40,47 @@ class AdminWorkflowTest extends TestCase
             $page->set('testFilter', $status)->assertViewHas('applications', fn ($applications) => $applications->getCollection()->modelKeys() === [$attempt->recruitment_application_id]);
         }
         $page->set('testFilter', '')->set('overdue', true)->assertViewHas('applications', fn ($applications) => $applications->isEmpty());
+    }
+
+    #[TestWith([[]])]
+    #[TestWith([null])]
+    #[TestWith([[0 => [], 1 => ['D01' => '', 'D02' => null]]])]
+    public function test_completed_technical_filters_distinguish_saved_answers_from_blank_autosaves(?array $blankAnswers): void
+    {
+        $this->freezeTime();
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $admin->saveAppAuthenticationSecret('TESTSECRET');
+        $answered = TechnicalAssessmentAttempt::factory()->create(['completed_at' => now(), 'answers' => [2 => ['S01' => '0']]]);
+        $unanswered = TechnicalAssessmentAttempt::factory()->create(['completed_at' => now(), 'answers' => $blankAnswers]);
+        TechnicalAssessmentAttempt::factory()->create(['answers' => [0 => ['A01' => 'C']], 'section_started_at' => now()]);
+        TechnicalAssessmentAttempt::factory()->create();
+        RecruitmentApplication::factory()->create();
+
+        $page = Livewire::actingAs($admin)->test(Recruitment::class)
+            ->set('testFilter', 'completed_answered')
+            ->assertViewHas('applications', fn ($applications): bool => $applications->getCollection()->modelKeys() === [$answered->recruitment_application_id])
+            ->assertSee('Form A · Selesai dikerjakan')
+            ->set('testFilter', 'completed_unanswered')
+            ->assertViewHas('applications', fn ($applications): bool => $applications->getCollection()->modelKeys() === [$unanswered->recruitment_application_id])
+            ->assertSee('Form A · Tidak dikerjakan');
+
+        $page->set('testFilter', 'completed')->assertViewHas('applications', fn ($applications): bool => $applications->total() === 2);
+    }
+
+    public function test_completed_technical_filters_match_each_form_on_the_same_application(): void
+    {
+        $this->freezeTime();
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $admin->saveAppAuthenticationSecret('TESTSECRET');
+        $answered = TechnicalAssessmentAttempt::factory()->create(['completed_at' => now(), 'answers' => [0 => ['A01' => 'C']]]);
+        TechnicalAssessmentAttempt::factory()->create(['recruitment_application_id' => $answered->recruitment_application_id, 'form' => 'B', 'completed_at' => now()]);
+
+        Livewire::actingAs($admin)->test(Recruitment::class)
+            ->set('testFilter', 'completed_answered')
+            ->assertViewHas('applications', fn ($applications): bool => $applications->getCollection()->modelKeys() === [$answered->recruitment_application_id])
+            ->assertSee('Form A · Selesai dikerjakan')->assertSee('Form B · Tidak dikerjakan')
+            ->set('testFilter', 'completed_unanswered')
+            ->assertViewHas('applications', fn ($applications): bool => $applications->getCollection()->modelKeys() === [$answered->recruitment_application_id]);
     }
 
     public function test_position_can_change_without_an_upload_task_but_is_locked_after_online_assignment(): void
