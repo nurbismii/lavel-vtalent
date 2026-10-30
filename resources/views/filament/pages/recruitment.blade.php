@@ -78,7 +78,7 @@
                             <option value="">Semua status</option>@foreach(App\Enums\SubmissionStatus::cases() as $s)<option value="{{ $s->value }}">{{ $s->label() }}</option>@endforeach
                         </select></label>
                     @endforeach
-                    <label class="field">Status tes teknis online<select wire:model.live="testFilter"><option value="">Semua status</option><option value="waiting">Menunggu mulai / tahap berikutnya</option><option value="in_progress">Berlangsung</option><option value="completed">Selesai (semua)</option><option value="completed_answered">Selesai dikerjakan</option><option value="completed_unanswered">Tidak dikerjakan</option></select><small>Tes yang sudah ditutup dibedakan berdasarkan ada atau tidaknya jawaban tersimpan.</small></label>
+                    <label class="field">Status tes teknis online<select wire:model.live="testFilter"><option value="">Semua status</option><option value="waiting">Menunggu mulai / tahap berikutnya</option><option value="in_progress">Berlangsung</option><option value="completed">Selesai (semua)</option><option value="completed_answered">Selesai dikerjakan</option><option value="completed_unanswered">Tidak dikerjakan</option></select></label>
                     <div class="applications-toggles">
                         <label><input type="checkbox" wire:model.live="overdue">Tenggat terlewati</label>
                         <label><input type="checkbox" wire:model.live="archived">Lamaran diarsipkan</label>
