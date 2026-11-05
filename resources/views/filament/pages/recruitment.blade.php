@@ -78,7 +78,7 @@
                             <option value="">Semua status</option>@foreach(App\Enums\SubmissionStatus::cases() as $s)<option value="{{ $s->value }}">{{ $s->label() }}</option>@endforeach
                         </select></label>
                     @endforeach
-                    <label class="field">Status tes teknis online<select wire:model.live="testFilter"><option value="">Semua status</option><option value="waiting">Menunggu mulai / tahap berikutnya</option><option value="in_progress">Berlangsung</option><option value="completed">Selesai (semua)</option><option value="completed_answered">Selesai dikerjakan</option><option value="completed_unanswered">Tidak dikerjakan</option></select></label>
+                    <label class="field">Status tes teknis online<select wire:model.live="testFilter"><option value="">Semua status</option><option value="waiting">Menunggu mulai / tahap berikutnya</option><option value="in_progress">Berlangsung</option><option value="completed">Tes ditutup (semua)</option><option value="completed_answered">Ditutup dengan jawaban tersimpan</option><option value="completed_unanswered">Ditutup tanpa jawaban tersimpan</option></select></label>
                     <div class="applications-toggles">
                         <label><input type="checkbox" wire:model.live="overdue">Tenggat terlewati</label>
                         <label><input type="checkbox" wire:model.live="archived">Lamaran diarsipkan</label>
@@ -139,7 +139,7 @@
                                 @endif
                             </td>
                             @endforeach
-                            <td data-label="Tes teknis online">@forelse($app->technicalAssessmentAttempts as $attempt)@php($hasAnswers = collect($attempt->answers)->flatten()->contains(fn ($answer) => $answer !== null && $answer !== ''))<div><span class="badge {{ $attempt->completed_at ? ($hasAnswers ? 'submitted' : 'not_started') : 'draft' }}">Form {{ $attempt->form }} · {{ $attempt->completed_at ? ($hasAnswers ? 'Selesai dikerjakan' : 'Tidak dikerjakan') : ($attempt->section_started_at ? 'Berlangsung' : 'Menunggu mulai / tahap berikutnya') }}</span><small>{{ $attempt->deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}</small></div>@empty<small>Belum ada penugasan</small>@endforelse</td>
+                            <td data-label="Tes teknis online">@forelse($app->technicalAssessmentAttempts as $attempt)<div><span class="badge {{ $attempt->completed_at ? ($attempt->hasSavedAnswers() ? 'submitted' : 'not_started') : 'draft' }}">Form {{ $attempt->form }} · {{ $attempt->statusLabel() }}</span><small>{{ $attempt->deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}</small></div>@empty<small>Belum ada penugasan</small>@endforelse</td>
                             <td class="applications-row-action"><button type="button" class="button small" wire:click="openApplication({{ $app->id }})" aria-label="Lihat detail lamaran {{ $app->user->name }}">Detail <span aria-hidden="true"></span></button></td>
                         </tr>
                         @empty

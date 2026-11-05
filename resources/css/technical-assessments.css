@@ -96,6 +96,7 @@
 .technical-results-table td:nth-child(4) { min-width: 170px; }
 .technical-results-table td small { display: block; margin-top: 5px; font-size: 10px; line-height: 1.6; }
 .technical-results-table td strong { font-weight: 600; }
+.technical-results-table td:nth-child(3) .badge { max-width: 220px; white-space: normal; line-height: 1.6; }
 .technical-results-table tr.is-selected td { background: #f3f6fc; }
 .technical-results-table tbody tr:hover td { background: #f8faff; }
 .technical-results-table .button { white-space: nowrap; font-size: 11px; }
@@ -229,6 +230,7 @@
 .assessment-attempt-card .row { align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
 .assessment-attempt-card .row > div { flex: 1; min-width: min(100%, 220px); }
 .assessment-attempt-card h3 { margin: 10px 0 0; font-size: 17px; overflow-wrap: anywhere; }
+.assessment-attempt-card .badge { max-width: 100%; white-space: normal; }
 .assessment-form-label { display: inline-block; padding: 3px 10px; border-radius: 6px; background: #edf2fa; color: var(--brand); font-size: 12px; font-weight: 600; }
 @media (max-width: 640px) {
     .assessment-categories { grid-template-columns: 1fr; gap: 10px; }

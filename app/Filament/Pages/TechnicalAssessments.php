@@ -56,6 +56,9 @@ class TechnicalAssessments extends Page
     public string $feedback = '';
 
     #[Locked]
+    public string $initialWorkspace = 'assignment';
+
+    #[Locked]
     public ?int $attemptId = null;
 
     #[Locked]
@@ -95,6 +98,7 @@ class TechnicalAssessments extends Page
         $this->actor();
         $this->updatedForm();
         $this->resultSearch = mb_substr((string) request()->query('candidate', ''), 0, 255);
+        $this->initialWorkspace = request()->filled('candidate') ? 'results' : 'assignment';
     }
 
     public function updatedForm(): void

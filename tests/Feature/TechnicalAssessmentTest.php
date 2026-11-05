@@ -786,6 +786,73 @@ class TechnicalAssessmentTest extends TestCase
         $this->assertSame(1, AuditLog::where('action', 'technical_assessment.completed')->count());
     }
 
+    #[TestWith(['A', null, false])]
+    #[TestWith(['B', [], false])]
+    #[TestWith(['A', [0 => ['A01' => '', 'A02' => null]], false])]
+    #[TestWith(['A', [0 => ['A01' => 'C']], true])]
+    #[TestWith(['B', [0 => ['B01' => '0']], true])]
+    public function test_closed_status_shows_saved_answers_consistently_for_candidate_and_admin(string $form, ?array $answers, bool $hasAnswers): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt($form, ['completed_at' => now(), 'deadline' => now()->subMinute(), 'answers' => $answers,
+            'conditions' => ['technical_conditions' => 'Koneksi terputus.']]);
+        $status = 'Tenggat berakhir · '.($hasAnswers ? 'jawaban tersimpan' : 'tanpa jawaban tersimpan');
+        $this->loginFor($attempt);
+
+        $this->get(route('candidate.technical-assessments'))->assertSee($status)->assertSee('Lihat status tes')->assertDontSee('Buka tes');
+        $response = $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee($status)->assertDontSee('IPP pilot');
+        if ($hasAnswers) {
+            $response->assertDontSee('Tidak ada jawaban soal yang tersimpan');
+        } else {
+            $response->assertSee('Tidak ada jawaban soal yang tersimpan');
+        }
+
+        $adminPage = Livewire::actingAs(User::factory()->create(['role' => Role::Admin]))->test(TechnicalAssessments::class)
+            ->assertSee($status)->call('selectAttempt', $attempt->id)->assertSee($status);
+        if ($hasAnswers) {
+            $adminPage->assertSee('class="assessment-scores"', false)->assertDontSee('Tidak ada jawaban soal yang tersimpan pada sesi ini.');
+        } else {
+            $adminPage->assertDontSee('class="assessment-scores"', false)->assertSee('Tidak ada jawaban soal yang tersimpan pada sesi ini.');
+        }
+    }
+
+    #[TestWith([false])]
+    #[TestWith([true])]
+    public function test_initial_workspace_stays_stable_when_searching_and_opening_candidate_results(bool $candidateLink): void
+    {
+        $attempt = $this->attempt('B', ['completed_at' => now()]);
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $workspace = $candidateLink ? 'results' : 'assignment';
+
+        Livewire::withQueryParams($candidateLink ? ['candidate' => $attempt->application->user->email] : [])
+            ->actingAs($admin)->test(TechnicalAssessments::class)->assertSet('initialWorkspace', $workspace)
+            ->call('selectAttempt', $attempt->id)->assertSet('initialWorkspace', $workspace)
+            ->set('resultSearch', '')->assertSet('initialWorkspace', $workspace);
+    }
+
+    public function test_expired_unstarted_form_b_stays_unanswered_after_condition_notes_are_saved(): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt('B', ['deadline' => now()->subMinute()]);
+        $this->loginFor($attempt);
+        $status = 'Tenggat berakhir · tanpa jawaban tersimpan';
+
+        $this->get(route('candidate.technical-assessments'))->assertSee($status)->assertSee('Lihat status tes')
+            ->assertDontSee('Terkunci - Selesaikan Form A');
+        $this->assertNull($attempt->fresh()->completed_at);
+        $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee($status)
+            ->assertSee('Menyimpan catatan tidak mengirim atau mengubah jawaban soal yang sudah dikunci.');
+        $this->post(route('candidate.technical-assessments.update', $attempt), ['action' => 'conditions',
+            'conditions' => ['technical_conditions' => 'Koneksi terputus.'], 'confirmation' => '1'])->assertRedirect();
+        $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee($status)->assertSee('Koneksi terputus.');
+
+        $this->assertSame([], $attempt->fresh()->answers);
+        $this->assertFalse($attempt->fresh()->hasSavedAnswers());
+        $this->assertNull($attempt->fresh()->consented_at);
+        $this->assertDatabaseHas('audit_logs', ['target_id' => $attempt->id, 'action' => 'technical_assessment.completed', 'reason' => 'deadline']);
+        $this->assertDatabaseMissing('audit_logs', ['target_id' => $attempt->id, 'action' => 'technical_assessment.answers_saved']);
+    }
+
     public function test_form_b_candidate_starts_stages_and_new_facts_stay_hidden_until_initial_decision_is_locked(): void
     {
         $this->freezeTime();
@@ -1158,7 +1225,7 @@ class TechnicalAssessmentTest extends TestCase
 
         $this->get(route('candidate.technical-assessments'))->assertSee('Selesaikan Form A terlebih dahulu')->assertDontSee(route('candidate.technical-assessments.show', $attempt));
         $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('Tes terkunci')->assertDontSee('data-assessment-start', false);
-        $this->postJson($url, ['action' => 'consent', 'consent' => true])->assertUnprocessable()->assertJsonPath('message', 'Selesaikan Form A terlebih dahulu sebelum memulai Form B');
+        $this->postJson($url, ['action' => 'consent', 'consent' => true])->assertUnprocessable()->assertJsonPath('message', 'Selesaikan Form A terlebih dahulu sebelum memulai Form B.');
 
         $this->assertNull($attempt->fresh()->consented_at);
         $this->assertNull($attempt->fresh()->section_started_at);

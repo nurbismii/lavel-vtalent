@@ -3,7 +3,7 @@
         $package = $packages[$form];
         $zone = App\Models\AppSetting::valueFor('timezone');
     @endphp
-    <div class="portal-admin technical-admin" x-data="{ workspace: @js(request()->filled('candidate') ? 'results' : 'assignment') }">
+    <div class="portal-admin technical-admin" x-data="{ workspace: @js($initialWorkspace) }">
         <header class="hr-psych-heading">
             <div>
                 <div class="eyebrow">Asesmen rekrutmen</div>
@@ -147,7 +147,8 @@
                     <button type="button" class="button small" wire:click="exportResults" wire:loading.attr="disabled" wire:target="exportResults"><x-heroicon-o-arrow-down-tray /><span wire:loading.remove wire:target="exportResults">Ekspor hasil (Excel)</span><span wire:loading wire:target="exportResults" role="status">Menyiapkan ekspor…</span></button>
                     @if($selected)<a class="button small" href="#technical-session">Ke sesi terpilih ↓</a>@endif
                 </div>
-                <p class="technical-help">Ekspor mengikuti pencarian dan hanya memuat tes selesai. File berisi ringkasan poin serta soal dan jawaban Form A dan Form B.</p>
+                <p class="technical-help">Kolom Pengerjaan menunjukkan status penutupan dan ada atau tidaknya jawaban tersimpan. Catatan kondisi disimpan terpisah dari jawaban soal.</p>
+                <p class="technical-help">Ekspor mengikuti pencarian dan memuat tes yang sudah ditutup, termasuk sesi tanpa jawaban tersimpan. File berisi ringkasan poin serta soal dan jawaban Form A dan Form B.</p>
                 <p class="technical-table-hint"><x-heroicon-o-arrows-right-left /> Geser tabel untuk melihat jadwal dan tombol aksi.</p>
                 <div class="assessment-table-scroll" role="region" aria-label="Penugasan dan hasil kandidat" tabindex="0">
                     <table class="assessment-table technical-results-table">
@@ -157,7 +158,7 @@
                                 <tr wire:key="result-{{ $attempt->id }}" @class(['is-selected' => $attemptId === $attempt->id])>
                                     <td><strong>{{ $attempt->application->user->name }}</strong><small>{{ $attempt->application->user->email }}</small><small>{{ $attempt->application->position->name }}</small></td>
                                     <td><span class="badge">Form {{ $attempt->form }}</span><small>Versi {{ $attempt->version }}</small></td>
-                                    <td><span class="badge {{ $attempt->completed_at ? 'clean' : 'pending' }}">{{ $attempt->completed_at ? 'Selesai' : (now()->gte($attempt->deadline) ? 'Tenggat berakhir' : ($attempt->section_started_at ? 'Berlangsung' : 'Menunggu mulai')) }}</span>@unless($attempt->completed_at)<small>@if(($attempt->package['sections'][$attempt->section_index]['kind'] ?? null) === 'questionnaire')Catatan kondisi dan konfirmasi
+                                    <td><span class="badge {{ $attempt->completed_at && $attempt->hasSavedAnswers() ? 'clean' : 'pending' }}">{{ $attempt->statusLabel() }}</span>@unless($attempt->completed_at || now()->gte($attempt->deadline))<small>@if(($attempt->package['sections'][$attempt->section_index]['kind'] ?? null) === 'questionnaire')Catatan kondisi dan konfirmasi
                                         @else
                                         Tahap {{ $attempt->section_index + 1 }} / {{ count($attempt->sectionsForDisplay()) }}@endif</small>@endunless</td>
                                     <td><small>Dibuka {{ $attempt->opens_at->timezone($zone)->format('d M Y H:i') }}</small><small>Batas {{ $attempt->deadline->timezone($zone)->format('d M Y H:i') }}</small></td>
@@ -186,7 +187,7 @@
                     </header>
                     <dl class="technical-session-meta">
                         <div><dt>Kesiapan kandidat</dt><dd>{{ $selected->consented_at ? 'Sudah dikonfirmasi' : 'Menunggu konfirmasi' }}</dd></div>
-                        <div><dt>Pengerjaan</dt><dd>{{ $selected->completed_at ? 'Jawaban telah dikunci' : (($selected->package['sections'][$selected->section_index]['kind'] ?? null) === 'questionnaire' ? 'Catatan kondisi dan konfirmasi' : 'Tahap '.($selected->section_index + 1).' dari '.count($selected->sectionsForDisplay())) }}</dd></div>
+                        <div><dt>Pengerjaan</dt><dd>{{ $selected->completed_at ? $selected->statusLabel() : (($selected->package['sections'][$selected->section_index]['kind'] ?? null) === 'questionnaire' ? 'Catatan kondisi dan konfirmasi' : 'Tahap '.($selected->section_index + 1).' dari '.count($selected->sectionsForDisplay())) }}</dd></div>
                         <div><dt>Tenggat penugasan</dt><dd>{{ $selected->deadline->timezone($zone)->format('d M Y H:i T') }}</dd></div>
                     </dl>
 
@@ -214,8 +215,13 @@
                             </details>
                         @endif
                     @else
-                        <section class="technical-score-section"><h3>Ringkasan hasil</h3><p class="technical-help">Skor membantu review dan verifikasi. IPP adalah indeks prioritas pilot, bukan keputusan kelulusan otomatis.</p>
+                        <section class="technical-score-section"><h3>Ringkasan hasil</h3>
+                            @if($selected->hasSavedAnswers())
+                            <p class="technical-help">Skor membantu review dan verifikasi. IPP adalah indeks prioritas pilot, bukan keputusan kelulusan otomatis.</p>
                             <dl class="assessment-scores">@foreach($selected->scores ?? [] as $label => $value)@if($label !== 'items')<div><dt>{{ $label }}</dt><dd>{{ is_array($value) ? (implode(', ', $value) ?: 'Tidak ada') : ($value ?? 'Item belum lengkap') }}</dd></div>@endif @endforeach</dl>
+                            @else
+                            <p class="notice" role="status">Tidak ada jawaban soal yang tersimpan pada sesi ini. Catatan kondisi disimpan terpisah dan tidak dianggap sebagai jawaban soal. Periksa riwayat aktivitas untuk menelusuri kondisi pengerjaan.</p>
+                            @endif
                         </section>
                         <form wire:submit="saveReview" class="technical-review-form"><div><h3>Penilaian assessor</h3><p class="technical-help">Nilai berdasarkan jawaban, bukti proses, serta gangguan atau akomodasi yang dicatat.</p></div>
                             @if($selected->form === 'B')<div class="technical-rating-grid">@foreach(App\Services\TechnicalAssessmentService::RATING_DIMENSIONS as $dimension)<label class="field">{{ $dimension }}<input type="number" wire:model="ratings.{{ $dimension }}" min="0" max="4" required><small>Skor 0–4 sesuai rubrik.</small></label>@endforeach</div>@endif

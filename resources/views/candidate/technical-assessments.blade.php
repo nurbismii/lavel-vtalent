@@ -29,15 +29,15 @@
                             <span class="assessment-form-label">Form {{ $attempt->form }}</span>
                             <h3>{{ $attempt->package['title'] }}</h3>
                         </div>
-                        <span class="badge {{ $attempt->completed_at ? 'clean' : 'pending' }}">{{ $attempt->completed_at ? 'Selesai' : (now()->gte($attempt->deadline) ? 'Tenggat berakhir' : 'Menunggu / berlangsung') }}</span>
+                        <span class="badge {{ $attempt->completed_at && $attempt->hasSavedAnswers() ? 'clean' : 'pending' }}">{{ $attempt->statusLabel() }}</span>
                     </div>
                     <p>{{ array_sum(array_column($attempt->sectionsForDisplay(), 'seconds')) / 60 }} menit - {{ count($attempt->sectionsForDisplay()) }} tahap</p>
                     <p class="muted">Timer berlaku per tahap dan tetap berjalan saat halaman ditutup.</p>
                     <p><small>Jadwal {{ $attempt->opens_at->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i') }} - {{ $attempt->deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}</small></p>
-                    @if($attempt->isWaitingForFormA())
+                    @if($attempt->isWaitingForFormA() && now()->lt($attempt->deadline))
                         <p class="notice">Terkunci - Selesaikan Form A terlebih dahulu sebelum memulai Form B</p>
                     @else
-                        <a class="button primary" href="{{ route('candidate.technical-assessments.show', $attempt) }}">{{ $attempt->completed_at ? ($attempt->form === 'A' || empty($attempt->conditionQuestions()) ? 'Lihat status tes' : 'Konfirmasi dan catatan kondisi') : 'Buka tes' }}</a>
+                        <a class="button primary" href="{{ route('candidate.technical-assessments.show', $attempt) }}">{{ $attempt->completed_at || now()->gte($attempt->deadline) ? 'Lihat status tes' : 'Buka tes' }}</a>
                     @endif
                 </article>
             @empty

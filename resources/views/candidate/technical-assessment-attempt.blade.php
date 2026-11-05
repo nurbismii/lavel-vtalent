@@ -14,18 +14,23 @@
     @if($attempt->completed_at)
     <section class="panel">
         <h2>Jawaban tes telah dikunci</h2>
+        <p><strong>{{ $attempt->statusLabel() }}</strong></p>
+        @if(!$attempt->hasSavedAnswers())
+        <p class="notice" role="status">Tidak ada jawaban soal yang tersimpan untuk Form {{ $attempt->form }}. Status tes ditutup tidak berarti jawaban berhasil dikumpulkan. Hubungi HR jika Anda mengalami kendala saat mengerjakan.</p>
+        @endif
         @if($attempt->form === 'A')
         <p>Form A telah dikunci. Lanjutkan ke Form B sesuai penugasan HR. Catatan kondisi diisi setelah seluruh soal Form A dan Form B selesai.</p>
-        @else
-        <p>Seluruh tahap selesai atau tenggat penugasan telah berakhir. HR akan meninjau jawaban dan kondisi pengerjaan Anda.</p>
+        @elseif($attempt->hasSavedAnswers())
+        <p>HR akan meninjau jawaban yang tersimpan dan kondisi pengerjaan Anda. Jawaban yang belum diterima server saat waktu berakhir tidak tersimpan.</p>
         @endif
         <p class="muted">Skor hanya dapat dilihat oleh assessor.</p>
     </section>
     @if($attempt->form !== 'A' && !empty($attempt->conditionQuestions()))
     <form class="panel stack assessment-condition-notes" method="post" action="{{ route('candidate.technical-assessments.update', $attempt) }}">@csrf<input type="hidden" name="action" value="conditions">
         <h2>Catatan kondisi dan konfirmasi</h2>
+        <p class="notice">Catatan ini hanya melaporkan kondisi pengerjaan. Menyimpan catatan tidak mengirim atau mengubah jawaban soal yang sudah dikunci.</p>
         @foreach(collect($attempt->conditionQuestions())->where('id', '!=', 'accommodations') as $question)<label class="field">{{ $question['prompt'] }}<textarea name="conditions[{{ $question['id'] }}]" maxlength="2000" rows="3">{{ old('conditions.'.$question['id'], $attempt->conditionAnswers()[$question['id']] ?? '') }}</textarea></label>@endforeach
-        <label><input type="checkbox" name="confirmation" value="1" required> Saya mengonfirmasi bahwa tes dikerjakan sendiri sesuai aturan dan kondisi yang saya laporkan.</label>
+        <label><input type="checkbox" name="confirmation" value="1" required> Saya mengonfirmasi bahwa catatan kondisi ini benar dan jawaban yang saya berikan dikerjakan sendiri.</label>
         <div><button class="button primary">Simpan catatan dan konfirmasi</button></div>
     </form>
     @endif
@@ -70,7 +75,7 @@
                 <h2>{{ $attempt->sectionTitle($section) }}</h2><span data-assessment-progress></span>
             </div>
             <div><strong class="assessment-timer" data-assessment-timer role="timer">Menghitung waktu…</strong>
-                <p data-assessment-status role="status" aria-live="polite">Jawaban tersimpan</p><button class="button small" type="button" data-assessment-fullscreen>Layar penuh</button>
+                <p data-assessment-status role="status" aria-live="polite">Perubahan disimpan otomatis.</p><button class="button small" type="button" data-assessment-fullscreen>Layar penuh</button>
             </div>
         </div>
         <p class="notice" data-assessment-activity-status role="status">Aktivitas keluar halaman dicatat. Timer tetap berjalan; hubungi HR bila terjadi gangguan.</p>

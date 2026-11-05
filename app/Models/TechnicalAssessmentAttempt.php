@@ -23,6 +23,22 @@ class TechnicalAssessmentAttempt extends Model
         return ['package' => 'array', 'answers' => 'array', 'conditions' => 'array', 'scores' => 'array', 'review' => 'array', 'opens_at' => 'datetime', 'deadline' => 'datetime', 'section_started_at' => 'datetime', 'section_expires_at' => 'datetime', 'consented_at' => 'datetime', 'reasoning_answers_locked_at' => 'datetime', 'simulation_answers_locked_at' => 'datetime', 'completed_at' => 'datetime', 'revision' => 'integer', 'section_index' => 'integer'];
     }
 
+    public function hasSavedAnswers(): bool
+    {
+        return collect($this->answers)->flatten()->contains(fn (mixed $answer): bool => $answer !== null && $answer !== '');
+    }
+
+    public function statusLabel(): string
+    {
+        if ($this->completed_at || now()->gte($this->deadline)) {
+            $status = ($this->completed_at ?? now())->gte($this->deadline) ? 'Tenggat berakhir' : 'Tes ditutup';
+
+            return $status.' · '.($this->hasSavedAnswers() ? 'jawaban tersimpan' : 'tanpa jawaban tersimpan');
+        }
+
+        return $this->section_started_at ? 'Berlangsung' : 'Menunggu mulai / tahap berikutnya';
+    }
+
     public function isReasoningSection(): bool
     {
         return $this->form === 'B' && in_array('process', array_column($this->package['sections'][$this->section_index]['questions'] ?? [], 'id'), true);

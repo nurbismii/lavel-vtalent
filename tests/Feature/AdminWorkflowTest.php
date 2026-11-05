@@ -59,10 +59,10 @@ class AdminWorkflowTest extends TestCase
         $page = Livewire::actingAs($admin)->test(Recruitment::class)
             ->set('testFilter', 'completed_answered')
             ->assertViewHas('applications', fn ($applications): bool => $applications->getCollection()->modelKeys() === [$answered->recruitment_application_id])
-            ->assertSee('Form A · Selesai dikerjakan')
+            ->assertSee('Form A · Tes ditutup · jawaban tersimpan')
             ->set('testFilter', 'completed_unanswered')
             ->assertViewHas('applications', fn ($applications): bool => $applications->getCollection()->modelKeys() === [$unanswered->recruitment_application_id])
-            ->assertSee('Form A · Tidak dikerjakan');
+            ->assertSee('Form A · Tes ditutup · tanpa jawaban tersimpan');
 
         $page->set('testFilter', 'completed')->assertViewHas('applications', fn ($applications): bool => $applications->total() === 2);
     }
@@ -78,7 +78,7 @@ class AdminWorkflowTest extends TestCase
         Livewire::actingAs($admin)->test(Recruitment::class)
             ->set('testFilter', 'completed_answered')
             ->assertViewHas('applications', fn ($applications): bool => $applications->getCollection()->modelKeys() === [$answered->recruitment_application_id])
-            ->assertSee('Form A · Selesai dikerjakan')->assertSee('Form B · Tidak dikerjakan')
+            ->assertSee('Form A · Tes ditutup · jawaban tersimpan')->assertSee('Form B · Tes ditutup · tanpa jawaban tersimpan')
             ->set('testFilter', 'completed_unanswered')
             ->assertViewHas('applications', fn ($applications): bool => $applications->getCollection()->modelKeys() === [$answered->recruitment_application_id]);
     }
