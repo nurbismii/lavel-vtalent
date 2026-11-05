@@ -10,6 +10,7 @@ use App\Models\PsychometricAttempt;
 use App\Models\PsychometricTest;
 use App\Models\RecruitmentApplication;
 use App\Models\RecruitmentPeriod;
+use App\Services\MbtiService;
 use App\Services\PsychometricResultExportService;
 use App\Services\PsychometricService;
 use App\Services\RecruitmentService;
@@ -31,9 +32,9 @@ class Psychometrics extends Page
 
     protected string $view = 'filament.pages.psychometrics';
 
-    protected static ?string $title = 'TES IQ';
+    protected static ?string $title = 'Psikotes · IQ & MBTI';
 
-    protected static ?string $navigationLabel = 'Tes IQ';
+    protected static ?string $navigationLabel = 'Psikotes (IQ & MBTI)';
 
     protected static string|\UnitEnum|null $navigationGroup = 'Proses seleksi';
 
@@ -81,9 +82,11 @@ class Psychometrics extends Page
 
     public string $periodFilter = '';
 
+    public string $typeFilter = '';
+
     public function updated(string $property): void
     {
-        if (in_array($property, ['resultSearch', 'positionFilter', 'periodFilter'], true)) {
+        if (in_array($property, ['resultSearch', 'positionFilter', 'periodFilter', 'typeFilter'], true)) {
             $this->resetPage();
         }
     }
@@ -91,7 +94,7 @@ class Psychometrics extends Page
     public function resetResultFilters(): void
     {
         $this->actor();
-        $this->reset('resultSearch', 'positionFilter', 'periodFilter');
+        $this->reset('resultSearch', 'positionFilter', 'periodFilter', 'typeFilter');
         $this->resetPage();
     }
 
@@ -117,10 +120,16 @@ class Psychometrics extends Page
         abort_unless(static::canAccess(), 403);
     }
 
-    public function createDraft(): void
+    public function createDraft(string $type = 'iq'): void
     {
         $this->actor();
-        $test = PsychometricTest::create(['title' => 'TES IQ · '.now()->format('d/m/Y H:i'), 'sections' => array_map(fn (array $s): array => [...$s, 'seconds' => null], config('psychometrics.sections')), 'answer_key' => []]);
+        abort_unless(in_array($type, ['iq', 'mbti'], true), 422);
+        $test = PsychometricTest::create([
+            'title' => 'TES '.strtoupper($type).($type === 'mbti' ? ' (7 pilihan)' : '').' · '.now()->format('d/m/Y H:i'),
+            'type' => $type,
+            'sections' => $type === 'mbti' ? app(MbtiService::class)->sections() : array_map(fn (array $s): array => [...$s, 'seconds' => null], config('psychometrics.sections')),
+            'answer_key' => [],
+        ]);
         $this->edit($test->id);
     }
 
@@ -170,6 +179,7 @@ class Psychometrics extends Page
         $this->validate(['correctedPage' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:10240', 'dimensions:max_width=10000,max_height=10000']]);
         DB::transaction(function (): void {
             $test = PsychometricTest::lockForUpdate()->findOrFail($this->testId);
+            abort_if($test->isMbti(), 422, 'MBTI menggunakan pernyataan teks.');
             abort_if($test->published_at, 409);
             $path = $this->correctedPage->store('psychometrics/corrections', 'private');
             $test->update(['corrected_page_path' => $path]);
@@ -284,7 +294,7 @@ class Psychometrics extends Page
             ->select('recruitment_applications.id', 'users.email');
         $this->applicationIds = app(RecruitmentService::class)->selectByEmails($query, $text, $this->applicationIds, 'search');
         $this->search = '';
-        $this->feedback = count($this->applicationIds).' lamaran kandidat dipilih untuk tes IQ.';
+        $this->feedback = count($this->applicationIds).' lamaran kandidat dipilih untuk psikotes.';
     }
 
     public function finalizeExpired(): void
@@ -294,16 +304,16 @@ class Psychometrics extends Page
         $this->feedback = 'Status diperbarui. Jawaban yang melewati batas waktu telah dikunci.';
     }
 
-    /** @return array{search: string, position: string, period: string} */
+    /** @return array{search: string, position: string, period: string, type: string} */
     private function resultFilters(): array
     {
-        return ['search' => $this->resultSearch, 'position' => $this->positionFilter, 'period' => $this->periodFilter];
+        return ['search' => $this->resultSearch, 'position' => $this->positionFilter, 'period' => $this->periodFilter, 'type' => $this->typeFilter];
     }
 
     public function exportResults(): StreamedResponse
     {
         $this->actor();
-        $this->validate(['resultSearch' => ['string', 'max:255'], 'positionFilter' => ['nullable', 'integer'], 'periodFilter' => ['nullable', 'integer']]);
+        $this->validate(['resultSearch' => ['string', 'max:255'], 'positionFilter' => ['nullable', 'integer'], 'periodFilter' => ['nullable', 'integer'], 'typeFilter' => ['nullable', 'in:iq,mbti']]);
         $actor = auth()->user();
         $filters = $this->resultFilters();
 

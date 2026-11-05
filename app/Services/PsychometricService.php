@@ -55,6 +55,9 @@ class PsychometricService
                 $duration = $durations[$i] ?? null;
                 Validator::make(['duration' => $duration], ['duration' => [$publish ? 'required' : 'nullable', 'integer', 'min:1', 'max:7200']], ['duration.required' => 'Durasi setiap bagian wajib diisi sebelum terbit.'])->validate();
                 $section['seconds'] = $duration === null || $duration === '' ? null : (int) $duration;
+                if ($test->isMbti()) {
+                    continue;
+                }
                 $text = trim($keyText[$i] ?? '');
                 $keys[$i] = [];
                 if ($text !== '') {
@@ -84,7 +87,7 @@ class PsychometricService
             }
             unset($section);
             if ($publish && ! $reviewed) {
-                throw ValidationException::withMessages(['reviewed' => 'Tinjau gambar, penomoran, kunci dan durasi sebelum menerbitkan.']);
+                throw ValidationException::withMessages(['reviewed' => $test->isMbti() ? 'Tinjau pernyataan, pilihan, dan durasi MBTI sebelum menerbitkan.' : 'Tinjau gambar, penomoran, kunci dan durasi sebelum menerbitkan.']);
             }
             $review = $test->answer_key_review;
             if ($publish && $review) {
@@ -101,6 +104,7 @@ class PsychometricService
     {
         DB::transaction(function () use ($id): void {
             $test = PsychometricTest::lockForUpdate()->findOrFail($id);
+            abort_if($test->isMbti(), 422, 'MBTI tidak menggunakan kunci benar atau salah.');
             if ($test->published_at || collect($test->answer_key ?? [])->flatten()->isNotEmpty()) {
                 throw ValidationException::withMessages(['test' => 'Usulan hanya dapat mengisi paket draf yang kuncinya masih kosong.']);
             }
@@ -175,6 +179,7 @@ class PsychometricService
         Validator::make(['image' => $image], ['image' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:10240', 'dimensions:max_width=10000,max_height=10000']])->validate();
         DB::transaction(function () use ($actor, $id, $section, $question, $part, $image): void {
             $test = PsychometricTest::lockForUpdate()->findOrFail($id);
+            abort_if($test->isMbti(), 422, 'MBTI menggunakan pernyataan teks.');
             if ($test->published_at || $test->attempts()->exists()) {
                 throw ValidationException::withMessages(['questionImage' => 'Gambar hanya dapat diganti pada draf yang belum ditugaskan.']);
             }
@@ -238,7 +243,7 @@ class PsychometricService
      */
     private function validateChoice(array $answer, array $section, bool $key = false): void
     {
-        $allowed = array_slice(range('A', 'F'), 0, $section['options']);
+        $allowed = array_slice(range('A', 'G'), 0, $section['options']);
         if (count($answer) > $section['choices'] || ($key && count($answer) !== $section['choices']) || count(array_unique($answer, SORT_REGULAR)) !== count($answer) || array_diff($answer, $allowed)) {
             throw ValidationException::withMessages(['answers' => 'Pilihan jawaban tidak sesuai aturan bagian tes.']);
         }
@@ -268,7 +273,7 @@ class PsychometricService
             }
             abort_unless($attempt->section_started_at, 409, 'Bagian belum dimulai atau waktunya telah berakhir.');
             abort_unless((int) ($payload['revision'] ?? -1) === $attempt->revision, 409, 'Jawaban telah berubah di sesi lain. Muat ulang halaman.');
-            Validator::make($payload, ['answers' => ['present', 'array', 'max:'.$section['count']], 'answers.*' => ['array'], 'answers.*.*' => ['string', 'in:A,B,C,D,E,F']])->validate();
+            Validator::make($payload, ['answers' => ['present', 'array', 'max:'.$section['count']], 'answers.*' => ['array'], 'answers.*.*' => ['string', 'in:A,B,C,D,E,F,G']])->validate();
             $answers = [];
             foreach ($payload['answers'] as $number => $answer) {
                 abort_unless(ctype_digit((string) $number) && (int) $number >= 1 && (int) $number <= $section['count'], 422);
@@ -313,6 +318,19 @@ class PsychometricService
 
     private function complete(PsychometricAttempt $attempt): void
     {
+        if ($attempt->test->isMbti()) {
+            $attempt->update([
+                'completed_at' => now(),
+                'result' => app(MbtiService::class)->score($attempt->test->sections, $attempt->answers ?? []),
+                'raw_score' => null,
+                'section_scores' => null,
+                'section_started_at' => null,
+                'section_expires_at' => null,
+            ]);
+            AuditLog::record('psychometric.completed', $attempt);
+
+            return;
+        }
         $scores = [];
         foreach ($attempt->test->answer_key as $section => $keys) {
             $scores[$section] = 0;

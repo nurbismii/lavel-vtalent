@@ -11,13 +11,13 @@ class PsychometricAttempt extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['psychometric_test_id', 'recruitment_application_id', 'opens_at', 'deadline', 'section_index', 'section_started_at', 'section_expires_at', 'answers', 'revision', 'completed_at', 'raw_score', 'section_scores'];
+    protected $fillable = ['psychometric_test_id', 'recruitment_application_id', 'opens_at', 'deadline', 'section_index', 'section_started_at', 'section_expires_at', 'answers', 'revision', 'completed_at', 'raw_score', 'section_scores', 'result'];
 
-    protected $hidden = ['raw_score', 'section_scores'];
+    protected $hidden = ['raw_score', 'section_scores', 'result'];
 
     protected function casts(): array
     {
-        return ['opens_at' => 'datetime', 'deadline' => 'datetime', 'section_started_at' => 'datetime', 'section_expires_at' => 'datetime', 'completed_at' => 'datetime', 'answers' => 'array', 'section_scores' => 'array', 'section_index' => 'integer', 'revision' => 'integer', 'raw_score' => 'integer'];
+        return ['opens_at' => 'datetime', 'deadline' => 'datetime', 'section_started_at' => 'datetime', 'section_expires_at' => 'datetime', 'completed_at' => 'datetime', 'answers' => 'array', 'section_scores' => 'array', 'result' => 'array', 'section_index' => 'integer', 'revision' => 'integer', 'raw_score' => 'integer'];
     }
 
     public function test(): BelongsTo
@@ -32,7 +32,7 @@ class PsychometricAttempt extends Model
 
     public function iqScore(): ?int
     {
-        if (! $this->completed_at || $this->raw_score === null) {
+        if (! $this->completed_at || $this->raw_score === null || $this->test?->isMbti()) {
             return null;
         }
 

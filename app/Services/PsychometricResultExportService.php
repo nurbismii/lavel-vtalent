@@ -19,12 +19,13 @@ use OpenSpout\Writer\XLSX\Writer;
 
 class PsychometricResultExportService
 {
-    /** @param array{search: string, position: string, period: string} $filters
+    /** @param array{search: string, position: string, period: string, type?: string} $filters
      * @return Builder<PsychometricAttempt>
      */
     public function filtered(array $filters): Builder
     {
         return PsychometricAttempt::query()
+            ->when(($filters['type'] ?? '') !== '', fn ($query) => $query->whereHas('test', fn ($test) => $test->where('type', $filters['type'])))
             ->when($filters['position'] !== '', fn ($query) => $query->whereHas('application', fn ($application) => $application->where('position_id', $filters['position'])))
             ->when($filters['period'] !== '', fn ($query) => $query->whereHas('application', fn ($application) => $application->where('recruitment_period_id', $filters['period'])))
             ->when(trim($filters['search']) !== '', fn ($query) => $query->whereHas('application.user', fn ($user) => $user->where(fn ($candidate) => $candidate
@@ -32,7 +33,7 @@ class PsychometricResultExportService
                 ->orWhere('email', 'like', '%'.trim($filters['search']).'%'))));
     }
 
-    /** @param array{search: string, position: string, period: string} $filters */
+    /** @param array{search: string, position: string, period: string, type?: string} $filters */
     public function write(User $actor, array $filters, string $path): void
     {
         abort_unless(PsychometricService::available(), 404);
@@ -55,10 +56,20 @@ class PsychometricResultExportService
                 $sheet->setName('Hasil tes #'.$test->id);
                 $sheet->setSheetView((new SheetView)->setFreezeRow(2));
                 $headers = ['ID hasil', 'ID lamaran', 'Nama kandidat', 'Email', 'Posisi', 'Periode rekrutmen', 'Paket tes', 'Status'];
-                foreach ($test->sections as $section) {
-                    $headers[] = $section['title'].' (maks. '.$section['count'].')';
+                if ($test->isMbti()) {
+                    $headers = [...$headers, 'Tipe MBTI (X = seimbang)', 'Jumlah dijawab', 'Jumlah pernyataan'];
+                    foreach (config('mbti.dimensions') as $labels) {
+                        foreach ($labels as $letter => $label) {
+                            $headers[] = $letter.' (%)';
+                        }
+                    }
+                } else {
+                    foreach ($test->sections as $section) {
+                        $headers[] = $section['title'].' (maks. '.$section['count'].')';
+                    }
+                    $headers = [...$headers, 'Skor mentah total', 'Skor maksimum', 'IQ (konversi aplikasi)', 'Kategori IQ'];
                 }
-                $headers = [...$headers, 'Skor mentah total', 'Skor maksimum', 'IQ (konversi aplikasi)', 'Kategori IQ', 'Selesai ('.$timezone.')', 'Tenggat ('.$timezone.')'];
+                $headers = [...$headers, 'Selesai ('.$timezone.')', 'Tenggat ('.$timezone.')'];
                 $writer->addRow(new Row(array_map(fn (string $value) => new StringCell($value, $header), $headers)));
                 $attempts = (clone $query)->where('psychometric_test_id', $test->id)
                     ->with(['test', 'application.user', 'application.position', 'application.period'])->lazyById(200);
@@ -68,13 +79,24 @@ class PsychometricResultExportService
                     foreach ([$application->user->name, $application->user->email, $application->position->name, $application->period->name, $test->title, 'Selesai'] as $value) {
                         $cells[] = new StringCell($value, $text);
                     }
-                    foreach ($test->sections as $index => $section) {
-                        $cells[] = Cell::fromValue($attempt->section_scores[$index] ?? null);
+                    if ($test->isMbti()) {
+                        $cells[] = new StringCell($attempt->result['type'] ?? 'Belum lengkap', $text);
+                        $cells[] = Cell::fromValue($attempt->result['answered']);
+                        $cells[] = Cell::fromValue($attempt->result['total']);
+                        foreach ($attempt->result['dimensions'] as $dimension) {
+                            foreach ($dimension['percentages'] as $percentage) {
+                                $cells[] = Cell::fromValue($percentage);
+                            }
+                        }
+                    } else {
+                        foreach ($test->sections as $index => $section) {
+                            $cells[] = Cell::fromValue($attempt->section_scores[$index] ?? null);
+                        }
+                        $cells[] = Cell::fromValue($attempt->raw_score);
+                        $cells[] = Cell::fromValue(array_sum(array_column($test->sections, 'count')));
+                        $cells[] = Cell::fromValue($attempt->iqScore());
+                        $cells[] = new StringCell($attempt->iqCategory() ?? 'Konversi tidak tersedia', $text);
                     }
-                    $cells[] = Cell::fromValue($attempt->raw_score);
-                    $cells[] = Cell::fromValue(array_sum(array_column($test->sections, 'count')));
-                    $cells[] = Cell::fromValue($attempt->iqScore());
-                    $cells[] = new StringCell($attempt->iqCategory() ?? 'Konversi tidak tersedia', $text);
                     $cells[] = Cell::fromValue($attempt->completed_at->copy()->timezone($timezone), $date);
                     $cells[] = Cell::fromValue($attempt->deadline->copy()->timezone($timezone), $date);
                     $writer->addRow(new Row($cells));

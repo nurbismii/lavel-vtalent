@@ -46,6 +46,7 @@ class PsychometricController extends Controller
     public function image(Request $request, int $attempt, int $page): Response
     {
         $record = $this->service->act($request->user(), $attempt, 'view');
+        abort_if($record->test->isMbti(), 404);
         abort_if($record->completed_at || now()->lt($record->opens_at), 404);
         $section = $record->test->sections[$record->section_index];
         $allowed = [$section['example'], ...($record->section_started_at ? $section['pages'] : [])];
@@ -78,6 +79,7 @@ class PsychometricController extends Controller
 
     private function imageResponse(int $page, PsychometricTest $test): Response
     {
+        abort_if($test->isMbti(), 404);
         abort_unless(is_file($this->service->assetPath($page, $test)), 404);
 
         return response()->file($this->service->assetPath($page, $test), ['Content-Type' => mime_content_type($this->service->assetPath($page, $test)), 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff', 'X-Robots-Tag' => 'noindex, nofollow'])->setPrivate();

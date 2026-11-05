@@ -10,7 +10,9 @@ class PsychometricTest extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'corrected_page_path', 'sections', 'answer_key', 'answer_key_review', 'published_at'];
+    protected $fillable = ['title', 'type', 'corrected_page_path', 'sections', 'answer_key', 'answer_key_review', 'published_at'];
+
+    protected $attributes = ['type' => 'iq'];
 
     protected $hidden = ['answer_key', 'answer_key_review'];
 
@@ -22,5 +24,10 @@ class PsychometricTest extends Model
     public function attempts(): HasMany
     {
         return $this->hasMany(PsychometricAttempt::class);
+    }
+
+    public function isMbti(): bool
+    {
+        return $this->type === 'mbti';
     }
 }

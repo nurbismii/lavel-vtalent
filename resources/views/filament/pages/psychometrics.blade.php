@@ -3,10 +3,13 @@
         <header class="hr-psych-heading">
             <div>
                 <div class="eyebrow">Asesmen rekrutmen</div>
-                <h1>TES IQ</h1>
-                <p>Siapkan tes, atur penugasan, dan tinjau hasil kandidat.</p>
+                <h1>Psikotes · IQ & MBTI</h1>
+                <p>Siapkan tes IQ atau MBTI, atur penugasan, dan tinjau hasil kandidat.</p>
             </div>
-            <button type="button" class="button primary" wire:click="createDraft" x-on:click="workspace = 'packages'" wire:loading.attr="disabled"><x-heroicon-o-plus /> Buat paket tes</button>
+            <div class="hr-psych-actions">
+                <button type="button" class="button" wire:click="createDraft('iq')" x-on:click="workspace = 'packages'" wire:loading.attr="disabled"><x-heroicon-o-plus /> Buat paket IQ</button>
+                <button type="button" class="button primary" wire:click="createDraft('mbti')" x-on:click="workspace = 'packages'" wire:loading.attr="disabled"><x-heroicon-o-plus /> Buat paket MBTI</button>
+            </div>
         </header>
         <div class="hr-psych-overview" aria-label="Ringkasan psikotes">
             <div><span class="hr-psych-stat-icon"><x-heroicon-o-square-3-stack-3d /></span><span><strong>{{ $tests->count() }}</strong><small>Paket tes</small></span></div>
@@ -31,7 +34,7 @@
                     @forelse($tests as $test)
                     <button type="button" wire:key="package-{{ $test->id }}" class="hr-psych-package {{ $testId === $test->id ? 'is-selected' : '' }}" wire:click="edit({{ $test->id }})" wire:loading.attr="disabled" aria-pressed="{{ $testId === $test->id ? 'true' : 'false' }}">
                         <span class="hr-psych-package-top"><span class="hr-psych-tag {{ $test->published_at ? 'is-published' : '' }}">{{ $test->published_at ? 'Terbit' : 'Draf' }}</span><small>#{{ $test->id }}</small></span>
-                        <strong>{{ $test->title }}</strong><span class="hr-psych-package-meta">{{ count($test->sections) }} bagian <span aria-hidden="true">·</span> {{ array_sum(array_column($test->sections, 'count')) }} soal <x-heroicon-o-arrow-right /></span>
+                        <strong>{{ $test->title }}</strong><span class="hr-psych-package-meta">{{ $test->isMbti() ? 'MBTI' : 'IQ' }} · {{ count($test->sections) }} bagian <span aria-hidden="true">·</span> {{ array_sum(array_column($test->sections, 'count')) }} soal <x-heroicon-o-arrow-right /></span>
                     </button>
                     @empty
                     <div class="hr-psych-empty"><x-heroicon-o-document-plus />
@@ -59,6 +62,9 @@
                         @error('packageTitle')<span class="field-error" role="alert">{{ $message }}</span>@enderror
                         <button type="submit" class="button" wire:loading.attr="disabled"><x-heroicon-o-pencil-square /> Simpan nama</button>
                     </form>
+                    @if($selected->isMbti())
+                    <p class="notice">MBTI memakai pernyataan tentang kebiasaan tanpa jawaban benar atau salah. Hasil memuat empat pasangan preferensi dan dapat dilihat kandidat setelah selesai. Kuesioner internal ini bukan instrumen MBTI® resmi dan bukan dasar tunggal keputusan rekrutmen.</p>
+                    @endif
                     <div class="hr-psych-sections">
                         @foreach($selected->sections as $i => $section)
                         <section class="hr-psych-section" wire:key="section-{{ $selected->id }}-{{ $i }}">
@@ -69,15 +75,27 @@
                             </div>
                             <div class="hr-psych-section-fields">
                                 <label class="field">Durasi <span class="hr-psych-unit-input"><input type="number" min="1" max="7200" placeholder="0" wire:model="durations.{{ $i }}" @disabled($selected->published_at)><span>detik</span></span></label>
+                                @unless($selected->isMbti())
                                 <label class="field">Kunci berurutan<textarea rows="2" placeholder="{{ $section['choices'] === 2 ? 'A,B C,E …' : 'A C F …' }}" wire:model="keyText.{{ $i }}" @disabled($selected->published_at)></textarea><small>{{ $section['choices'] === 2 ? 'Pisahkan pasangan dengan spasi. Contoh: A,B C,E.' : 'Pisahkan setiap jawaban dengan spasi. Contoh: A C F. Tanda - berarti kunci belum diisi dan wajib dilengkapi sebelum terbit.' }}</small></label>
+                                @endunless
                             </div>
                             <details class="hr-psych-disclosure">
                                 <summary><x-heroicon-o-eye /> Pratinjau contoh dan soal</summary>
+                                @if($selected->isMbti())
+                                @if(($section['answer_format'] ?? null) === 'likert7')
+                                <p class="notice">Tujuh tingkat persetujuan: {{ implode(' · ', $section['questions'][0]['options']) }}. Netral tetap dihitung sebagai jawaban. Pernyataan bergantian mendukung kedua sisi setiap pasangan.</p>
+                                <ol>@foreach($section['questions'] as $question)<li><p>{{ $question['statement'] }}</p></li>@endforeach</ol>
+                                @else
+                                <ol>@foreach($section['questions'] as $question)<li><p><strong>A.</strong> {{ $question['options']['A'] }}<br><strong>B.</strong> {{ $question['options']['B'] }}</p></li>@endforeach</ol>
+                                @endif
+                                @else
                                 <div class="hr-psych-preview">@foreach([$section['example'], ...$section['pages']] as $page)<img class="psych-page" loading="lazy" src="{{ route('psychometrics.preview', [$selected, $page]) }}" alt="{{ $section['title'] }} halaman {{ $page }}">@endforeach</div>
+                                @endif
                             </details>
                         </section>
                         @endforeach
                     </div>
+                    @unless($selected->isMbti())
                     <details class="hr-psych-disclosure hr-psych-upload" wire:ignore.self>
                         <summary><x-heroicon-o-photo /> Gambar per soal dan pilihan jawaban</summary>
                         <div class="hr-psych-upload-content">
@@ -115,6 +133,7 @@
                             @endunless
                         </div>
                     </details>
+                    @endunless
                     <div class="hr-psych-delete">
                         @if($selected->attempts_count)
                         <p class="muted">Paket tidak dapat dihapus: sudah ada {{ $selected->attempts_count }} penugasan.</p>
@@ -127,11 +146,13 @@
                         @endif
                     </div>
                     @unless($selected->published_at)
+                    @unless($selected->isMbti())
                     <details class="hr-psych-disclosure hr-psych-upload">
                         <summary><x-heroicon-o-photo /> Ganti gambar halaman 11 <span class="hr-psych-optional">Opsional</span></summary>
                         <div class="hr-psych-upload-content"><label class="field">Gambar pengganti<input type="file" accept="image/jpeg,image/png" wire:model="correctedPage"><small>JPG atau PNG, maksimal 10 MB.</small></label>@if($selected->corrected_page_path)<p class="muted">Halaman pengganti tersedia.</p>@endif<button type="button" class="button" wire:click="uploadCorrection" wire:loading.attr="disabled">Simpan gambar</button></div>
                     </details>
-                    <footer class="hr-psych-editor-footer"><label class="hr-psych-review"><input type="checkbox" wire:model="reviewed"><span>Saya telah memeriksa soal, kunci jawaban, dan durasi tes.</span></label>
+                    @endunless
+                    <footer class="hr-psych-editor-footer"><label class="hr-psych-review"><input type="checkbox" wire:model="reviewed"><span>{{ $selected->isMbti() ? 'Saya telah memeriksa pernyataan, pilihan, dan durasi MBTI.' : 'Saya telah memeriksa soal, kunci jawaban, dan durasi tes.' }}</span></label>
                         <div class="hr-psych-actions"><button type="button" class="button" wire:click="save" wire:loading.attr="disabled"><x-heroicon-o-bookmark /> Simpan draf</button><button type="button" class="button primary" wire:click="save(true)" wire:loading.attr="disabled"><x-heroicon-o-check-circle /> Terbitkan & kunci</button></div>
                     </footer>
                     @endunless
@@ -172,7 +193,7 @@
                 <section class="panel hr-psych-empty hr-psych-welcome"><span class="hr-psych-welcome-icon"><x-heroicon-o-adjustments-horizontal /></span>
                     <div class="eyebrow">Ruang pengelolaan tes</div>
                     <h2>Mulai dari sebuah paket</h2>
-                    <p>Pilih paket di daftar untuk mengatur durasi dan kunci jawaban. Setelah diterbitkan, paket siap ditugaskan kepada kandidat.</p>
+                    <p>Buat atau pilih paket IQ maupun MBTI untuk mengatur tes. Setelah diterbitkan, paket siap ditugaskan kepada kandidat.</p>
                     <div class="hr-psych-steps"><span><b>1</b> Atur tes</span><span><b>2</b> Terbitkan</span><span><b>3</b> Tugaskan</span></div>
                 </section>
                 @endif
@@ -186,11 +207,13 @@
                     <button class="button" wire:click="finalizeExpired" wire:loading.attr="disabled">Perbarui status</button>
                 </div>
             </div>
-            <p class="muted">Nilai hanya tersedia setelah tes selesai. Jawaban kosong atau kombinasi yang tidak lengkap bernilai 0.</p>
+            <p class="muted">Hasil tersedia setelah tes selesai. IQ memakai skor benar; MBTI memakai preferensi tanpa penilaian benar atau salah. Tipe MBTI hanya ditetapkan jika semua pernyataan terjawab; X menunjukkan pasangan seimbang.</p>
             @error('resultSearch')<p class="error" role="alert">{{ $message }}</p>@enderror
             @error('positionFilter')<p class="error" role="alert">{{ $message }}</p>@enderror
             @error('periodFilter')<p class="error" role="alert">{{ $message }}</p>@enderror
+            @error('typeFilter')<p class="error" role="alert">{{ $message }}</p>@enderror
             <div class="hr-psych-result-filters">
+                <label class="field">Jenis psikotes<select wire:model.live="typeFilter"><option value="">IQ & MBTI</option><option value="iq">Tes IQ</option><option value="mbti">MBTI</option></select></label>
                 <label class="field">Cari kandidat<input type="search" wire:model.live.debounce.400ms="resultSearch" placeholder="Nama atau email kandidat" maxlength="255"></label>
                 <label class="field">Posisi yang dilamar<select wire:model.live="positionFilter">
                         <option value="">Semua posisi</option>@foreach($positions as $position)<option value="{{ $position->id }}">{{ $position->name }}</option>@endforeach
@@ -232,6 +255,19 @@
                     <p class="hr-psych-activity-note"><x-heroicon-o-information-circle aria-hidden="true" /><span>Catatan browser merupakan indikator pemeriksaan, bukan bukti kecurangan. Satu tindakan dapat memicu beberapa jenis kejadian.</span></p>
                 </details>
                 @if($attempt->completed_at)
+                @if($attempt->test->isMbti())
+                <x-mbti-result :result="$attempt->result" :report-id="'mbti-attempt-'.$attempt->id" :expanded="false" :candidate-name="$attempt->application->user->name" />
+                <details class="hr-psych-disclosure"><summary>Rincian jawaban MBTI (khusus HR)</summary>
+                    @foreach($attempt->test->sections as $i => $section)
+                    <ol>@foreach($section['questions'] as $n => $question)
+                        @php
+                            $choice = $attempt->answers[$i][$n + 1][0] ?? null;
+                        @endphp
+                        <li>@if(isset($question['statement']))<p>{{ $question['statement'] }}</p>@endif<p>{{ $choice ? $choice.'. '.$question['options'][$choice] : 'Tidak dijawab' }}</p></li>
+                    @endforeach</ol>
+                    @endforeach
+                </details>
+                @else
                 <p><strong>Skor mentah: {{ $attempt->raw_score }} / {{ array_sum(array_column($attempt->test->sections, 'count')) }}</strong></p>
                 @if($attempt->iqScore() !== null)
                 <p><strong>IQ: {{ $attempt->iqScore() }}</strong> · Kategori: {{ $attempt->iqCategory() }}</p>
@@ -275,6 +311,7 @@
                     @endforeach
                 </details>
                 @endif
+                @endif
                 <div class="hr-psych-delete">
                     @if($deletingAttemptId === $attempt->id)
                     <div role="alert" tabindex="-1" x-data x-init="$el.focus()">
@@ -289,7 +326,7 @@
                     <button type="button" class="button danger" wire:click="confirmAttemptDeletion({{ $attempt->id }})" wire:loading.attr="disabled"><x-heroicon-o-trash /> Hapus peserta dari tes</button>
                     @endif
                 </div>
-            </article>@empty<div class="hr-psych-empty"><x-heroicon-o-users />@if($resultSearch !== '' || $positionFilter !== '' || $periodFilter !== '')<h3>Tidak ada penugasan yang cocok</h3>
+            </article>@empty<div class="hr-psych-empty"><x-heroicon-o-users />@if($resultSearch !== '' || $positionFilter !== '' || $periodFilter !== '' || $typeFilter !== '')<h3>Tidak ada penugasan yang cocok</h3>
                 <p>Coba ubah pencarian atau reset filter posisi dan periode.</p>@else<h3>Belum ada penugasan</h3>
                 <p>Terbitkan paket tes, lalu pilih kandidat dan jadwal pengerjaan.</p><button type="button" class="button" x-on:click="workspace = 'packages'">Kelola paket tes</button>@endif
             </div>@endforelse{{ $attempts->links() }}

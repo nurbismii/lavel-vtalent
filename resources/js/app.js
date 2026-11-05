@@ -307,6 +307,8 @@ function initializePsychometricForm() {
         psychForm.addEventListener('change', event => {
             if (!event.target.name.startsWith('answers[')) return;
             const fieldset = event.target.closest('fieldset');
+            const scaleSelection = fieldset.querySelector('[data-mbti-scale-selection]');
+            if (scaleSelection) scaleSelection.textContent = `Pilihan: ${event.target.dataset.label}`;
             if (fieldset.querySelectorAll('input:checked').length > Number(psychForm.dataset.choices)) {
                 event.target.checked = false;
                 status.textContent = `Pilih maksimal ${psychForm.dataset.choices} jawaban untuk satu soal.`;

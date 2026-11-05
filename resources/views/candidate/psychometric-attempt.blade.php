@@ -2,16 +2,23 @@
     <div class="heading"><div><div class="eyebrow">Psikotes kandidat</div><h1>{{ $attempt->test->title }}</h1></div><a href="{{ route('candidate.psychometrics') }}">Daftar tes</a></div>
     <x-errors />
     @if($attempt->completed_at)
+        @if($attempt->test->isMbti())
+        <section class="panel"><h2>Jawaban telah dikunci</h2><p>Tes telah selesai atau tenggat pengerjaan telah berakhir.</p><x-mbti-result :result="$attempt->result" :report-id="'mbti-attempt-'.$attempt->id" /></section>
+        @else
         <section class="panel"><h2>Jawaban telah dikunci</h2><p>Tes telah selesai atau tenggat pengerjaan telah berakhir. Jawaban yang tersimpan akan ditinjau oleh HR.</p><p class="muted">Hasil tidak ditampilkan kepada peserta.</p></section>
+        @endif
     @elseif(now()->lt($attempt->opens_at))
         <section class="panel"><h2>Tes belum dibuka</h2><p>Anda dapat mulai pada {{ $attempt->opens_at->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}.</p></section>
     @elseif(!$attempt->section_started_at)
         <section class="panel"><span class="badge">Bagian {{ $attempt->section_index + 1 }} / {{ count($attempt->test->sections) }}</span><h2>{{ $section['title'] }}</h2>
             <p>{{ $section['count'] }} soal · {{ $section['seconds'] }} detik · Pilih {{ $section['choices'] }} jawaban per soal.</p>
+            @if($attempt->test->isMbti())
+            <div class="notice">{{ ($section['answer_format'] ?? null) === 'likert7' ? 'Baca setiap pernyataan dan pilih satu dari tujuh tingkat persetujuan, dari sangat setuju sampai sangat tidak setuju. Pilih netral jika Anda tidak condong ke salah satu arah; netral tetap dihitung sebagai jawaban.' : 'Pilih satu dari dua pernyataan yang paling menggambarkan kebiasaan Anda, bukan jawaban yang dianggap ideal.' }} Tidak ada jawaban benar atau salah. Jawab seluruh pernyataan agar tipe dapat ditampilkan. Timer dimulai saat menekan mulai dan tetap berjalan jika halaman ditutup.</div>
+            <p class="muted">Kuesioner preferensi internal berbasis empat pasangan MBTI, bukan instrumen MBTI® resmi. Hasil MBTI dapat Anda lihat setelah tes selesai.</p>
+            @else
             <div class="notice">Pelajari contoh di bawah. Timer dimulai saat Anda menekan tombol mulai dan tetap berjalan jika halaman ditutup. Bagian yang sudah selesai tidak dapat dibuka kembali. Tenggat penugasan tetap berlaku.</div>
             <img class="psych-page" src="{{ route('candidate.psychometrics.image', [$attempt, $section['example']]) }}" alt="Contoh {{ $section['title'] }}">
-            <p class="notice">Kerjakan tes secara mandiri tanpa Google, AI, atau bantuan pihak lain. Perpindahan tab, halaman kehilangan fokus, dan keluar layar penuh dicatat untuk ditinjau HR. Catatan ini tidak otomatis menyatakan Anda curang. Gunakan hanya satu tab tes.</p>
-            <p class="notice">Pada browser HP, tes dapat dikerjakan tanpa layar penuh. Pada desktop, layar penuh wajib diaktifkan; jika keluar, masuk kembali untuk melanjutkan. Timer tetap berjalan.</p>
+            @endif
             <noscript><p class="notice">Aktifkan JavaScript untuk memulai tes.</p></noscript>
             <form data-psych-start data-start-label="Mulai bagian {{ $attempt->section_index + 1 }}" method="post" action="{{ route('candidate.psychometrics.update', $attempt) }}">@csrf<input type="hidden" name="action" value="start"><input type="hidden" name="section" value="{{ $attempt->section_index }}"><button class="button primary" disabled>Mulai bagian {{ $attempt->section_index + 1 }}</button></form>
         </section>
@@ -30,6 +37,36 @@
             <div class="psych-question-list">
                 <nav class="psych-question-navigation" aria-label="Nomor soal">@for($number = 1; $number <= $section['count']; $number++)<a href="#question-{{ $number }}" aria-label="Ke soal {{ $number }}">{{ $number }}</a>@endfor</nav>
                 @for($number = 1; $number <= $section['count']; $number++)
+                    @if($attempt->test->isMbti())
+                    <fieldset class="panel psych-question-card" id="question-{{ $number }}">
+                        <legend>Soal {{ $number }} <span>/ {{ $section['count'] }}</span></legend>
+                        @if(($section['answer_format'] ?? null) === 'likert7')
+                        @php
+                            $question = $section['questions'][$number - 1];
+                            $selectedChoice = $attempt->answers[$attempt->section_index][$number][0] ?? null;
+                        @endphp
+                        <p class="mbti-statement">{{ $question['statement'] }}</p>
+                        <p class="psych-question-hint">Pilih tingkat persetujuan yang paling menggambarkan kebiasaan Anda.</p>
+                        <div class="mbti-scale">
+                            @foreach($question['options'] as $option => $text)
+                            <label class="mbti-scale-option" title="{{ $text }}">
+                                <input class="sr-only" type="radio" name="answers[{{ $number }}][]" value="{{ $option }}" data-label="{{ $text }}" @checked($selectedChoice === $option)>
+                                <span class="mbti-scale-circle" aria-hidden="true">{{ $loop->iteration }}</span><span class="sr-only">{{ $text }}</span>
+                            </label>
+                            @endforeach
+                        </div>
+                        <div class="mbti-scale-endpoints" aria-hidden="true"><span>Sangat setuju</span><span>Netral</span><span>Sangat tidak setuju</span></div>
+                        <p class="mbti-scale-selection" data-mbti-scale-selection aria-live="polite">{{ $selectedChoice ? 'Pilihan: '.$question['options'][$selectedChoice] : 'Belum ada pilihan' }}</p>
+                        @else
+                        <p class="psych-question-hint">Pilih pernyataan yang paling menggambarkan diri Anda.</p>
+                        <div class="mbti-options">
+                            @foreach($section['questions'][$number - 1]['options'] as $option => $text)
+                            <label class="psych-picture-option"><span><input type="radio" name="answers[{{ $number }}][]" value="{{ $option }}" @checked(in_array($option, $attempt->answers[$attempt->section_index][$number] ?? [], true))> {{ $option }}</span><span>{{ $text }}</span></label>
+                            @endforeach
+                        </div>
+                        @endif
+                    </fieldset>
+                    @else
                     @php
                         $sourceNumber = $section['source_numbers'][$number - 1] ?? $number;
                         $question = config('psychometric_questions.sections')[$attempt->section_index][$sourceNumber] ?? null;
@@ -63,6 +100,7 @@
                             @endforeach
                         </div>
                     </fieldset>
+                    @endif
                 @endfor
             </div>
             <section class="panel psych-question-footer">
