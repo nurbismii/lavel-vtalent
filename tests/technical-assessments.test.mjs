@@ -17,7 +17,7 @@ function setup(respond = async () => ({ ok: true, json: async () => ({ section: 
     const revision = { value: '0' };
     const activityStatus = {};
     const answers = new Map([['answers[A01]', 'C'], ['answers[process]', 'Langkah saya.']]);
-    const elements = { '[data-assessment-status]': status, '[data-assessment-timer]': timer, '[data-assessment-activity-status]': activityStatus, '[name="_token"]': { value: 'csrf' }, '[name="revision"]': revision, '[data-assessment-progress]': {}, '[data-assessment-fullscreen]': { addEventListener() {} } };
+    const elements = { '[data-assessment-status]': status, '[data-assessment-timer]': timer, '[data-assessment-activity-status]': activityStatus, '[name="_token"]': { value: 'csrf' }, '[name="revision"]': revision, 'input:invalid': fields[0], '[data-assessment-progress]': {}, '[data-assessment-fullscreen]': { addEventListener() {} } };
     const buttons = [{ disabled: false }];
     const form = {
         dataset: { section: '1', revision: '0', remaining: '60', endpoint: '/save', activityUrl: '/activity', stateUrl: '/state', ...dataset },
@@ -38,6 +38,35 @@ function setup(respond = async () => ({ ok: true, json: async () => ({ section: 
     });
     return { alerts, location, form, listeners, intervals, timeouts, requests, fields, status, timer, revision, activityStatus, answers, setElapsed: value => elapsed = value, reloads: () => reloads };
 }
+
+test('IPIP validation scrolls the first missing question into view and keeps answers editable', async () => {
+    const state = setup(undefined, { ipip: 'true' });
+    let scroll;
+    state.fields[0].closest = () => ({ scrollIntoView: options => scroll = options });
+
+    state.listeners['form:invalid']({ target: state.fields[0] });
+    state.timeouts.at(-1)();
+
+    assert.match(state.status.textContent, /Jawab seluruh 25 pernyataan/);
+    assert.equal(scroll.block, 'center');
+    assert.equal(state.fields[0].disabled, false);
+    assert.equal(state.requests.some(item => item.url === '/save'), false);
+});
+
+test('IPIP confirmation locks all 25 answers without suggesting blanks can be submitted', async () => {
+    const state = setup(async () => ({ ok: true, json: async () => ({ section: 4, revision: 1, active: false, completed: true }) }), { ipip: 'true' });
+    state.answers.clear();
+    for (let number = 1; number <= 25; number++) state.answers.set(`answers[IPIP${String(number).padStart(2, '0')}]`, '3');
+
+    await state.listeners['form:submit']({ preventDefault() {}, submitter: { value: 'finish' } });
+
+    assert.match(state.alerts[0].text, /Seluruh 25 jawaban/);
+    assert.doesNotMatch(state.alerts[0].text, /Jawaban kosong/);
+    const request = JSON.parse(state.requests.find(item => item.url === '/save').body);
+    assert.equal(request.action, 'finish');
+    assert.equal(Object.keys(request.answers).length, 25);
+    assert.equal(state.reloads(), 1);
+});
 
 test('autosave sends choices and text and adopts the server revision', async () => {
     const state = setup();

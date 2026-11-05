@@ -273,7 +273,19 @@ class PsychometricService
             }
             abort_unless($attempt->section_started_at, 409, 'Bagian belum dimulai atau waktunya telah berakhir.');
             abort_unless((int) ($payload['revision'] ?? -1) === $attempt->revision, 409, 'Jawaban telah berubah di sesi lain. Muat ulang halaman.');
-            Validator::make($payload, ['answers' => ['present', 'array', 'max:'.$section['count']], 'answers.*' => ['array'], 'answers.*.*' => ['string', 'in:A,B,C,D,E,F,G']])->validate();
+            $requiresCompleteAnswers = $action === 'finish' && $attempt->test->isMbti();
+            Validator::make($payload, [
+                'answers' => [
+                    'present', 'array', ($requiresCompleteAnswers ? 'size:' : 'max:').$section['count'],
+                    ...($requiresCompleteAnswers ? ['required_array_keys:'.implode(',', range(1, $section['count']))] : []),
+                ],
+                'answers.*' => $requiresCompleteAnswers ? ['array', 'size:1'] : ['array'],
+                'answers.*.*' => ['string', 'in:A,B,C,D,E,F,G'],
+            ], [
+                'answers.size' => 'Jawab seluruh pernyataan MBTI sebelum menyelesaikan tes.',
+                'answers.required_array_keys' => 'Jawab seluruh pernyataan MBTI sebelum menyelesaikan tes.',
+                'answers.*.size' => 'Pilih satu jawaban untuk setiap pernyataan MBTI.',
+            ])->validate();
             $answers = [];
             foreach ($payload['answers'] as $number => $answer) {
                 abort_unless(ctype_digit((string) $number) && (int) $number >= 1 && (int) $number <= $section['count'], 422);

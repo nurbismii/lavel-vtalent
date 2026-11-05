@@ -145,6 +145,12 @@ function otp(secret) {
         await candidate.locator('[name="answers[IPIP01]"][value="5"]').check();
         await candidate.getByText('Jawaban tersimpan', { exact: true }).waitFor();
         await candidate.getByRole('button', { name: 'Selesaikan dan kunci tahap' }).click();
+        assert.equal(await candidate.locator('.swal2-popup').isVisible(), false);
+        for (let number = 2; number <= 25; number++) {
+            await candidate.locator(`[name="answers[IPIP${String(number).padStart(2, '0')}]"][value="3"]`).check();
+        }
+        await candidate.getByText('Jawaban tersimpan', { exact: true }).waitFor();
+        await candidate.getByRole('button', { name: 'Selesaikan dan kunci tahap' }).click();
         await candidate.getByRole('button', { name: 'Selesaikan tahap', exact: true }).click();
         await candidate.getByRole('heading', { name: 'Jawaban tes telah dikunci' }).waitFor();
         assert.equal(await candidate.getByText('Apakah akomodasi yang disepakati telah tersedia?', { exact: true }).count(), 0);

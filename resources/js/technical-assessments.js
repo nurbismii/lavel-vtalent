@@ -106,6 +106,11 @@ if (form) {
         clearTimeout(debounce);
         debounce = setTimeout(() => save(), 600);
     });
+    form.addEventListener('invalid', (event) => {
+        if (form.dataset.ipip !== 'true' || event.target !== form.querySelector('input:invalid')) return;
+        status.textContent = 'Jawab seluruh 25 pernyataan Kecenderungan Perilaku sebelum mengunci tahap.';
+        setTimeout(() => event.target.closest('fieldset')?.scrollIntoView({ block: 'center' }), 0);
+    }, true);
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (pending || stopped || finishing) return;
@@ -113,7 +118,8 @@ if (form) {
         if (action === 'finish' || action === 'next') {
             finishing = true;
             const simulation = form.dataset.simulation === 'true';
-            const result = await Swal.fire({ title: action === 'next' ? (simulation ? 'Kunci jawaban prioritas?' : 'Kunci jawaban B01–B04?') : 'Kunci tahap ini?', text: action === 'next' ? (simulation ? 'Jawaban awal tidak dapat diubah lagi. Fakta baru dibuka di bawah dengan sisa waktu dari total 8 menit.' : 'Keempat jawaban tidak dapat diubah lagi. Penjelasan proses ditampilkan dengan timer tahap yang sama.') : 'Jawaban kosong tetap dianggap kosong. Anda tidak dapat kembali ke tahap ini.', icon: 'question', showCancelButton: true, confirmButtonText: action === 'next' ? (simulation ? 'Lanjut' : 'Next') : 'Selesaikan tahap', cancelButtonText: 'Periksa lagi' });
+            const finishText = form.dataset.ipip === 'true' ? 'Seluruh 25 jawaban Kecenderungan Perilaku akan dikunci. Anda tidak dapat kembali ke tahap ini.' : 'Jawaban kosong tetap dianggap kosong. Anda tidak dapat kembali ke tahap ini.';
+            const result = await Swal.fire({ title: action === 'next' ? (simulation ? 'Kunci jawaban prioritas?' : 'Kunci jawaban B01–B04?') : 'Kunci tahap ini?', text: action === 'next' ? (simulation ? 'Jawaban awal tidak dapat diubah lagi. Fakta baru dibuka di bawah dengan sisa waktu dari total 8 menit.' : 'Keempat jawaban tidak dapat diubah lagi. Penjelasan proses ditampilkan dengan timer tahap yang sama.') : finishText, icon: 'question', showCancelButton: true, confirmButtonText: action === 'next' ? (simulation ? 'Lanjut' : 'Next') : 'Selesaikan tahap', cancelButtonText: 'Periksa lagi' });
             finishing = false;
             if (!result.isConfirmed) return;
             if (pending) { status.textContent = 'Tunggu penyimpanan selesai, lalu tekan tombol kembali.'; return; }

@@ -292,7 +292,7 @@ function initializePsychometricForm() {
                     window.location.reload();
                     return;
                 }
-                status.textContent = dirty ? 'Ada perubahan, menyimpan lagi…' : 'Semua jawaban tersimpan';
+                status.textContent = dirty ? 'Ada perubahan, menyimpan lagi…' : 'Jawaban terisi telah tersimpan';
             } catch {
                 dirty = true;
                 status.textContent = 'Gagal menyimpan. Periksa koneksi; jawaban akan dicoba lagi selama waktu tersedia.';
@@ -324,7 +324,14 @@ function initializePsychometricForm() {
             clearTimeout(debounce);
             save(event.submitter?.value === 'finish' ? 'finish' : 'save');
         });
-        psychForm.querySelector('[data-psych-review]').addEventListener('click', () => psychForm.querySelector('[data-psych-confirm]').hidden = false);
+        psychForm.querySelector('[data-psych-review]').addEventListener('click', () => {
+            if (!psychForm.reportValidity()) {
+                status.textContent = 'Jawab seluruh pernyataan MBTI sebelum menyelesaikan tes.';
+                psychForm.querySelector('input:invalid')?.closest('fieldset')?.scrollIntoView({ block: 'center' });
+                return;
+            }
+            psychForm.querySelector('[data-psych-confirm]').hidden = false;
+        });
         psychForm.querySelector('[data-psych-cancel]').addEventListener('click', () => psychForm.querySelector('[data-psych-confirm]').hidden = true);
         window.addEventListener('beforeunload', event => {
             if ((dirty || pending) && !stopped) { event.preventDefault(); event.returnValue = ''; }

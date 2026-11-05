@@ -324,6 +324,8 @@ class MbtiTest extends TestCase
         $document = HTMLDocument::createFromString($response->getContent(), LIBXML_NOERROR);
         $this->assertCount(40, $document->querySelectorAll('fieldset.psych-question-card'));
         $this->assertCount(80, $document->querySelectorAll('input[type="radio"]'));
+        $this->assertCount(80, $document->querySelectorAll('input[type="radio"][required]'));
+        $this->assertTrue($document->querySelector('button[value="save"]')->hasAttribute('formnovalidate'));
         $this->assertTrue($document->querySelector('input[name="answers[1][]"][value="A"]')->hasAttribute('checked'));
         $payload = ['action' => 'finish', 'section' => 0, 'revision' => 1, 'answers' => $this->answersFor($test->sections, 'ESTJ')[0]];
         $this->postJson($url, $payload)->assertJsonPath('completed', true)->assertJsonMissingPath('result')->assertJsonMissingPath('raw_score');
@@ -340,6 +342,50 @@ class MbtiTest extends TestCase
         $this->actingAs($other)->withSession(['portal_session_version' => $other->session_version]);
         $this->get($url)->assertNotFound();
         $this->postJson($url, $payload)->assertNotFound();
+    }
+
+    #[TestWith([false, 'empty'])]
+    #[TestWith([false, 'missing'])]
+    #[TestWith([false, 'blank'])]
+    #[TestWith([false, 'aliased'])]
+    #[TestWith([true, 'empty'])]
+    #[TestWith([true, 'missing'])]
+    #[TestWith([true, 'blank'])]
+    #[TestWith([true, 'aliased'])]
+    public function test_mbti_requires_every_answer_to_finish_but_keeps_partial_autosaves(bool $legacy, string $incomplete): void
+    {
+        $this->freezeTime();
+        $test = ($legacy ? PsychometricTest::factory()->legacyMbti() : PsychometricTest::factory()->mbti())->published()->create();
+        $attempt = PsychometricAttempt::factory()->create(['psychometric_test_id' => $test->id]);
+        $this->loginFor($attempt);
+        $url = route('candidate.psychometrics.update', $attempt);
+        $choice = $legacy ? 'A' : 'D';
+        $this->postJson($url, ['action' => 'start', 'section' => 0])->assertOk();
+        $this->postJson($url, ['action' => 'save', 'section' => 0, 'revision' => 0, 'answers' => [1 => [$choice]]])->assertJsonPath('revision', 1);
+        $original = $attempt->fresh()->getAttributes();
+        $completeAnswers = array_fill(1, $test->sections[0]['count'], [$choice]);
+        $answers = $completeAnswers;
+        if ($incomplete === 'empty') {
+            $answers = [];
+        } elseif ($incomplete === 'missing') {
+            unset($answers[40]);
+        } elseif ($incomplete === 'blank') {
+            $answers[40] = [];
+        } else {
+            unset($answers[40]);
+            $answers['01'] = [$choice];
+        }
+
+        $this->postJson($url, ['action' => 'finish', 'section' => 0, 'revision' => 1, 'answers' => $answers])
+            ->assertUnprocessable()->assertJsonValidationErrors($incomplete === 'blank' ? 'answers.40' : 'answers');
+        $this->assertSame($original, $attempt->fresh()->getAttributes());
+        $this->assertDatabaseMissing('audit_logs', ['target_id' => $attempt->id, 'action' => 'psychometric.completed']);
+
+        $this->postJson($url, ['action' => 'finish', 'section' => 0, 'revision' => 1, 'answers' => $completeAnswers])
+            ->assertJsonPath('completed', true);
+        $this->assertSame(40, $attempt->fresh()->result['answered']);
+        $this->assertNotNull($attempt->fresh()->result['type']);
+        $this->get(route('candidate.psychometrics.show', $attempt))->assertSee('Laporan terperinci');
     }
 
     #[TestWith(['A', 6, 0, 100])]
@@ -384,6 +430,8 @@ class MbtiTest extends TestCase
         $response = $this->get($url)->assertSee('Pilihan: Sangat tidak setuju')->assertSee('Pilihan: Netral');
         $document = HTMLDocument::createFromString($response->getContent(), LIBXML_NOERROR);
         $this->assertCount(280, $document->querySelectorAll('input[type="radio"]'));
+        $this->assertCount(280, $document->querySelectorAll('input[type="radio"][required]'));
+        $this->assertTrue($document->querySelector('button[value="save"]')->hasAttribute('formnovalidate'));
         $this->assertCount(40, $document->querySelectorAll('.mbti-statement'));
         $this->assertTrue($document->querySelector('input[name="answers[1][]"][value="G"]')->hasAttribute('checked'));
         $this->assertSame([[1 => ['G'], 2 => ['D']]], $attempt->fresh()->answers);

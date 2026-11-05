@@ -190,7 +190,14 @@ class TechnicalAssessmentService
             }
             abort_unless(in_array($action, ['save', 'next', 'finish'], true) && $attempt->section_started_at, 409, 'Tahap belum dimulai atau sudah ditutup.');
             $section = $attempt->package['sections'][$attempt->section_index];
-            Validator::make($payload, ['answers' => ['present', 'array', 'max:'.count($section['questions'])], 'answers.*' => ['nullable', 'string', 'max:5000']])->validate();
+            $requiresCompleteAnswers = $action === 'finish' && $attempt->isIpipSection();
+            Validator::make($payload, [
+                'answers' => ['present', 'array', ($requiresCompleteAnswers ? 'size:' : 'max:').count($section['questions'])],
+                'answers.*' => [$requiresCompleteAnswers ? 'required' : 'nullable', 'string', 'max:5000'],
+            ], [
+                'answers.size' => 'Jawab seluruh 25 pernyataan Kecenderungan Perilaku sebelum mengunci tahap.',
+                'answers.*.required' => 'Jawab seluruh 25 pernyataan Kecenderungan Perilaku sebelum mengunci tahap.',
+            ])->validate();
             $isReasoning = $attempt->isReasoningSection();
             $isSimulation = $attempt->isSimulationSection();
             abort_if($action === 'next' && ! $isReasoning && ! $isSimulation, 422, 'Lanjut hanya tersedia pada penalaran paralel atau simulasi dinamis.');

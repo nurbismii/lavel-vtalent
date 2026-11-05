@@ -7,6 +7,28 @@ const source = readFileSync(new URL('../resources/js/app.js', import.meta.url), 
     .replace("import Swal from 'sweetalert2';", '')
     .replace("import './technical-assessments';", '');
 
+test('review blocks incomplete MBTI answers and opens confirmation only when the form is valid', () => {
+    const start = source.indexOf("        psychForm.querySelector('[data-psych-review]')");
+    const end = source.indexOf("        psychForm.querySelector('[data-psych-cancel]')", start);
+    for (const valid of [false, true]) {
+        const confirmation = { hidden: true };
+        const status = {};
+        let review;
+        let scrolled = false;
+        const psychForm = {
+            reportValidity: () => valid,
+            querySelector: selector => selector === '[data-psych-review]' ? { addEventListener: (event, handler) => review = handler }
+                : selector === '[data-psych-confirm]' ? confirmation
+                : { closest: () => ({ scrollIntoView: () => scrolled = true }) },
+        };
+        vm.runInNewContext(source.slice(start, end), { psychForm, status });
+        review();
+        assert.equal(confirmation.hidden, !valid);
+        assert.equal(scrolled, !valid);
+        if (!valid) assert.equal(status.textContent, 'Jawab seluruh pernyataan MBTI sebelum menyelesaikan tes.');
+    }
+});
+
 test('activity tracks hidden pages, lost focus and fullscreen exits without saving answers', async () => {
     const listeners = {};
     const requests = [];

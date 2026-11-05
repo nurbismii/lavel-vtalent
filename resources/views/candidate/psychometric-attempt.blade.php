@@ -13,7 +13,7 @@
         <section class="panel"><span class="badge">Bagian {{ $attempt->section_index + 1 }} / {{ count($attempt->test->sections) }}</span><h2>{{ $section['title'] }}</h2>
             <p>{{ $section['count'] }} soal · {{ $section['seconds'] }} detik · Pilih {{ $section['choices'] }} jawaban per soal.</p>
             @if($attempt->test->isMbti())
-            <div class="notice">{{ ($section['answer_format'] ?? null) === 'likert7' ? 'Baca setiap pernyataan dan pilih satu dari tujuh tingkat persetujuan, dari sangat setuju sampai sangat tidak setuju. Pilih netral jika Anda tidak condong ke salah satu arah; netral tetap dihitung sebagai jawaban.' : 'Pilih satu dari dua pernyataan yang paling menggambarkan kebiasaan Anda, bukan jawaban yang dianggap ideal.' }} Tidak ada jawaban benar atau salah. Jawab seluruh pernyataan agar tipe dapat ditampilkan. Timer dimulai saat menekan mulai dan tetap berjalan jika halaman ditutup.</div>
+            <div class="notice">{{ ($section['answer_format'] ?? null) === 'likert7' ? 'Baca setiap pernyataan dan pilih satu dari tujuh tingkat persetujuan, dari sangat setuju sampai sangat tidak setuju. Pilih netral jika Anda tidak condong ke salah satu arah; netral tetap dihitung sebagai jawaban.' : 'Pilih satu dari dua pernyataan yang paling menggambarkan kebiasaan Anda, bukan jawaban yang dianggap ideal.' }} Tidak ada jawaban benar atau salah. Seluruh pernyataan wajib dijawab sebelum tes dapat diselesaikan dan laporan MBTI ditampilkan. Timer dimulai saat menekan mulai dan tetap berjalan jika halaman ditutup.</div>
             <p class="muted">Kuesioner preferensi internal berbasis empat pasangan MBTI, bukan instrumen MBTI® resmi. Hasil MBTI dapat Anda lihat setelah tes selesai.</p>
             @else
             <div class="notice">Pelajari contoh di bawah. Timer dimulai saat Anda menekan tombol mulai dan tetap berjalan jika halaman ditutup. Bagian yang sudah selesai tidak dapat dibuka kembali. Tenggat penugasan tetap berlaku.</div>
@@ -50,7 +50,7 @@
                         <div class="mbti-scale">
                             @foreach($question['options'] as $option => $text)
                             <label class="mbti-scale-option" title="{{ $text }}">
-                                <input class="sr-only" type="radio" name="answers[{{ $number }}][]" value="{{ $option }}" data-label="{{ $text }}" @checked($selectedChoice === $option)>
+                                <input class="sr-only" type="radio" name="answers[{{ $number }}][]" value="{{ $option }}" data-label="{{ $text }}" required @checked($selectedChoice === $option)>
                                 <span class="mbti-scale-circle" aria-hidden="true">{{ $loop->iteration }}</span><span class="sr-only">{{ $text }}</span>
                             </label>
                             @endforeach
@@ -61,7 +61,7 @@
                         <p class="psych-question-hint">Pilih pernyataan yang paling menggambarkan diri Anda.</p>
                         <div class="mbti-options">
                             @foreach($section['questions'][$number - 1]['options'] as $option => $text)
-                            <label class="psych-picture-option"><span><input type="radio" name="answers[{{ $number }}][]" value="{{ $option }}" @checked(in_array($option, $attempt->answers[$attempt->section_index][$number] ?? [], true))> {{ $option }}</span><span>{{ $text }}</span></label>
+                            <label class="psych-picture-option"><span><input type="radio" name="answers[{{ $number }}][]" value="{{ $option }}" required @checked(in_array($option, $attempt->answers[$attempt->section_index][$number] ?? [], true))> {{ $option }}</span><span>{{ $text }}</span></label>
                             @endforeach
                         </div>
                         @endif
@@ -104,7 +104,8 @@
                 @endfor
             </div>
             <section class="panel psych-question-footer">
-                <div class="form-actions"><button class="button" type="submit" name="action" value="save">Simpan sekarang</button><button class="button primary" type="button" data-psych-review>Selesaikan bagian</button></div>
+                @if($attempt->test->isMbti())<p class="notice">Seluruh pernyataan wajib dijawab. Jika masih ada yang kosong, tombol Selesaikan bagian akan mengarahkan Anda ke soal yang perlu diisi.</p>@endif
+                <div class="form-actions"><button class="button" type="submit" name="action" value="save" formnovalidate>Simpan sekarang</button><button class="button primary" type="button" data-psych-review>Selesaikan bagian</button></div>
                 <div data-psych-confirm hidden class="notice"><p>Bagian ini akan dikunci. Pastikan jawaban sudah diperiksa.</p><button class="button primary" type="submit" name="action" value="finish">Ya, kunci dan lanjutkan</button><button class="button" type="button" data-psych-cancel>Kembali periksa</button></div>
             </section>
         </form>

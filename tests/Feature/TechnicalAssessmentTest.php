@@ -10,6 +10,7 @@ use App\Models\RecruitmentApplication;
 use App\Models\TechnicalAssessmentAttempt;
 use App\Models\User;
 use App\Services\TechnicalAssessmentService;
+use Dom\HTMLDocument;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -757,7 +758,8 @@ class TechnicalAssessmentTest extends TestCase
 
         $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'finish', $sjt))->assertJsonPath('completed', false)->assertJsonPath('section', 3);
         $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'start'))->assertJsonPath('active', true);
-        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'finish', ['IPIP01' => '5', 'IPIP06' => '5', 'IPIP11' => '1', 'IPIP16' => '5', 'IPIP21' => '1']))->assertJsonPath('completed', true)->assertJsonMissingPath('scores');
+        $ipip = array_replace(array_fill_keys(array_column($attempt->package['sections'][3]['questions'], 'id'), '3'), ['IPIP01' => '5', 'IPIP06' => '5', 'IPIP11' => '1', 'IPIP16' => '5', 'IPIP21' => '1']);
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'finish', $ipip))->assertJsonPath('completed', true)->assertJsonMissingPath('scores');
 
         $scores = $attempt->fresh()->scores;
         $this->assertSame(12, $scores['Penalaran']);
@@ -769,7 +771,7 @@ class TechnicalAssessmentTest extends TestCase
         $this->assertSame(87, $scores['IPP pilot']);
         $this->assertSame([], $scores['Perlu verifikasi']);
         $this->assertSame(5, $scores['E']);
-        $this->assertNull($scores['ES']);
+        $this->assertSame(3, $scores['ES']);
         $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('Jawaban tes telah dikunci')->assertDontSee('IPP pilot');
     }
 
@@ -1021,6 +1023,63 @@ class TechnicalAssessmentTest extends TestCase
         $this->assertSame(3, $attempt->fresh()->review['ratings']['Adaptasi']);
     }
 
+    #[TestWith(['A', 'IPIP01', 'missing'])]
+    #[TestWith(['A', 'IPIP13', 'blank'])]
+    #[TestWith(['A', 'IPIP25', 'null'])]
+    #[TestWith(['A', 'IPIP25', 'missing'])]
+    #[TestWith(['A2', 'IPIP25', 'missing'])]
+    public function test_ipip_requires_all_25_answers_before_locking_and_preserves_partial_saves(string $form, string $missing, string $mode): void
+    {
+        $this->freezeTime();
+        $index = $form === 'A' ? 3 : 0;
+        $attempt = $this->attempt($form, ['consented_at' => now(), 'section_index' => $index, 'section_started_at' => now(), 'section_expires_at' => now()->addMinutes(7)]);
+        $this->loginFor($attempt);
+        $url = route('candidate.technical-assessments.update', $attempt);
+        $this->postJson($url, $this->payload($attempt, 'save', ['IPIP01' => '3']))->assertOk();
+        $original = $attempt->fresh()->getAttributes();
+        $completeAnswers = array_fill_keys(array_column($attempt->package['sections'][$index]['questions'], 'id'), '3');
+        $answers = $completeAnswers;
+        if ($mode === 'missing') {
+            unset($answers[$missing]);
+        } else {
+            $answers[$missing] = $mode === 'blank' ? '' : null;
+        }
+
+        $this->postJson($url, $this->payload($attempt, 'finish', $answers))->assertUnprocessable()
+            ->assertJsonValidationErrors($mode === 'missing' ? 'answers' : 'answers.'.$missing);
+        $this->assertSame($original, $attempt->fresh()->getAttributes());
+        $this->assertDatabaseMissing('audit_logs', ['target_id' => $attempt->id, 'action' => 'technical_assessment.section_closed']);
+        $response = $this->get(route('candidate.technical-assessments.show', $attempt))->assertSee('Seluruh 25 pernyataan Kecenderungan Perilaku wajib dijawab');
+        $document = HTMLDocument::createFromString($response->getContent(), LIBXML_NOERROR);
+        $this->assertCount(125, $document->querySelectorAll('input[type="radio"][required]'));
+        $this->assertTrue($document->querySelector('button[value="save"]')->hasAttribute('formnovalidate'));
+
+        $this->postJson($url, $this->payload($attempt, 'finish', $completeAnswers))->assertJsonPath('completed', true);
+        $this->assertSame($completeAnswers, $attempt->fresh()->answers[$index]);
+        foreach (['E', 'A', 'C', 'ES', 'I'] as $factor) {
+            $this->assertSame(3, $attempt->fresh()->scores[$factor]);
+        }
+    }
+
+    #[TestWith(['timeout'])]
+    #[TestWith(['deadline'])]
+    public function test_ipip_time_limit_still_closes_with_only_previously_saved_answers(string $reason): void
+    {
+        $this->freezeTime();
+        $attempt = $this->attempt('A', ['consented_at' => now()->subMinutes(7), 'section_index' => 3,
+            'section_started_at' => now()->subMinutes(7), 'section_expires_at' => now(),
+            'deadline' => $reason === 'deadline' ? now() : now()->addDay(), 'answers' => [3 => ['IPIP01' => '4']]]);
+        $this->loginFor($attempt);
+        $answers = array_fill_keys(array_column($attempt->package['sections'][3]['questions'], 'id'), '3');
+
+        $this->postJson(route('candidate.technical-assessments.update', $attempt), $this->payload($attempt, 'finish', $answers))->assertJsonPath('completed', true);
+
+        $this->assertSame([3 => ['IPIP01' => '4']], $attempt->fresh()->answers);
+        $this->assertNull($attempt->fresh()->scores['E']);
+        $this->assertDatabaseHas('audit_logs', ['target_id' => $attempt->id, 'action' => 'technical_assessment.completed', 'reason' => $reason]);
+        $this->assertDatabaseMissing('audit_logs', ['target_id' => $attempt->id, 'action' => 'technical_assessment.section_closed', 'reason' => 'submitted']);
+    }
+
     public function test_ipip_uses_reverse_scoring_and_does_not_compute_incomplete_factors_or_ipp(): void
     {
         $attempt = $this->attempt('A2', ['deadline' => now(), 'answers' => [0 => ['IPIP01' => '5', 'IPIP06' => '5', 'IPIP11' => '1', 'IPIP16' => '5', 'IPIP21' => '1', 'IPIP04' => '1']]]);
@@ -1260,7 +1319,8 @@ class TechnicalAssessmentTest extends TestCase
         $formA2 = $this->attempt('A2', ['recruitment_application_id' => $formA->recruitment_application_id]);
         $this->loginFor($formA);
 
-        $this->postJson(route('candidate.technical-assessments.update', $formA), $this->payload($formA, 'finish'))->assertJsonPath('completed', true);
+        $answers = array_fill_keys(array_column($formA->package['sections'][3]['questions'], 'id'), '3');
+        $this->postJson(route('candidate.technical-assessments.update', $formA), $this->payload($formA, 'finish', $answers))->assertJsonPath('completed', true);
         $this->get(route('candidate.technical-assessments'))->assertDontSee('Selesaikan Form A terlebih dahulu')->assertSee(route('candidate.technical-assessments.show', $formB))->assertSee(route('candidate.technical-assessments.show', $formA2));
         foreach ([$formA2, $formB] as $attempt) {
             $url = route('candidate.technical-assessments.update', $attempt);

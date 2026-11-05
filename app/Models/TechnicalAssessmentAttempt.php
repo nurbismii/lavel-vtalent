@@ -39,6 +39,11 @@ class TechnicalAssessmentAttempt extends Model
         return $this->section_started_at ? 'Berlangsung' : 'Menunggu mulai / tahap berikutnya';
     }
 
+    public function isIpipSection(): bool
+    {
+        return in_array('IPIP01', array_column($this->package['sections'][$this->section_index]['questions'] ?? [], 'id'), true);
+    }
+
     public function isReasoningSection(): bool
     {
         return $this->form === 'B' && in_array('process', array_column($this->package['sections'][$this->section_index]['questions'] ?? [], 'id'), true);
