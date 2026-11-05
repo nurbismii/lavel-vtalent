@@ -256,6 +256,9 @@
                 </details>
                 @if($attempt->completed_at)
                 @if($attempt->test->isMbti())
+                @if(!$attempt->application->purged_at && ($attempt->result['type'] ?? null))
+                <div class="form-actions"><a class="button" href="{{ route('psychometrics.mbti-report', $attempt) }}" target="_blank" rel="noopener"><x-heroicon-o-document-arrow-down /> Laporan terperinci (PDF)<span class="sr-only"> - buka di tab baru</span></a></div>
+                @endif
                 <x-mbti-result :result="$attempt->result" :report-id="'mbti-attempt-'.$attempt->id" :expanded="false" :candidate-name="$attempt->application->user->name" />
                 <details class="hr-psych-disclosure"><summary>Rincian jawaban MBTI (khusus HR)</summary>
                     @foreach($attempt->test->sections as $i => $section)

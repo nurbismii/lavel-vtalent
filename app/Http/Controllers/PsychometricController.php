@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Role;
+use App\Models\AppSetting;
 use App\Models\AuditLog;
 use App\Models\PsychometricAttempt;
 use App\Models\PsychometricTest;
@@ -41,6 +42,20 @@ class PsychometricController extends Controller
         }
 
         return redirect()->route('candidate.psychometrics.show', $record);
+    }
+
+    public function mbtiReport(Request $request, int $attempt): Response
+    {
+        abort_unless(PsychometricService::available(), 404);
+        $this->service->admin($request->user());
+        abort_unless($request->user()->getAppAuthenticationSecret(), 403);
+        $record = PsychometricAttempt::with(['test', 'application.user', 'application.position', 'application.period'])->findOrFail($attempt);
+        abort_if($record->application->purged_at, 404);
+        abort_unless($record->completed_at && $record->test->isMbti() && ($record->result['type'] ?? null), 404, 'Laporan terperinci tersedia setelah seluruh jawaban MBTI lengkap.');
+        AuditLog::record('psychometric.report_opened', $record, $request->user(), metadata: ['type' => $record->result['type']]);
+
+        return response()->view('filament.pages.mbti-report', ['attempt' => $record, 'timezone' => AppSetting::valueFor('timezone')])
+            ->header('Cache-Control', 'private, no-store')->header('X-Robots-Tag', 'noindex, nofollow');
     }
 
     public function image(Request $request, int $attempt, int $page): Response

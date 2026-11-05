@@ -56,6 +56,7 @@ Route::middleware(['auth', EnsurePortalAccess::class])->group(function () {
     Route::post('/portal/technical-assessments/{attempt}/activity', [TechnicalAssessmentController::class, 'activity'])->whereNumber('attempt')->middleware('throttle:60,1')->name('candidate.technical-assessments.activity');
     Route::post('/portal/psychometrics/{attempt}/activity', [PsychometricController::class, 'activity'])->whereNumber('attempt')->middleware('throttle:60,1')->name('candidate.psychometrics.activity');
     Route::get('/portal/psychometrics/{attempt}', [PsychometricController::class, 'show'])->whereNumber('attempt')->name('candidate.psychometrics.show');
+    Route::get('/portal/psychometrics/{attempt}/mbti-report', [PsychometricController::class, 'mbtiReport'])->whereNumber('attempt')->name('psychometrics.mbti-report');
     Route::post('/portal/psychometrics/{attempt}', [PsychometricController::class, 'update'])->whereNumber('attempt')->middleware('throttle:120,1')->name('candidate.psychometrics.update');
     Route::get('/portal/psychometrics/{attempt}/images/{page}', [PsychometricController::class, 'image'])->whereNumber(['attempt', 'page'])->name('candidate.psychometrics.image');
     Route::get('/portal/psychometric-preview/{test}/{page}', [PsychometricController::class, 'preview'])->whereNumber('page')->name('psychometrics.preview');
