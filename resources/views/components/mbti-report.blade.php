@@ -1,12 +1,8 @@
-@props(['report', 'type', 'reportId', 'expanded' => true, 'candidateName' => null])
+@props(['report', 'type', 'reportId', 'expanded' => true])
 
 @php
     $sectionTitles = config('mbti_reports.sections');
-    if ($candidateName !== null) {
-        $sectionTitles['scores'] = 'Cara membaca hasil ('.$candidateName.')';
-    } else {
-        unset($sectionTitles['scores']);
-    }
+    unset($sectionTitles['scores']);
 @endphp
 
 <details class="mbti-report" @if($expanded) open @endif>

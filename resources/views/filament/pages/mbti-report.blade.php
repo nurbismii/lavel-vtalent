@@ -68,7 +68,7 @@
                 <div><dt>ID lamaran</dt><dd>{{ $attempt->recruitment_application_id }}</dd></div>
             </dl>
         </header>
-        <x-mbti-result :result="$attempt->result" :report-id="'mbti-report-'.$attempt->id" :candidate-name="$attempt->application->user->name" />
+        <x-mbti-result :result="$attempt->result" :report-id="'mbti-report-'.$attempt->id" />
     </main>
 </body>
 </html>

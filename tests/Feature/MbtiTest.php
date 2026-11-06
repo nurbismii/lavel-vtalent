@@ -165,7 +165,7 @@ class MbtiTest extends TestCase
         }
 
         $page = Livewire::actingAs($admin)->test(Psychometrics::class)
-            ->assertSee('Laporan terperinci '.$type)->assertDontSee('Cara membaca hasil Anda');
+            ->assertSee('Laporan terperinci '.$type)->assertDontSee('Cara membaca hasil')->assertSee('12 bagian');
 
         $document = HTMLDocument::createFromString($page->html(), LIBXML_NOERROR);
         $reports = $document->querySelectorAll('.mbti-report');
@@ -173,19 +173,18 @@ class MbtiTest extends TestCase
         $ids = [];
         foreach ($reports as $report) {
             $this->assertFalse($report->hasAttribute('open'));
-            $this->assertCount(13, $report->querySelectorAll('.mbti-report-section'));
+            $this->assertCount(12, $report->querySelectorAll('.mbti-report-section'));
             foreach ($report->querySelectorAll('.mbti-report-toc a') as $link) {
                 $heading = $report->querySelector($link->getAttribute('href'));
                 $this->assertNotNull($heading);
                 $ids[] = $heading->getAttribute('id');
             }
         }
-        $this->assertCount(26, array_unique($ids));
+        $this->assertCount(24, array_unique($ids));
         foreach ($attempts as $attempt) {
             $target = '#mbti-attempt-'.$attempt->id.'-scores';
-            $title = 'Cara membaca hasil ('.$attempt->application->user->name.')';
-            $this->assertSame($title, $document->querySelector($target)->textContent);
-            $this->assertSame($title, $document->querySelector('a[href="'.$target.'"]')->textContent);
+            $this->assertNull($document->querySelector($target));
+            $this->assertNull($document->querySelector('a[href="'.$target.'"]'));
         }
         $this->assertSame('Cara membaca hasil Anda', config('mbti_reports.sections.scores'));
     }
@@ -219,13 +218,14 @@ class MbtiTest extends TestCase
         $attempt = PsychometricAttempt::factory()->create(['psychometric_test_id' => $test->id, 'completed_at' => now(), 'result' => $result]);
         $admin = User::factory()->create(['role' => Role::Admin]);
 
-        $page = Livewire::actingAs($admin)->test(Psychometrics::class)->assertSee('Laporan terperinci '.$expectedType);
+        $page = Livewire::actingAs($admin)->test(Psychometrics::class)
+            ->assertSee('Laporan terperinci '.$expectedType)->assertDontSee('Cara membaca hasil')->assertDontSee($reading);
 
         $document = HTMLDocument::createFromString($page->html(), LIBXML_NOERROR);
-        $scores = $document->querySelector('#mbti-attempt-'.$attempt->id.'-scores')->parentNode->querySelectorAll('li');
-        $this->assertStringStartsWith($reading, trim($scores->item(2)->textContent));
-        $this->assertStringContainsString($explanation, $scores->item(2)->textContent);
-        $this->assertStringContainsString('bukan persentil', $scores->item(0)->textContent);
+        $scores = app(MbtiService::class)->report($result)['scores'];
+        $this->assertStringStartsWith($reading, $scores[2]);
+        $this->assertStringContainsString($explanation, $scores[2]);
+        $this->assertStringContainsString('bukan persentil', $scores[0]);
         $growth = $document->querySelector('#mbti-attempt-'.$attempt->id.'-growth')->parentNode->querySelectorAll('li');
         $this->assertCount($growthItems, $growth);
         $this->assertSame($expectedType, $attempt->fresh()->result['type']);
@@ -453,8 +453,8 @@ class MbtiTest extends TestCase
             ->assertDontSee('Cara membaca hasil Anda')->assertDontSee('30 dari 60 poin')
             ->assertDontSee('Pilihan netral: 10 dari 10 jawaban');
         $admin = User::factory()->create(['role' => Role::Admin]);
-        Livewire::actingAs($admin)->test(Psychometrics::class)->assertSee('D. Netral')->assertSee('30 dari 60 poin')
-            ->assertSee('Pilihan netral: 10 dari 10 jawaban')->assertSee('13 bagian');
+        Livewire::actingAs($admin)->test(Psychometrics::class)->assertSee('D. Netral')->assertDontSee('30 dari 60 poin')
+            ->assertDontSee('Pilihan netral: 10 dari 10 jawaban')->assertSee('12 bagian');
     }
 
     #[TestWith(['C', 'EXXX', 31, 29, 'I'])]
@@ -468,11 +468,15 @@ class MbtiTest extends TestCase
         $admin = User::factory()->create(['role' => Role::Admin]);
 
         Livewire::actingAs($admin)->test(Psychometrics::class)->assertSee('Laporan terperinci '.$type)
-            ->assertSee('E '.$ePoints.' dari 60 poin')->assertSee('I '.$iPoints.' dari 60 poin')
-            ->assertSee('Pilihan netral: 9 dari 10 jawaban')
-            ->assertSee('Perubahan satu tingkat jawaban ke arah '.$opposite)
+            ->assertDontSee('Cara membaca hasil')->assertDontSee('E '.$ePoints.' dari 60 poin')
+            ->assertDontSee('I '.$iPoints.' dari 60 poin')->assertDontSee('Pilihan netral: 9 dari 10 jawaban')
             ->assertDontSee('Jika satu jawaban');
 
+        $scores = app(MbtiService::class)->report($result)['scores'][2];
+        $this->assertStringContainsString('E '.$ePoints.' dari 60 poin', $scores);
+        $this->assertStringContainsString('I '.$iPoints.' dari 60 poin', $scores);
+        $this->assertStringContainsString('Pilihan netral: 9 dari 10 jawaban', $scores);
+        $this->assertStringContainsString('Perubahan satu tingkat jawaban ke arah '.$opposite, $scores);
         $this->assertSame($result, $attempt->fresh()->result);
     }
 

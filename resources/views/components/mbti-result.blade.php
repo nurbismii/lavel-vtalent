@@ -1,4 +1,4 @@
-@props(['result', 'reportId', 'expanded' => true, 'candidateName' => null])
+@props(['result', 'reportId', 'expanded' => true])
 
 @php
     $report = app(App\Services\MbtiService::class)->report($result);
@@ -40,6 +40,6 @@
     </div>
     <p class="muted">Kuesioner preferensi internal berbasis empat pasangan MBTI, bukan instrumen MBTI® resmi. Hasil menggambarkan jawaban saat ini, bukan ukuran kemampuan dan tidak digunakan untuk menentukan kelulusan atau kecocokan jabatan.</p>
     @if($report)
-        <x-mbti-report :report="$report" :type="$result['type']" :report-id="$reportId" :expanded="$expanded" :candidate-name="$candidateName" />
+        <x-mbti-report :report="$report" :type="$result['type']" :report-id="$reportId" :expanded="$expanded" />
     @endif
 </div>

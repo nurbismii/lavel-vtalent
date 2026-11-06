@@ -51,12 +51,16 @@ class MbtiReportTest extends TestCase
             ->assertSee($attempt->application->period->name)->assertSee('<script>nama()</script>')
             ->assertDontSee('<script>nama()</script>', false)->assertDontSee('<script>paket()</script>', false)
             ->assertSee('Cetak / Simpan PDF')->assertSee('window.print()', false)
+            ->assertDontSee('Cara membaca hasil')->assertSee('12 bagian')
             ->assertHeader('X-Robots-Tag', 'noindex, nofollow');
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
         $document = HTMLDocument::createFromString($response->getContent(), LIBXML_NOERROR);
-        $this->assertCount(13, $document->querySelectorAll('.mbti-report-section'));
+        $this->assertCount(12, $document->querySelectorAll('.mbti-report-section'));
         $this->assertTrue($document->querySelector('.mbti-report')->hasAttribute('open'));
-        foreach (array_keys(config('mbti_reports.sections')) as $key) {
+        $scoresTarget = '#mbti-report-'.$attempt->id.'-scores';
+        $this->assertNull($document->querySelector($scoresTarget));
+        $this->assertNull($document->querySelector('a[href="'.$scoresTarget.'"]'));
+        foreach (array_diff(array_keys(config('mbti_reports.sections')), ['scores']) as $key) {
             $this->assertNotNull($document->querySelector('#mbti-report-'.$attempt->id.'-'.$key));
         }
         $this->assertSame($original, $attempt->fresh()->getAttributes());
