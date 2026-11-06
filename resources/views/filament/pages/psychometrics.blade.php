@@ -84,6 +84,7 @@
                                 @if($selected->isMbti())
                                 @if(($section['answer_format'] ?? null) === 'likert7')
                                 <p class="notice">Tujuh tingkat persetujuan: {{ implode(' · ', $section['questions'][0]['options']) }}. Netral tetap dihitung sebagai jawaban. Pernyataan bergantian mendukung kedua sisi setiap pasangan.</p>
+                                @if(isset($section['questionnaire_version']))<p class="muted">Adaptasi r-21: 70 pernyataan, terdiri dari E/I 10, S/N 20, T/F 20, dan J/P 20. Skala persetujuan merupakan adaptasi aplikasi dari pilihan A/B sumber.</p>@endif
                                 <ol>@foreach($section['questions'] as $question)<li><p>{{ $question['statement'] }}</p></li>@endforeach</ol>
                                 @else
                                 <ol>@foreach($section['questions'] as $question)<li><p><strong>A.</strong> {{ $question['options']['A'] }}<br><strong>B.</strong> {{ $question['options']['B'] }}</p></li>@endforeach</ol>

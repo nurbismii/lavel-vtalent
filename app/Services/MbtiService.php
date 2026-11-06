@@ -5,7 +5,7 @@ namespace App\Services;
 class MbtiService
 {
     /**
-     * @param  array{type: ?string, dimensions: array<string, array<string, mixed>>, answer_format?: string}  $result
+     * @param  array{type: ?string, dimensions: array<string, array<string, mixed>>, answer_format?: string, questionnaire_version?: string}  $result
      * @return array<string, mixed>|null
      */
     public function report(array $result): ?array
@@ -18,6 +18,14 @@ class MbtiService
         $report = $balanced ? config('mbti_reports.balanced') : (config('mbti_reports.types')[$type] ?? null);
         if (! $report) {
             return null;
+        }
+        $report['functions'] = ['Urutan berikut merupakan gambaran teoritis tipe pada referensi r-21, bukan fungsi kognitif yang diukur secara terpisah oleh kuesioner ini.'];
+        if ($balanced) {
+            $report['functions'][] = 'Urutan fungsi tidak ditetapkan karena satu atau beberapa pasangan seimbang. Gunakan skor setiap pasangan dan contoh pengalaman untuk refleksi.';
+        } else {
+            foreach (config('mbti_reports.function_orders')[$type] as $index => $function) {
+                $report['functions'][] = ['Dominan', 'Pendukung', 'Tersier', 'Inferior'][$index].' · '.config('mbti_reports.function_labels')[$function].' ('.$function.').';
+            }
         }
         $weighted = ($result['answer_format'] ?? null) === 'likert7';
         $report['scores'] = [
@@ -72,15 +80,23 @@ class MbtiService
     /** @return array<int, array<string, mixed>> */
     public function sections(): array
     {
-        $questions = array_map(fn (array $question): array => [
-            'dimension' => $question['dimension'],
-            'preference' => $question['preferences']['A'],
-            'statement' => $question['options']['A'],
-            'options' => config('mbti.scale'),
-        ], config('mbti.questions'));
+        $sourceQuestions = config('mbti.questions');
+        $questions = array_map(function (array $question, int $index): array {
+            $choice = $index % 2 === 0 ? 'A' : 'B';
+
+            return [
+                'dimension' => $question['dimension'],
+                'preference' => $question['preferences'][$choice],
+                'statement' => $question['options'][$choice],
+                'source_choice' => $choice,
+                'options' => config('mbti.scale'),
+            ];
+        }, $sourceQuestions, array_keys($sourceQuestions));
 
         return [[
             'title' => 'Preferensi kepribadian MBTI',
+            'questionnaire_version' => config('mbti.version'),
+            'source' => config('mbti.source'),
             'count' => count($questions),
             'options' => 7,
             'answer_format' => 'likert7',
@@ -94,7 +110,7 @@ class MbtiService
     /**
      * @param  array<int, array<string, mixed>>  $sections
      * @param  array<int, array<int, array<int, string>>>  $answers
-     * @return array{type: ?string, answered: int, total: int, dimensions: array<string, array<string, mixed>>, answer_format?: string}
+     * @return array{type: ?string, answered: int, total: int, dimensions: array<string, array<string, mixed>>, answer_format?: string, questionnaire_version?: string}
      */
     public function score(array $sections, array $answers): array
     {
@@ -143,6 +159,9 @@ class MbtiService
         $result = ['type' => $answered === $total ? $type : null, 'answered' => $answered, 'total' => $total, 'dimensions' => $dimensions];
         if ($weighted) {
             $result['answer_format'] = 'likert7';
+        }
+        if (isset($sections[0]['questionnaire_version'])) {
+            $result['questionnaire_version'] = $sections[0]['questionnaire_version'];
         }
 
         return $result;

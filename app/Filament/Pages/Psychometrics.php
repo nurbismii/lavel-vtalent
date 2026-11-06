@@ -125,7 +125,7 @@ class Psychometrics extends Page
         $this->actor();
         abort_unless(in_array($type, ['iq', 'mbti'], true), 422);
         $test = PsychometricTest::create([
-            'title' => 'TES '.strtoupper($type).($type === 'mbti' ? ' (7 pilihan)' : '').' · '.now()->format('d/m/Y H:i'),
+            'title' => 'TES '.strtoupper($type).($type === 'mbti' ? ' (70 soal, 7 pilihan)' : '').' · '.now()->format('d/m/Y H:i'),
             'type' => $type,
             'sections' => $type === 'mbti' ? app(MbtiService::class)->sections() : array_map(fn (array $s): array => [...$s, 'seconds' => null], config('psychometrics.sections')),
             'answer_key' => [],

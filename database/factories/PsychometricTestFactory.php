@@ -24,7 +24,7 @@ class PsychometricTestFactory extends Factory
     public function mbti(): static
     {
         return $this->state(fn (): array => [
-            'title' => 'TES MBTI (7 pilihan)',
+            'title' => 'TES MBTI (70 soal, 7 pilihan)',
             'type' => 'mbti',
             'sections' => app(MbtiService::class)->sections(),
             'answer_key' => [],
@@ -37,7 +37,7 @@ class PsychometricTestFactory extends Factory
             'title' => 'TES MBTI',
             'sections' => [[
                 'title' => 'Preferensi kepribadian MBTI', 'count' => 40, 'options' => 2,
-                'choices' => 1, 'seconds' => 1800, 'questions' => config('mbti.questions'),
+                'choices' => 1, 'seconds' => 1800, 'questions' => require base_path('tests/Fixtures/mbti-40.php'),
             ]],
         ]);
     }

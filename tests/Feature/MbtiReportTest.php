@@ -46,16 +46,16 @@ class MbtiReportTest extends TestCase
         $url = route('psychometrics.mbti-report', $attempt);
 
         $response = $this->actingAs($admin)->withSession(['portal_session_version' => $admin->session_version])->get($url)
-            ->assertOk()->assertSee('Laporan hasil terperinci MBTI')->assertSee('40 / 40 dijawab')
+            ->assertOk()->assertSee('Laporan hasil terperinci MBTI')->assertSee($attempt->result['total'].' / '.$attempt->result['total'].' dijawab')
             ->assertSee($attempt->result['type'])->assertSee($attempt->application->position->name)
             ->assertSee($attempt->application->period->name)->assertSee('<script>nama()</script>')
             ->assertDontSee('<script>nama()</script>', false)->assertDontSee('<script>paket()</script>', false)
             ->assertSee('Cetak / Simpan PDF')->assertSee('window.print()', false)
-            ->assertDontSee('Cara membaca hasil')->assertSee('12 bagian')
+            ->assertDontSee('Cara membaca hasil')->assertSee('20 bagian')
             ->assertHeader('X-Robots-Tag', 'noindex, nofollow');
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
         $document = HTMLDocument::createFromString($response->getContent(), LIBXML_NOERROR);
-        $this->assertCount(12, $document->querySelectorAll('.mbti-report-section'));
+        $this->assertCount(20, $document->querySelectorAll('.mbti-report-section'));
         $this->assertTrue($document->querySelector('.mbti-report')->hasAttribute('open'));
         $scoresTarget = '#mbti-report-'.$attempt->id.'-scores';
         $this->assertNull($document->querySelector($scoresTarget));

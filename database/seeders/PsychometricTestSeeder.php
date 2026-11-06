@@ -14,7 +14,7 @@ class PsychometricTestSeeder extends Seeder
             'sections' => array_map(fn (array $section): array => [...$section, 'seconds' => null], config('psychometrics.sections')),
             'answer_key' => [],
         ]);
-        PsychometricTest::firstOrCreate(['title' => 'TES MBTI (7 pilihan)', 'type' => 'mbti'], [
+        PsychometricTest::firstOrCreate(['title' => 'TES MBTI (70 soal, 7 pilihan)', 'type' => 'mbti'], [
             'sections' => app(MbtiService::class)->sections(),
             'answer_key' => [],
         ]);

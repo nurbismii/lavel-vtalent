@@ -1,23 +1,66 @@
 <?php
 
 return [
+    'function_labels' => [
+        'Si' => 'Sensing introvert · meninjau pengalaman dan rincian yang dikenal',
+        'Se' => 'Sensing ekstravert · memperhatikan keadaan nyata saat ini',
+        'Ni' => 'Intuition introvert · merangkai pola dan arah pemahaman',
+        'Ne' => 'Intuition ekstravert · menjajaki berbagai kemungkinan',
+        'Ti' => 'Thinking introvert · memeriksa konsistensi penalaran',
+        'Te' => 'Thinking ekstravert · menata langkah dan kriteria pelaksanaan',
+        'Fi' => 'Feeling introvert · meninjau keselarasan dengan nilai pribadi',
+        'Fe' => 'Feeling ekstravert · memperhatikan kebutuhan dan hubungan bersama',
+    ],
+    'function_orders' => [
+        'ISTJ' => ['Si', 'Te', 'Fi', 'Ne'],
+        'ISFJ' => ['Si', 'Fe', 'Ti', 'Ne'],
+        'INFJ' => ['Ni', 'Fe', 'Ti', 'Se'],
+        'INTJ' => ['Ni', 'Te', 'Fi', 'Se'],
+        'ISTP' => ['Ti', 'Se', 'Ni', 'Fe'],
+        'ISFP' => ['Fi', 'Se', 'Ni', 'Te'],
+        'INFP' => ['Fi', 'Ne', 'Si', 'Te'],
+        'INTP' => ['Ti', 'Ne', 'Si', 'Fe'],
+        'ESTP' => ['Se', 'Ti', 'Fe', 'Ni'],
+        'ESFP' => ['Se', 'Fi', 'Te', 'Ni'],
+        'ENFP' => ['Ne', 'Fi', 'Te', 'Si'],
+        'ENTP' => ['Ne', 'Ti', 'Fe', 'Si'],
+        'ESTJ' => ['Te', 'Si', 'Ne', 'Fi'],
+        'ESFJ' => ['Fe', 'Si', 'Ne', 'Ti'],
+        'ENFJ' => ['Fe', 'Ni', 'Se', 'Ti'],
+        'ENTJ' => ['Te', 'Ni', 'Se', 'Fi'],
+    ],
     'sections' => [
         'overview' => 'Gambaran umum',
+        'functions' => 'Urutan fungsi dalam model tipe',
         'scores' => 'Cara membaca hasil Anda',
         'traits' => 'Karakteristik utama',
         'strengths' => 'Kekuatan',
+        'contributions' => 'Kontribusi khas yang dapat dikembangkan',
         'challenges' => 'Tantangan dan potensi masalah',
         'communication' => 'Komunikasi dan kerja sama',
         'relationships' => 'Hubungan interpersonal',
+        'relationship_strengths' => 'Kekuatan dalam hubungan',
+        'relationship_challenges' => 'Tantangan dalam hubungan',
         'environment' => 'Lingkungan yang mendukung',
+        'success' => 'Makna keberhasilan dan pemenuhan diri',
         'situations' => 'Contoh situasi dan respons',
         'stress' => 'Mengelola tekanan',
+        'wellbeing' => 'Menjaga keseimbangan dan kepuasan hidup',
         'growth' => 'Saran pengembangan',
+        'problem_solving' => 'Memahami masalah dan mencoba solusi',
         'plan' => 'Rencana pengembangan 4 minggu',
         'reflection' => 'Langkah praktis dan refleksi',
+        'principles' => 'Sepuluh pegangan pengembangan',
     ],
     'balanced' => [
         'name' => 'Profil dengan preferensi seimbang',
+        'relationship_strengths' => ['Membicarakan kebutuhan berdasarkan keadaan nyata dapat membantu hubungan tanpa bergantung pada kode tipe.'],
+        'relationship_challenges' => ['Skor seimbang tidak menjamin mudah menyesuaikan diri dalam semua hubungan. Harapan dan batas tetap perlu dibicarakan.'],
+        'success' => ['Tentukan keberhasilan dari nilai, kebutuhan, dan hasil yang Anda anggap penting. Huruf X tidak mengharuskan satu definisi keberhasilan tertentu.'],
+        'contributions' => ['Tinjau kontribusi dari contoh tindakan dan umpan balik. Skor seimbang tidak membuktikan penguasaan semua pendekatan.'],
+        'problem_solving' => ['Pisahkan fakta, dugaan, dan kebutuhan pada satu masalah. Coba satu langkah yang dapat ditinjau kembali tanpa harus menetapkan tipe lebih dulu.'],
+        'wellbeing' => ['Perhatikan kondisi yang membantu pemulihan dan kepuasan pada kegiatan tertentu. Gunakan catatan pengalaman untuk memilih penyesuaian.'],
+        'principles' => ['Pilih satu kebutuhan yang ingin dipahami.', 'Catat situasi nyata.', 'Pisahkan skor dari penilaian kemampuan.', 'Uji dugaan melalui pertanyaan.', 'Nyatakan harapan dengan jelas.', 'Sepakati batas tanggung jawab.', 'Coba satu penyesuaian kecil.', 'Minta umpan balik yang spesifik.', 'Jaga waktu pemulihan.', 'Tinjau manfaat tanpa memaksakan tipe.'],
         'overview' => [
             'Kode yang mengandung X menunjukkan bahwa skor pada pasangan tersebut seimbang. X adalah penanda dalam kuesioner internal ini, bukan tipe MBTI tambahan, tanda kegagalan, atau bukti bahwa perilaku Anda tidak konsisten.',
             'Laporan ini menggunakan kecenderungan yang sudah terlihat pada pasangan lainnya serta penjelasan netral pada bagian yang seimbang. Jika semua pasangan berisi X, laporan tetap dapat digunakan untuk meninjau pengalaman dan mencoba cara kerja yang berbeda tanpa menetapkan satu tipe.',
@@ -131,6 +174,13 @@ return [
     'types' => [
         'ISTJ' => [
             'name' => 'Penata yang konsisten',
+            'relationship_strengths' => ['Komitmen yang jelas dan tindak lanjut yang konsisten dapat membangun rasa aman dalam hubungan.', 'Perhatian praktis membantu memastikan kebutuhan yang sudah disepakati tidak terlewat.'],
+            'relationship_challenges' => ['Kebiasaan yang berbeda dapat terasa seperti kesalahan padahal kebutuhan orang lain belum dipahami.', 'Dukungan perlu diungkapkan; tindakan yang baik belum tentu menjelaskan perasaan Anda.'],
+            'success' => ['Keberhasilan dapat terasa berarti ketika tanggung jawab selesai dengan mutu yang dapat dipercaya. Sisakan ruang untuk memperbarui standar ketika tujuan berubah.'],
+            'contributions' => ['Anda dapat membantu merapikan catatan, menjaga kesinambungan proses, dan menuntaskan kesepakatan. Periksa manfaatnya bersama pengguna hasil kerja.'],
+            'problem_solving' => ['Ketika terlalu terpaku pada prosedur, periksa tujuan yang dilindungi prosedur itu. Uji satu penyesuaian kecil dengan ukuran mutu yang sama.'],
+            'wellbeing' => ['Jadwalkan pemulihan selain kewajiban. Izinkan kegiatan menyenangkan tanpa harus selalu menghasilkan sesuatu yang terukur.'],
+            'principles' => ['Perjelas tujuan sebelum menjaga prosedur.', 'Tentukan mutu minimum yang diperlukan.', 'Sampaikan harapan secara langsung.', 'Dengarkan alasan di balik perubahan.', 'Bedakan risiko nyata dari ketidaknyamanan.', 'Uji satu cara baru dalam lingkup kecil.', 'Akui kontribusi yang berbeda.', 'Berhenti memeriksa setelah batas yang disepakati.', 'Sisihkan waktu untuk pemulihan.', 'Tinjau kebiasaan dari manfaatnya.'],
             'overview' => [
                 'Preferensi ISTJ menggabungkan refleksi pribadi, perhatian pada pengalaman nyata, pertimbangan logis, dan kebutuhan akan keteraturan. Anda mungkin merasa nyaman ketika tanggung jawab, standar hasil, dan urutan pekerjaan dijelaskan sejak awal.',
                 'Pola ini dapat membantu menjaga kesinambungan pekerjaan. Fleksibilitas tetap dapat dipelajari; cara yang pernah berhasil perlu ditinjau kembali ketika kebutuhan atau keadaan berubah.',
@@ -158,6 +208,13 @@ return [
         ],
         'ISFJ' => [
             'name' => 'Pendamping yang penuh perhatian',
+            'relationship_strengths' => ['Perhatian pada kebutuhan sehari-hari dan bantuan yang konsisten dapat memperkuat kepercayaan.', 'Kesediaan mendengarkan membantu orang merasa pengalamannya diperhatikan.'],
+            'relationship_challenges' => ['Mengharapkan orang memahami pengorbanan yang tidak diucapkan dapat menimbulkan kecewa.', 'Kesulitan menolak permintaan dapat membuat pembagian beban tidak seimbang.'],
+            'success' => ['Keberhasilan dapat berarti membantu secara nyata sambil menjaga hubungan yang dapat dipercaya. Kebutuhan pribadi tetap menjadi bagian dari keberhasilan tersebut.'],
+            'contributions' => ['Anda dapat menjaga tindak lanjut, mengingat kebutuhan yang terlewat, dan membantu anggota kelompok merasa dilibatkan. Tanyakan bantuan apa yang benar-benar diperlukan.'],
+            'problem_solving' => ['Ketika merasa menanggung semuanya, tuliskan tanggung jawab dan batas kapasitas. Bicarakan satu pembagian tugas sebelum menambah komitmen baru.'],
+            'wellbeing' => ['Beri tempat bagi minat pribadi dan istirahat. Bantuan yang berkelanjutan memerlukan persetujuan serta kapasitas kedua pihak.'],
+            'principles' => ['Tanyakan sebelum menawarkan bantuan.', 'Periksa kapasitas sebelum berjanji.', 'Nyatakan kebutuhan secara konkret.', 'Latih penolakan dengan jelas.', 'Bagikan tugas yang dapat dibagikan.', 'Jangan menebak maksud orang.', 'Bicarakan keberatan sebelum menumpuk.', 'Terima bantuan tanpa rasa berutang berlebihan.', 'Jaga waktu untuk tujuan pribadi.', 'Nilai dukungan dari manfaat bersama.'],
             'overview' => [
                 'Preferensi ISFJ memadukan perhatian pada kebutuhan nyata orang lain dengan cara kerja yang tenang dan teratur. Anda mungkin menyukai bantuan yang jelas manfaatnya serta hubungan yang dibangun secara bertahap.',
                 'Kepedulian dapat menjadi sumber kontribusi yang berarti. Agar berkelanjutan, memberi bantuan juga perlu disertai batas kemampuan dan kesempatan bagi orang lain untuk bertanggung jawab.',
@@ -185,6 +242,13 @@ return [
         ],
         'INFJ' => [
             'name' => 'Perangkai makna dan arah',
+            'relationship_strengths' => ['Mendengarkan makna di balik pengalaman dapat membuka percakapan yang mendalam.', 'Perhatian terhadap nilai bersama dapat membantu hubungan memiliki arah yang jelas.'],
+            'relationship_challenges' => ['Dugaan tentang perasaan orang perlu diperiksa langsung agar tidak menjadi kesimpulan sepihak.', 'Harapan hubungan yang terlalu ideal dapat menyulitkan penerimaan atas perbedaan sehari-hari.'],
+            'success' => ['Keberhasilan dapat terasa berarti ketika kegiatan selaras dengan nilai dan membawa manfaat yang dipahami. Tetapkan juga tanda kemajuan yang dapat diamati.'],
+            'contributions' => ['Anda dapat membantu merangkum kebutuhan, menghubungkan gagasan dengan tujuan, dan mengajak orang membahas dampak jangka panjang.'],
+            'problem_solving' => ['Jika penafsiran terasa pasti, pisahkan pengamatan dari dugaan. Mintalah contoh yang dapat menyangkal dugaan sebelum menetapkan kesimpulan.'],
+            'wellbeing' => ['Seimbangkan refleksi dengan kegiatan nyata dan hubungan yang aman. Batas waktu serta batas dukungan membantu menjaga energi.'],
+            'principles' => ['Periksa dugaan melalui pertanyaan.', 'Nyatakan batas dukungan.', 'Turunkan visi menjadi langkah kecil.', 'Cari fakta yang belum sesuai harapan.', 'Izinkan hubungan berkembang bertahap.', 'Sampaikan keberatan secara langsung.', 'Nilai kemajuan dari kejadian nyata.', 'Sediakan ruang untuk kegiatan sederhana.', 'Minta bantuan ketika beban menumpuk.', 'Tinjau tujuan bersama orang yang terdampak.'],
             'overview' => [
                 'Preferensi INFJ menghubungkan pencarian makna, perhatian terhadap orang, dan keinginan mewujudkan arah yang bernilai. Anda mungkin ingin memahami tujuan suatu kegiatan sebelum mencurahkan tenaga untuk menjalankannya.',
                 'Gambaran jangka panjang dapat membantu menentukan arah. Gambaran tersebut menjadi lebih berguna ketika dibuka untuk masukan dan dihubungkan dengan langkah kecil yang dapat diperiksa hasilnya.',
@@ -212,6 +276,13 @@ return [
         ],
         'INTJ' => [
             'name' => 'Perancang arah jangka panjang',
+            'relationship_strengths' => ['Percakapan tentang tujuan dan gagasan dapat membantu membangun kedekatan.', 'Kesediaan menyusun arah jangka panjang dapat mendukung komitmen yang terencana.'],
+            'relationship_challenges' => ['Penjelasan yang sangat analitis dapat terasa jauh jika kebutuhan emosional belum didengarkan.', 'Menganggap arah sudah jelas bagi semua orang dapat menutupi perbedaan harapan.'],
+            'success' => ['Keberhasilan dapat berarti mewujudkan gagasan yang masuk akal dan memperbaiki sistem. Masukkan pengalaman orang yang memakai hasilnya sebagai bagian ukuran keberhasilan.'],
+            'contributions' => ['Anda dapat menemukan pola, memetakan ketergantungan, dan menyusun pilihan strategis. Nilai gagasan dengan hasil percobaan serta umpan balik pelaksana.'],
+            'problem_solving' => ['Ketika rencana terasa lebih penting daripada bukti, tentukan asumsi yang paling berisiko. Lakukan percobaan yang dapat membantahnya sebelum memperluas perubahan.'],
+            'wellbeing' => ['Pisahkan waktu mengembangkan gagasan dari waktu beristirahat. Kegiatan tanpa target perbaikan juga dapat mendukung pemulihan.'],
+            'principles' => ['Tuliskan asumsi utama.', 'Cari bukti yang dapat membantah rencana.', 'Jelaskan tujuan dengan bahasa sederhana.', 'Dengarkan kendala pelaksana.', 'Tanyakan dukungan yang dibutuhkan.', 'Hargai kemajuan yang belum sempurna.', 'Uji sebelum memperluas perubahan.', 'Berikan ruang bagi cara orang lain.', 'Jaga kegiatan pemulihan.', 'Tinjau arah ketika bukti berubah.'],
             'overview' => [
                 'Preferensi INTJ menekankan pemahaman pola, pemikiran mandiri, dan penyusunan arah jangka panjang. Anda mungkin senang mempelajari bagaimana bagian-bagian suatu sistem saling memengaruhi dan apa yang perlu diperbaiki.',
                 'Rencana yang runtut dapat memberikan arah. Namun, ketepatan suatu gagasan perlu diuji lewat informasi lapangan dan masukan orang yang akan menjalankannya.',
@@ -239,6 +310,13 @@ return [
         ],
         'ISTP' => [
             'name' => 'Pengurai masalah praktis',
+            'relationship_strengths' => ['Bantuan praktis dan ruang mandiri dapat mendukung hubungan yang saling menghargai.', 'Respons tenang saat menghadapi persoalan nyata dapat membantu mencari langkah yang dapat dicoba.'],
+            'relationship_challenges' => ['Menarik diri tanpa penjelasan dapat disalahartikan sebagai tidak peduli.', 'Memperbaiki masalah segera belum tentu menjawab kebutuhan seseorang untuk didengarkan.'],
+            'success' => ['Keberhasilan dapat berarti memahami cara kerja sesuatu dan menyelesaikan masalah secara langsung. Perhatikan juga apakah solusi dapat dipelihara dan dipahami orang lain.'],
+            'contributions' => ['Anda dapat mengurai gangguan, menguji kemungkinan penyebab, dan memilih tindakan praktis. Bagikan temuan agar pengetahuan tidak berhenti pada satu orang.'],
+            'problem_solving' => ['Jika tindakan spontan mengulang masalah, berhenti untuk mencatat pemicu dan hasil. Uji satu perubahan pada satu waktu serta sepakati batas aman percobaan.'],
+            'wellbeing' => ['Jaga keseimbangan antara tantangan praktis, waktu sendiri, dan komunikasi yang menjaga hubungan. Gunakan batas keselamatan saat mencari pengalaman baru.'],
+            'principles' => ['Periksa keadaan sebelum bertindak.', 'Tentukan batas aman percobaan.', 'Catat temuan yang penting.', 'Sampaikan kebutuhan waktu sendiri.', 'Tanyakan apakah orang membutuhkan solusi.', 'Tuntaskan janji yang sudah dibuat.', 'Bagikan cara memelihara hasil.', 'Pertimbangkan akibat jangka panjang.', 'Ambil jeda setelah pekerjaan intensif.', 'Tinjau pola masalah yang berulang.'],
             'overview' => [
                 'Preferensi ISTP menggabungkan pengamatan yang tenang, penalaran logis, dan ketertarikan pada cara sesuatu bekerja. Anda mungkin lebih mudah memahami persoalan ketika dapat memeriksa atau mencoba langsung.',
                 'Pendekatan praktis dapat membantu menemukan tindakan yang relevan. Dalam kerja bersama, hasilnya lebih mudah diteruskan jika alasan, temuan, dan perubahan juga dikomunikasikan.',
@@ -266,6 +344,13 @@ return [
         ],
         'ISFP' => [
             'name' => 'Pengamat yang menghargai keunikan',
+            'relationship_strengths' => ['Perhatian melalui tindakan dan penghargaan terhadap keunikan dapat membangun kedekatan.', 'Kesediaan memberi ruang pada pilihan pribadi dapat membantu orang merasa diterima.'],
+            'relationship_challenges' => ['Keberatan yang tidak diucapkan dapat membuat batas hubungan sulit dipahami.', 'Menghindari perbedaan pendapat dapat menunda kesepakatan yang dibutuhkan.'],
+            'success' => ['Keberhasilan dapat berarti menjalani kegiatan yang selaras dengan nilai pribadi dan terasa nyata manfaatnya. Nyatakan kebutuhan tersebut bersama tanggung jawab yang disepakati.'],
+            'contributions' => ['Anda dapat memperhatikan pengalaman langsung, menunjukkan kepedulian praktis, dan membawa sentuhan pribadi pada hasil kerja. Mintalah umpan balik tentang manfaatnya.'],
+            'problem_solving' => ['Jika sulit menyatakan ketidaksetujuan, tuliskan fakta, kebutuhan, dan batas Anda. Coba satu kalimat permintaan yang spesifik tanpa menilai watak orang lain.'],
+            'wellbeing' => ['Sediakan waktu untuk pengalaman yang menyenangkan serta pilihan pribadi. Struktur sederhana dapat melindungi ruang tersebut tanpa mengikat seluruh kegiatan.'],
+            'principles' => ['Kenali nilai yang sedang dipertaruhkan.', 'Nyatakan kebutuhan sebelum menumpuk.', 'Sampaikan keberatan dengan contoh.', 'Pisahkan kritik hasil dari penilaian diri.', 'Sepakati batas tanggung jawab.', 'Buat satu langkah yang dapat dicoba.', 'Minta umpan balik yang spesifik.', 'Jaga kegiatan yang memberi energi.', 'Sisihkan waktu untuk merencanakan kebutuhan.', 'Tinjau pilihan berdasarkan pengalaman.'],
             'overview' => [
                 'Preferensi ISFP menekankan pengalaman langsung, kebebasan pribadi, dan keselarasan dengan nilai yang dianggap penting. Anda mungkin lebih nyaman menunjukkan perhatian melalui tindakan daripada menjadi pusat perhatian.',
                 'Sikap menerima perbedaan dapat membuat interaksi terasa lebih nyaman. Kebutuhan dan pendapat pribadi tetap perlu disampaikan agar keputusan bersama tidak hanya mengikuti suara yang paling kuat.',
@@ -293,6 +378,13 @@ return [
         ],
         'INFP' => [
             'name' => 'Penjelajah nilai dan kemungkinan',
+            'relationship_strengths' => ['Mendengarkan nilai dan pengalaman pribadi dapat membuat percakapan terasa bermakna.', 'Penghargaan terhadap perbedaan dapat membantu orang berbicara dengan lebih terbuka.'],
+            'relationship_challenges' => ['Harapan yang tidak diungkapkan dapat berbeda jauh dari yang dipahami orang lain.', 'Menghindari percakapan sulit demi menjaga cita-cita hubungan dapat menunda penyelesaian masalah.'],
+            'success' => ['Keberhasilan dapat berarti menghasilkan sesuatu yang selaras dengan nilai dan memberi makna. Lengkapi makna itu dengan tindakan yang dapat dituntaskan dalam kapasitas nyata.'],
+            'contributions' => ['Anda dapat membuka sudut pandang, merumuskan nilai yang belum terdengar, dan mengembangkan kemungkinan yang manusiawi. Uji manfaatnya melalui langkah konkret.'],
+            'problem_solving' => ['Ketika cita-cita terasa terlalu jauh, pilih satu hasil kecil yang masih mencerminkan nilai utama. Batasi waktu menjajaki pilihan sebelum mencoba.'],
+            'wellbeing' => ['Seimbangkan waktu refleksi dengan rutinitas dasar dan hubungan yang mendukung. Ketidaksempurnaan hasil tidak harus menjadi penilaian atas nilai diri.'],
+            'principles' => ['Tentukan nilai yang paling penting.', 'Nyatakan harapan secara langsung.', 'Pisahkan fakta dari makna yang ditafsirkan.', 'Mulai dari hasil kecil yang berguna.', 'Batasi waktu menjajaki pilihan.', 'Latih percakapan tentang perbedaan.', 'Terima hasil yang cukup baik.', 'Jaga rutinitas dasar.', 'Cari dukungan yang sesuai kebutuhan.', 'Tinjau cita-cita melalui tindakan nyata.'],
             'overview' => [
                 'Preferensi INFP menghubungkan refleksi pribadi, imajinasi, dan pencarian kegiatan yang selaras dengan nilai. Anda mungkin ingin memahami makna suatu pilihan, termasuk pengaruhnya terhadap diri sendiri dan orang lain.',
                 'Kepekaan pada nilai dapat memberi arah yang kuat. Agar gagasan menjadi pengalaman nyata, tujuan yang besar perlu diterjemahkan ke tindakan yang cukup kecil untuk dimulai.',
@@ -320,6 +412,13 @@ return [
         ],
         'INTP' => [
             'name' => 'Penelaah konsep dan alasan',
+            'relationship_strengths' => ['Rasa ingin tahu dan keterbukaan menguji gagasan dapat memperkaya percakapan.', 'Menghargai ruang berpikir mandiri dapat membantu hubungan yang tidak menuntut keseragaman.'],
+            'relationship_challenges' => ['Membantah alasan saat seseorang sedang berbagi perasaan dapat terasa menolak pengalamannya.', 'Terlalu lama memeriksa kemungkinan dapat menunda keputusan bersama.'],
+            'success' => ['Keberhasilan dapat berarti memahami persoalan dengan jernih dan menghasilkan penjelasan yang konsisten. Pastikan pemahaman itu juga membantu tindakan yang dibutuhkan.'],
+            'contributions' => ['Anda dapat menemukan asumsi, membedakan konsep, dan mengusulkan penjelasan alternatif. Sampaikan hasil dengan contoh yang dapat dipakai orang lain.'],
+            'problem_solving' => ['Jika analisis tidak berujung tindakan, tentukan informasi minimum untuk keputusan berikutnya. Uji satu dugaan dengan tenggat dan ukuran hasil yang jelas.'],
+            'wellbeing' => ['Beri tempat bagi rasa ingin tahu sekaligus kebutuhan fisik dan sosial sehari-hari. Jeda dapat membantu ketika analisis terus berputar tanpa temuan baru.'],
+            'principles' => ['Tentukan pertanyaan yang sedang dijawab.', 'Bedakan dugaan dari bukti.', 'Batasi lingkup analisis.', 'Gunakan contoh yang mudah dipahami.', 'Tanyakan kebutuhan lawan bicara.', 'Tetapkan waktu untuk memutuskan.', 'Uji satu penjelasan melalui tindakan.', 'Tuntaskan tindak lanjut sederhana.', 'Jaga istirahat dan hubungan.', 'Perbarui pemahaman ketika bukti berubah.'],
             'overview' => [
                 'Preferensi INTP memadukan refleksi, ketertarikan pada konsep, dan pemeriksaan konsistensi logis. Anda mungkin menikmati waktu untuk memahami mengapa suatu sistem atau gagasan bekerja, termasuk mencari asumsi yang belum diperiksa.',
                 'Penelaahan dapat memperdalam pemahaman. Manfaatnya menjadi lebih terlihat ketika penjelasan disederhanakan dan temuan diterapkan pada persoalan yang benar-benar sedang dihadapi.',
@@ -347,6 +446,13 @@ return [
         ],
         'ESTP' => [
             'name' => 'Penggerak tindakan langsung',
+            'relationship_strengths' => ['Keterlibatan langsung dan respons cepat dapat membuat kebersamaan terasa hidup.', 'Kesediaan membantu menghadapi keadaan nyata dapat mendukung orang saat membutuhkan tindakan.'],
+            'relationship_challenges' => ['Kecepatan bertindak dapat mendahului persetujuan atau kesiapan pihak lain.', 'Mencari pengalaman baru terus-menerus dapat membuat komitmen rutin terabaikan.'],
+            'success' => ['Keberhasilan dapat berarti mampu bertindak efektif dan melihat hasil secara langsung. Pertimbangkan juga keselamatan, kepercayaan, dan akibat setelah hasil cepat tercapai.'],
+            'contributions' => ['Anda dapat membaca perubahan situasi, mencoba solusi praktis, dan menggerakkan tindakan awal. Sepakati batas serta tindak lanjut agar hasil dapat bertahan.'],
+            'problem_solving' => ['Ketika solusi cepat menimbulkan pekerjaan ulang, petakan akibat dan pihak yang terdampak sebelum langkah berikutnya. Pilih tindakan yang mudah dikembalikan jika tidak membantu.'],
+            'wellbeing' => ['Seimbangkan aktivitas dan tantangan dengan pemulihan serta komitmen yang stabil. Pengalaman baru tetap perlu batas aman yang jelas.'],
+            'principles' => ['Periksa risiko sebelum mencoba.', 'Pastikan persetujuan pihak terkait.', 'Tentukan hasil minimum.', 'Dengarkan pihak yang bergerak lebih lambat.', 'Sisakan waktu memikirkan akibat.', 'Catat komitmen yang harus dituntaskan.', 'Uji dalam lingkup terbatas.', 'Bagikan hasil percobaan.', 'Jaga waktu pemulihan.', 'Tinjau manfaat setelah keadaan tenang.'],
             'overview' => [
                 'Preferensi ESTP menggabungkan interaksi aktif, pengamatan situasi nyata, penalaran praktis, dan keluwesan. Anda mungkin senang menguji pilihan lewat tindakan serta menyesuaikan langkah berdasarkan hasil yang segera terlihat.',
                 'Kecepatan merespons dapat membantu menghadapi perubahan. Agar manfaatnya bertahan, tindakan langsung perlu dihubungkan dengan komitmen, batas risiko, dan akibat yang baru muncul kemudian.',
@@ -374,6 +480,13 @@ return [
         ],
         'ESFP' => [
             'name' => 'Penghidup pengalaman bersama',
+            'relationship_strengths' => ['Kehangatan dan keterlibatan dalam kegiatan bersama dapat membantu orang merasa dilibatkan.', 'Perhatian terhadap kebutuhan yang tampak dapat menjadi dukungan praktis saat itu juga.'],
+            'relationship_challenges' => ['Keinginan menjaga suasana menyenangkan dapat menunda pembicaraan yang tidak nyaman.', 'Janji spontan perlu diperiksa agar tidak melebihi waktu dan kapasitas.'],
+            'success' => ['Keberhasilan dapat berarti mengalami kegiatan yang bermakna bersama orang lain. Kegembiraan saat ini perlu disandingkan dengan kebutuhan dan komitmen berikutnya.'],
+            'contributions' => ['Anda dapat menghidupkan partisipasi, merespons kebutuhan nyata, dan membantu orang mencoba pengalaman baru. Pastikan semua orang memperoleh ruang memilih.'],
+            'problem_solving' => ['Jika kegiatan menyenangkan menutupi masalah yang belum selesai, tentukan satu percakapan penting dan hasil yang ingin dicapai. Gunakan catatan singkat untuk menindaklanjuti kesepakatan.'],
+            'wellbeing' => ['Sediakan waktu untuk pengalaman bersama sekaligus pemulihan pribadi. Batas pengeluaran dan jadwal sederhana dapat membantu menjaga pilihan tetap berkelanjutan.'],
+            'principles' => ['Tanyakan kebutuhan sebelum mengajak.', 'Periksa kapasitas sebelum berjanji.', 'Jaga ruang bagi orang yang lebih tenang.', 'Bicarakan masalah sebelum membesar.', 'Catat kesepakatan penting.', 'Sisihkan sumber daya untuk kebutuhan berikutnya.', 'Tuntaskan satu langkah yang tertunda.', 'Izinkan diri mengambil jeda.', 'Terima perbedaan cara menikmati kegiatan.', 'Tinjau manfaat di luar suasana sesaat.'],
             'overview' => [
                 'Preferensi ESFP menekankan interaksi, pengalaman langsung, kepedulian pada orang, dan keluwesan. Anda mungkin menikmati kegiatan yang melibatkan orang lain dan kesempatan menyesuaikan diri dengan kebutuhan saat itu.',
                 'Antusiasme dapat membantu orang merasa dilibatkan. Agar rencana bersama berjalan baik, energi tersebut juga perlu didukung pengaturan waktu dan tindak lanjut yang tidak selalu terlihat menarik.',
@@ -401,6 +514,13 @@ return [
         ],
         'ENFP' => [
             'name' => 'Penghubung ide dan antusiasme',
+            'relationship_strengths' => ['Antusiasme terhadap kemungkinan dan perhatian pada nilai dapat membuka percakapan yang hangat.', 'Mendorong orang menjajaki pilihannya dapat membantu mereka merasa didukung.'],
+            'relationship_challenges' => ['Antusiasme baru dapat menambah janji sebelum komitmen lama selesai.', 'Membaca terlalu banyak makna dari respons singkat dapat menimbulkan dugaan yang belum diuji.'],
+            'success' => ['Keberhasilan dapat berarti menjajaki kemungkinan yang bermakna dan membantu orang berkembang. Pilih beberapa komitmen yang dapat dituntaskan agar gagasan menjadi manfaat nyata.'],
+            'contributions' => ['Anda dapat menghubungkan ide dan orang, membuka pilihan, serta mengajak kelompok mencoba arah baru. Sertakan prioritas dan penanggung jawab yang jelas.'],
+            'problem_solving' => ['Ketika terlalu banyak gagasan bersaing, tetapkan kriteria berdasarkan nilai, manfaat, dan kapasitas. Selesaikan satu percobaan sebelum menambah proyek berikutnya.'],
+            'wellbeing' => ['Seimbangkan eksplorasi dengan rutinitas yang melindungi energi. Waktu tenang membantu membedakan keinginan sesaat dari komitmen yang penting.'],
+            'principles' => ['Pilih nilai yang memandu prioritas.', 'Batasi jumlah komitmen aktif.', 'Uji dugaan tentang respons orang.', 'Tuliskan langkah pertama.', 'Tetapkan waktu meninjau kemajuan.', 'Tuntaskan percobaan sebelum menambah pilihan.', 'Dengarkan kebutuhan yang berbeda.', 'Jaga rutinitas dasar.', 'Sisakan waktu untuk refleksi.', 'Nilai antusiasme bersama manfaat nyata.'],
             'overview' => [
                 'Preferensi ENFP menghubungkan rasa ingin tahu, interaksi dengan orang, imajinasi, dan perhatian pada nilai. Anda mungkin tertarik pada gagasan baru serta kemungkinan yang muncul ketika berbagai pengalaman dipertemukan.',
                 'Antusiasme dapat memulai perubahan dan mengundang partisipasi. Gagasan menjadi lebih berguna ketika beberapa pilihan diprioritaskan dan diberi ruang untuk diselesaikan.',
@@ -428,6 +548,13 @@ return [
         ],
         'ENTP' => [
             'name' => 'Penguji gagasan dan alternatif',
+            'relationship_strengths' => ['Rasa ingin tahu dan pertukaran gagasan dapat membuat hubungan terasa dinamis.', 'Kesediaan mempertanyakan kebiasaan dapat membuka pilihan ketika kelompok menghadapi jalan buntu.'],
+            'relationship_challenges' => ['Perdebatan yang menyenangkan bagi Anda dapat terasa menyerang bagi orang lain.', 'Mengubah arah terlalu cepat dapat membuat komitmen bersama terasa tidak pasti.'],
+            'success' => ['Keberhasilan dapat berarti menemukan kemungkinan yang lebih baik dan membuktikan gagasan dapat bekerja. Keberlanjutan pelaksanaan sama pentingnya dengan kebaruan ide.'],
+            'contributions' => ['Anda dapat menemukan alternatif, menguji asumsi, dan merancang percobaan. Sepakati bukti yang dibutuhkan agar pembahasan berujung pada keputusan.'],
+            'problem_solving' => ['Jika pertanyaan baru terus menunda penyelesaian, pisahkan eksplorasi dari keputusan yang harus dibuat sekarang. Gunakan tenggat serta kriteria yang disepakati bersama.'],
+            'wellbeing' => ['Berikan ruang bagi tantangan intelektual sekaligus istirahat dan tindak lanjut rutin. Hubungan tidak harus selalu diisi perdebatan agar tetap bermakna.'],
+            'principles' => ['Tanyakan apakah gagasan sedang diuji.', 'Pisahkan kritik ide dari penilaian orang.', 'Dengarkan dampak cara bicara.', 'Tentukan kriteria sebelum berdebat.', 'Batasi jumlah alternatif aktif.', 'Uji satu dugaan secara nyata.', 'Hormati keputusan yang sudah disepakati.', 'Tuntaskan tindak lanjut rutin.', 'Jaga ruang untuk pemulihan.', 'Nilai kebaruan dari manfaatnya.'],
             'overview' => [
                 'Preferensi ENTP menekankan eksplorasi kemungkinan melalui interaksi, penalaran, dan pertukaran gagasan. Anda mungkin menikmati pertanyaan yang menantang asumsi serta mencari cara berbeda untuk memecahkan persoalan.',
                 'Diskusi dapat membuka pilihan baru. Agar kerja sama tetap produktif, penting membedakan perdebatan untuk belajar dari keputusan yang sudah perlu dilaksanakan.',
@@ -455,6 +582,13 @@ return [
         ],
         'ESTJ' => [
             'name' => 'Pengarah pelaksanaan yang terstruktur',
+            'relationship_strengths' => ['Kejelasan komitmen dan tindak lanjut dapat membantu hubungan terasa dapat diandalkan.', 'Kesediaan mengatur kebutuhan praktis dapat mengurangi kebingungan bersama.'],
+            'relationship_challenges' => ['Arahan yang terlalu cepat dapat mengurangi ruang orang lain menjelaskan kebutuhannya.', 'Menilai semua keadaan dengan satu standar dapat melewatkan kendala yang berbeda.'],
+            'success' => ['Keberhasilan dapat berarti tujuan tercapai melalui kerja yang teratur dan dapat dipertanggungjawabkan. Sertakan kualitas kerja sama serta dampak pada orang dalam evaluasi.'],
+            'contributions' => ['Anda dapat memperjelas peran, mengatur pelaksanaan, dan menjaga penyelesaian tugas. Pastikan aturan membantu tujuan dan dapat ditinjau ketika keadaan berubah.'],
+            'problem_solving' => ['Jika pelaksanaan tersendat, periksa kejelasan tujuan, sumber daya, dan hambatan sebelum menyimpulkan kurangnya kemauan. Sepakati satu perbaikan bersama pelaksana.'],
+            'wellbeing' => ['Jaga waktu istirahat di luar peran mengatur. Mendelegasikan dengan dukungan yang cukup dapat membantu menjaga kapasitas dan kepercayaan.'],
+            'principles' => ['Jelaskan alasan di balik aturan.', 'Dengarkan kendala sebelum menilai.', 'Sepakati ukuran hasil.', 'Berikan ruang memilih cara kerja.', 'Delegasikan beserta dukungannya.', 'Bedakan ketegasan dari tekanan.', 'Akui kontribusi yang berbeda.', 'Tinjau prosedur ketika keadaan berubah.', 'Jaga waktu di luar kewajiban.', 'Nilai hasil bersama kualitas hubungan.'],
             'overview' => [
                 'Preferensi ESTJ menggabungkan interaksi aktif, perhatian pada fakta, pertimbangan logis, dan kebutuhan akan struktur. Anda mungkin nyaman ketika tujuan, peran, serta waktu penyelesaian dapat dinyatakan dengan jelas.',
                 'Keteraturan dapat membantu mengubah kesepakatan menjadi pelaksanaan. Hasil bersama juga memerlukan ruang untuk mendengar kendala, meninjau aturan, dan menyesuaikan cara ketika keadaan berubah.',
@@ -482,6 +616,13 @@ return [
         ],
         'ESFJ' => [
             'name' => 'Perawat kerja sama dan kebersamaan',
+            'relationship_strengths' => ['Perhatian pada kebutuhan bersama dan tindak lanjut dapat mendukung rasa kebersamaan.', 'Kesediaan melibatkan orang dalam kegiatan dapat memperkuat dukungan sosial.'],
+            'relationship_challenges' => ['Menganggap kesepakatan kelompok sebagai kebutuhan semua orang dapat menekan pilihan pribadi.', 'Kritik dapat terasa sangat personal jika dipahami sebagai penolakan terhadap kepedulian Anda.'],
+            'success' => ['Keberhasilan dapat berarti orang saling mendukung dan kebutuhan bersama tertangani. Keberhasilan juga memberi ruang bagi perbedaan serta batas kapasitas pribadi.'],
+            'contributions' => ['Anda dapat menghubungkan kebutuhan, mengatur bantuan, dan menjaga komunikasi kelompok. Tanyakan persetujuan sebelum mengatasnamakan orang lain.'],
+            'problem_solving' => ['Jika upaya menjaga keharmonisan menutupi perbedaan, sediakan percakapan yang aman untuk menyatakan keberatan. Pisahkan kebutuhan bersama dari kebiasaan yang belum disepakati.'],
+            'wellbeing' => ['Jaga hubungan yang mendukung tanpa harus memenuhi semua harapan. Sisihkan waktu untuk kebutuhan pribadi dan kegiatan yang Anda pilih sendiri.'],
+            'principles' => ['Tanyakan kebutuhan secara langsung.', 'Pastikan persetujuan sebelum mewakili orang.', 'Berikan ruang untuk berbeda pendapat.', 'Pisahkan kritik hasil dari penolakan diri.', 'Periksa kapasitas sebelum membantu.', 'Nyatakan batas dengan jelas.', 'Bicarakan ketegangan sejak awal.', 'Hargai pilihan di luar kebiasaan kelompok.', 'Jaga waktu pribadi.', 'Tinjau dukungan dari manfaat yang dirasakan.'],
             'overview' => [
                 'Preferensi ESFJ memadukan keterlibatan sosial, perhatian pada kebutuhan konkret, dan keinginan membangun keteraturan bersama. Anda mungkin merasa terlibat ketika dapat membantu orang melalui tindakan yang nyata dan terencana.',
                 'Upaya menjaga kebersamaan dapat mendukung koordinasi. Hubungan yang sehat juga memberi ruang untuk perbedaan pendapat, batas pribadi, dan cara berpartisipasi yang tidak selalu sama.',
@@ -509,6 +650,13 @@ return [
         ],
         'ENFJ' => [
             'name' => 'Penggerak tujuan bersama',
+            'relationship_strengths' => ['Perhatian terhadap tujuan dan perkembangan orang dapat membantu hubungan terasa mendukung.', 'Kesediaan merangkum kebutuhan dapat memperjelas arah kegiatan bersama.'],
+            'relationship_challenges' => ['Mendorong perkembangan tanpa diminta dapat terasa mengatur pilihan orang lain.', 'Mengambil tanggung jawab atas perasaan semua orang dapat melampaui kapasitas pribadi.'],
+            'success' => ['Keberhasilan dapat berarti membantu kelompok bergerak menuju tujuan yang bernilai. Pastikan tujuan disepakati dan setiap orang tetap memiliki kendali atas pilihannya.'],
+            'contributions' => ['Anda dapat menghubungkan orang dengan tujuan, memfasilitasi percakapan, dan membantu pembagian dukungan. Periksa kebutuhan langsung sebelum memberi arahan.'],
+            'problem_solving' => ['Ketika merasa harus menyelesaikan masalah semua orang, pisahkan tanggung jawab Anda dari pilihan mereka. Tanyakan bentuk dukungan yang diminta dan sepakati batas tindak lanjut.'],
+            'wellbeing' => ['Seimbangkan keterlibatan sosial dengan ruang refleksi dan pemulihan. Hubungan yang sehat memberi kesempatan menerima dukungan, bukan hanya memberikannya.'],
+            'principles' => ['Tanyakan sebelum mengarahkan.', 'Pastikan tujuan benar-benar disepakati.', 'Jaga hak orang menentukan pilihan.', 'Nyatakan kebutuhan Anda sendiri.', 'Bedakan empati dari mengambil alih.', 'Berikan umpan balik yang spesifik.', 'Terima perbedaan arah perkembangan.', 'Batasi komitmen dukungan.', 'Sediakan waktu pemulihan.', 'Tinjau kemajuan dari pengalaman semua pihak.'],
             'overview' => [
                 'Preferensi ENFJ menekankan hubungan, pemahaman terhadap orang, dan pengorganisasian arah yang dianggap bermakna. Anda mungkin menikmati membantu kelompok menemukan tujuan bersama dan mengajak setiap orang terlibat.',
                 'Dorongan untuk mendukung pertumbuhan dapat menjadi kontribusi yang berharga. Dukungan tersebut perlu memberi ruang pada pilihan pribadi orang lain, termasuk ketika tujuannya berbeda dari harapan Anda.',
@@ -536,6 +684,13 @@ return [
         ],
         'ENTJ' => [
             'name' => 'Penyusun strategi dan pelaksanaan',
+            'relationship_strengths' => ['Kejelasan arah dan kesediaan mengambil tanggung jawab dapat mendukung komitmen bersama.', 'Dorongan mengatasi hambatan dapat membantu hubungan menghadapi persoalan praktis.'],
+            'relationship_challenges' => ['Kecepatan menetapkan arah dapat melewatkan persetujuan dan kebutuhan emosional pihak lain.', 'Menganggap kedekatan sebagai persoalan efisiensi dapat membatasi percakapan yang dibutuhkan.'],
+            'success' => ['Keberhasilan dapat berarti mewujudkan arah strategis melalui pelaksanaan yang efektif. Masukkan keberlanjutan, pengalaman pelaksana, dan dampak hubungan sebagai ukuran.'],
+            'contributions' => ['Anda dapat memperjelas sasaran, menata sumber daya, dan menggerakkan keputusan. Uji asumsi kapasitas bersama orang yang menjalankan rencana.'],
+            'problem_solving' => ['Jika target memicu tekanan atau penolakan, periksa asumsi, beban, dan ruang menyampaikan keberatan. Sesuaikan langkah berdasarkan bukti sebelum meningkatkan tuntutan.'],
+            'wellbeing' => ['Sediakan kegiatan yang tidak selalu dinilai dari pencapaian. Istirahat dan hubungan yang setara membantu melihat kebutuhan di luar target.'],
+            'principles' => ['Uji asumsi kapasitas.', 'Dengarkan sebelum menetapkan arah.', 'Jelaskan sasaran dan alasannya.', 'Pastikan persetujuan pihak terkait.', 'Delegasikan dengan sumber daya yang cukup.', 'Berikan ruang menyampaikan keberatan.', 'Nilai dampak selain kecepatan.', 'Sesuaikan target ketika bukti berubah.', 'Jaga waktu pemulihan.', 'Akui kontribusi tanpa mengambil alih.'],
             'overview' => [
                 'Preferensi ENTJ menggabungkan keterlibatan aktif, perhatian pada gambaran besar, pertimbangan logis, dan penyusunan arah. Anda mungkin tertarik menetapkan sasaran jangka panjang lalu mengatur sumber daya untuk mencapainya.',
                 'Kejelasan arah dapat mempercepat gerak bersama. Agar rencana dapat dijalankan, kecepatan pengambilan keputusan perlu disertai pemeriksaan kapasitas, masukan pelaksana, dan dampak terhadap orang.',

@@ -60,7 +60,7 @@ class MbtiTest extends TestCase
             ->assertSee('Laporan terperinci '.$type)->assertSee($name)
             ->assertSee('Saran pengembangan')->assertSee('Langkah praktis dan refleksi')
             ->assertDontSee('Cara membaca hasil Anda')->assertSee('Contoh situasi dan respons')
-            ->assertSee('Rencana pengembangan 4 minggu')->assertSee('12 bagian');
+            ->assertSee('Rencana pengembangan 4 minggu')->assertSee('20 bagian');
 
         $document = HTMLDocument::createFromString($response->getContent(), LIBXML_NOERROR);
         $illustration = $document->querySelector('.mbti-character');
@@ -71,9 +71,9 @@ class MbtiTest extends TestCase
         $this->assertSame('image/webp', getimagesize($assetPath)['mime']);
         $report = $document->querySelector('.mbti-report');
         $this->assertTrue($report->hasAttribute('open'));
-        $this->assertCount(12, $report->querySelectorAll('.mbti-report-section'));
+        $this->assertCount(20, $report->querySelectorAll('.mbti-report-section'));
         $links = $report->querySelectorAll('.mbti-report-toc a');
-        $this->assertCount(12, $links);
+        $this->assertCount(20, $links);
         $this->assertNull($report->querySelector('#mbti-attempt-'.$attempt->id.'-scores'));
         foreach ($links as $link) {
             $heading = $report->querySelector($link->getAttribute('href'));
@@ -81,11 +81,27 @@ class MbtiTest extends TestCase
             $this->assertSame(trim($link->textContent), trim($heading->textContent));
             $this->assertGreaterThan(0, $heading->parentNode->querySelectorAll('p, li')->count());
         }
-        foreach (['situations' => 3, 'plan' => 4] as $section => $count) {
+        foreach (['situations' => 3, 'plan' => 4, 'functions' => 5, 'principles' => 10] as $section => $count) {
             $heading = $report->querySelector('#mbti-attempt-'.$attempt->id.'-'.$section);
             $this->assertCount($count, $heading->parentNode->querySelectorAll('li'));
         }
-        $this->assertSame('https://www.mbtionline.com/mbti-types/'.strtolower($type), $report->querySelector('.mbti-report-source a')->getAttribute('href'));
+        $functionOrders = [
+            'ISTJ' => ['Si', 'Te', 'Fi', 'Ne'], 'ISFJ' => ['Si', 'Fe', 'Ti', 'Ne'],
+            'INFJ' => ['Ni', 'Fe', 'Ti', 'Se'], 'INTJ' => ['Ni', 'Te', 'Fi', 'Se'],
+            'ISTP' => ['Ti', 'Se', 'Ni', 'Fe'], 'ISFP' => ['Fi', 'Se', 'Ni', 'Te'],
+            'INFP' => ['Fi', 'Ne', 'Si', 'Te'], 'INTP' => ['Ti', 'Ne', 'Si', 'Fe'],
+            'ESTP' => ['Se', 'Ti', 'Fe', 'Ni'], 'ESFP' => ['Se', 'Fi', 'Te', 'Ni'],
+            'ENFP' => ['Ne', 'Fi', 'Te', 'Si'], 'ENTP' => ['Ne', 'Ti', 'Fe', 'Si'],
+            'ESTJ' => ['Te', 'Si', 'Ne', 'Fi'], 'ESFJ' => ['Fe', 'Si', 'Ne', 'Ti'],
+            'ENFJ' => ['Fe', 'Ni', 'Se', 'Ti'], 'ENTJ' => ['Te', 'Ni', 'Se', 'Fi'],
+        ];
+        $functions = $report->querySelector('#mbti-attempt-'.$attempt->id.'-functions')->parentNode->querySelectorAll('li');
+        foreach ($functionOrders[$type] as $index => $function) {
+            $this->assertStringContainsString('('.$function.')', $functions->item($index + 1)->textContent);
+        }
+        $this->assertStringContainsString('bukan fungsi kognitif yang diukur', $functions->item(0)->textContent);
+        $this->assertNotNull($report->querySelector('a[href="https://r-21-mbti-personality-test-app.netlify.app/"]'));
+        $this->assertSame('https://www.mbtionline.com/mbti-types/'.strtolower($type), $report->querySelector('.mbti-report-source a[href^="https://www.mbtionline.com/"]')->getAttribute('href'));
         $this->assertSame($result, $attempt->fresh()->result);
     }
 
@@ -107,7 +123,7 @@ class MbtiTest extends TestCase
     public function test_balanced_results_show_a_complete_dimension_report_without_forcing_a_type(string $type, string $description): void
     {
         $test = PsychometricTest::factory()->mbti()->published()->create();
-        $answers = [array_replace(array_fill(1, 40, ['A']), $this->answersFor($test->sections, $type)[0] ?? [])];
+        $answers = $this->answersFor($test->sections, $type);
         $result = app(MbtiService::class)->score($test->sections, $answers);
         $attempt = PsychometricAttempt::factory()->create(['psychometric_test_id' => $test->id, 'completed_at' => now(), 'result' => $result]);
         $this->loginFor($attempt);
@@ -115,7 +131,7 @@ class MbtiTest extends TestCase
         $response = $this->get(route('candidate.psychometrics.show', $attempt))
             ->assertSee('Laporan terperinci '.$type)->assertSee('Profil dengan preferensi seimbang')
             ->assertSee($description)->assertSee('Saran pengembangan')
-            ->assertDontSee('Cara membaca hasil Anda')->assertSee('12 bagian')
+            ->assertDontSee('Cara membaca hasil Anda')->assertSee('20 bagian')
             ->assertDontSee('Laporan terperinci belum ditampilkan')
             ->assertDontSee('https://www.mbtionline.com/mbti-types/', false);
 
@@ -127,9 +143,9 @@ class MbtiTest extends TestCase
         $this->assertFileExists(public_path('images/mbti/balanced.webp'));
         $report = $document->querySelector('.mbti-report');
         $this->assertTrue($report->hasAttribute('open'));
-        $this->assertCount(12, $report->querySelectorAll('.mbti-report-section'));
+        $this->assertCount(20, $report->querySelectorAll('.mbti-report-section'));
         $this->assertNull($report->querySelector('#mbti-attempt-'.$attempt->id.'-scores'));
-        foreach (['traits' => 4, 'strengths' => 4, 'challenges' => 4, 'growth' => 4, 'situations' => 3, 'plan' => 4] as $section => $count) {
+        foreach (['traits' => 4, 'strengths' => 4, 'challenges' => 4, 'growth' => 4, 'situations' => 3, 'plan' => 4, 'functions' => 2, 'principles' => 10] as $section => $count) {
             $heading = $report->querySelector('#mbti-attempt-'.$attempt->id.'-'.$section);
             $this->assertCount($count, $heading->parentNode->querySelectorAll('li'));
         }
@@ -157,7 +173,7 @@ class MbtiTest extends TestCase
     {
         $admin = User::factory()->create(['role' => Role::Admin]);
         $test = PsychometricTest::factory()->mbti()->published()->create();
-        $answers = [array_replace(array_fill(1, 40, ['A']), $this->answersFor($test->sections, $type)[0] ?? [])];
+        $answers = $this->answersFor($test->sections, $type);
         $result = app(MbtiService::class)->score($test->sections, $answers);
         $attempts = PsychometricAttempt::factory()->count(2)->create(['psychometric_test_id' => $test->id, 'completed_at' => now(), 'result' => $result]);
         foreach ($attempts as $index => $attempt) {
@@ -165,7 +181,7 @@ class MbtiTest extends TestCase
         }
 
         $page = Livewire::actingAs($admin)->test(Psychometrics::class)
-            ->assertSee('Laporan terperinci '.$type)->assertDontSee('Cara membaca hasil')->assertSee('12 bagian');
+            ->assertSee('Laporan terperinci '.$type)->assertDontSee('Cara membaca hasil')->assertSee('20 bagian');
 
         $document = HTMLDocument::createFromString($page->html(), LIBXML_NOERROR);
         $reports = $document->querySelectorAll('.mbti-report');
@@ -173,14 +189,14 @@ class MbtiTest extends TestCase
         $ids = [];
         foreach ($reports as $report) {
             $this->assertFalse($report->hasAttribute('open'));
-            $this->assertCount(12, $report->querySelectorAll('.mbti-report-section'));
+            $this->assertCount(20, $report->querySelectorAll('.mbti-report-section'));
             foreach ($report->querySelectorAll('.mbti-report-toc a') as $link) {
                 $heading = $report->querySelector($link->getAttribute('href'));
                 $this->assertNotNull($heading);
                 $ids[] = $heading->getAttribute('id');
             }
         }
-        $this->assertCount(24, array_unique($ids));
+        $this->assertCount(40, array_unique($ids));
         foreach ($attempts as $attempt) {
             $target = '#mbti-attempt-'.$attempt->id.'-scores';
             $this->assertNull($document->querySelector($target));
@@ -241,7 +257,7 @@ class MbtiTest extends TestCase
         $iq = PsychometricTest::sole();
         $this->assertSame('iq', $iq->type);
         $page->call('createDraft', 'mbti')->assertHasNoErrors()
-            ->assertSee('Saya mendapat energi')->assertSee('Sangat tidak setuju')->assertDontSee('wire:model="keyText.', false)
+            ->assertSee('Dalam acara bersama')->assertSee('Sangat tidak setuju')->assertDontSee('wire:model="keyText.', false)
             ->call('save', true)->assertHasErrors('reviewed')
             ->set('durations.0', 0)->set('reviewed', true)->call('save', true)->assertHasErrors('duration')
             ->set('durations.0', 900)->call('save', true)->assertHasNoErrors();
@@ -263,19 +279,103 @@ class MbtiTest extends TestCase
         $page->call('createDraft', 'invalid')->assertStatus(422);
     }
 
-    public function test_questionnaire_has_balanced_pairs_and_scores_all_sixteen_types_from_its_snapshot(): void
+    #[TestWith(['A', 6, 0])]
+    #[TestWith(['B', 5, 1])]
+    #[TestWith(['C', 4, 2])]
+    #[TestWith(['D', 3, 3])]
+    #[TestWith(['E', 2, 4])]
+    #[TestWith(['F', 1, 5])]
+    #[TestWith(['G', 0, 6])]
+    public function test_all_seventy_reference_items_map_agreement_to_the_expected_preference(string $choice, int $agree, int $disagree): void
     {
         $service = app(MbtiService::class);
         $sections = $service->sections();
-        $this->assertCount(40, $sections[0]['questions']);
+        $referencePreferences = str_split(str_repeat('ENSFTPJISNTFJP', 5));
+        $pairs = ['E' => 'EI', 'I' => 'EI', 'S' => 'SN', 'N' => 'SN', 'T' => 'TF', 'F' => 'TF', 'J' => 'JP', 'P' => 'JP'];
+        $opposites = ['E' => 'I', 'I' => 'E', 'S' => 'N', 'N' => 'S', 'T' => 'F', 'F' => 'T', 'J' => 'P', 'P' => 'J'];
+
+        foreach ($referencePreferences as $index => $preference) {
+            $result = $service->score($sections, [[$index + 1 => [$choice]]]);
+
+            $dimension = $result['dimensions'][$pairs[$preference]];
+            $this->assertSame($agree, $dimension['scores'][$preference], 'Soal '.($index + 1));
+            $this->assertSame($disagree, $dimension['scores'][$opposites[$preference]], 'Soal '.($index + 1));
+            $this->assertSame(1, $dimension['answered']);
+            $this->assertSame(1, $result['answered']);
+            $this->assertNull($result['type']);
+        }
+    }
+
+    #[TestWith(['A', 'ESTJ'])]
+    #[TestWith(['B', 'INFP'])]
+    public function test_reference_ab_extremes_produce_the_same_type_with_the_agreement_scale(string $sourceChoice, string $type): void
+    {
+        $service = app(MbtiService::class);
+        $sections = $service->sections();
+        $answers = [];
+        foreach ($sections[0]['questions'] as $index => $question) {
+            $answers[$index + 1] = [$question['source_choice'] === $sourceChoice ? 'A' : 'G'];
+        }
+
+        $result = $service->score($sections, [$answers]);
+
+        $this->assertSame($type, $result['type']);
+        $this->assertSame(70, $result['answered']);
+        $this->assertSame('r21-70-id-likert7-v1', $result['questionnaire_version']);
+        foreach (['EI' => 60, 'SN' => 120, 'TF' => 120, 'JP' => 120] as $pair => $points) {
+            $preference = $result['dimensions'][$pair]['preference'];
+            $this->assertSame($points, $result['dimensions'][$pair]['scores'][$preference]);
+            $this->assertSame(100, $result['dimensions'][$pair]['percentages'][$preference]);
+        }
+    }
+
+    public function test_forty_question_agreement_packages_and_saved_results_survive_the_new_reference_package(): void
+    {
+        $sections = PsychometricTest::factory()->legacyMbti()->make()->sections;
+        $sections[0]['questions'] = array_map(fn (array $question): array => [
+            'dimension' => $question['dimension'], 'preference' => $question['preferences']['A'],
+            'statement' => $question['options']['A'], 'options' => config('mbti.scale'),
+        ], $sections[0]['questions']);
+        $sections[0]['options'] = 7;
+        $sections[0]['answer_format'] = 'likert7';
+        $sections[0]['weights'] = ['A' => 6, 'B' => 5, 'C' => 4, 'D' => 3, 'E' => 2, 'F' => 1, 'G' => 0];
+        $test = PsychometricTest::factory()->legacyMbti()->published()->create(['title' => 'TES MBTI (7 pilihan)', 'sections' => $sections]);
+        $answers = [array_fill(1, 40, ['A'])];
+        $result = app(MbtiService::class)->score($sections, $answers);
+        $attempt = PsychometricAttempt::factory()->create(['psychometric_test_id' => $test->id, 'completed_at' => now(), 'answers' => $answers, 'result' => $result]);
+        $pending = PsychometricAttempt::factory()->create(['psychometric_test_id' => $test->id]);
+        $original = $attempt->fresh()->getAttributes();
+
+        $this->seed(PsychometricTestSeeder::class);
+        $this->loginFor($pending);
+        $url = route('candidate.psychometrics.update', $pending);
+        $this->postJson($url, ['action' => 'start', 'section' => 0])->assertOk();
+        $this->postJson($url, ['action' => 'finish', 'section' => 0, 'revision' => 0, 'answers' => $answers[0]])->assertJsonPath('completed', true);
+        $this->assertSame(40, $pending->fresh()->result['total']);
+        $this->assertSame('XXXX', $pending->fresh()->result['type']);
+        $this->loginFor($attempt);
+        $this->get(route('candidate.psychometrics.show', $attempt))->assertSee('40 / 40 dijawab')->assertSee('Laporan terperinci XXXX');
+
+        $this->assertSame($sections, $test->fresh()->sections);
+        $this->assertSame($original, $attempt->fresh()->getAttributes());
+        $this->assertSame($result, app(MbtiService::class)->score($test->fresh()->sections, $answers));
+        $this->assertSame(70, PsychometricTest::where('title', 'TES MBTI (70 soal, 7 pilihan)')->sole()->sections[0]['count']);
+        $this->assertDatabaseCount('psychometric_tests', 3);
+    }
+
+    public function test_questionnaire_matches_reference_pair_totals_and_scores_all_sixteen_types_from_its_snapshot(): void
+    {
+        $service = app(MbtiService::class);
+        $sections = $service->sections();
+        $this->assertCount(70, $sections[0]['questions']);
         config(['mbti.questions' => []]);
         foreach (array_keys(config('mbti.profiles')) as $type) {
             $result = $service->score($sections, $this->answersFor($sections, $type));
             $this->assertSame($type, $result['type']);
-            $this->assertSame(40, $result['answered']);
+            $this->assertSame(70, $result['answered']);
             foreach ($result['dimensions'] as $pair => $dimension) {
-                $this->assertSame(10, $dimension['total']);
-                $this->assertSame(10, $dimension['answered']);
+                $this->assertSame(['EI' => 10, 'SN' => 20, 'TF' => 20, 'JP' => 20][$pair], $dimension['total']);
+                $this->assertSame($dimension['total'], $dimension['answered']);
                 $this->assertContains($dimension['preference'], str_split($pair));
                 $this->assertSame(100, $dimension['percentages'][$dimension['preference']]);
                 $this->assertSame(100, array_sum($dimension['percentages']));
@@ -287,7 +387,7 @@ class MbtiTest extends TestCase
     {
         $service = app(MbtiService::class);
         $sections = $service->sections();
-        $tie = $service->score($sections, [array_fill(1, 40, ['A'])]);
+        $tie = $service->score($sections, [array_fill(1, 70, ['D'])]);
         $this->assertSame('XXXX', $tie['type']);
         foreach ($tie['dimensions'] as $dimension) {
             $this->assertNull($dimension['preference']);
@@ -360,6 +460,7 @@ class MbtiTest extends TestCase
         $this->loginFor($attempt);
         $url = route('candidate.psychometrics.update', $attempt);
         $choice = $legacy ? 'A' : 'D';
+        $lastNumber = $test->sections[0]['count'];
         $this->postJson($url, ['action' => 'start', 'section' => 0])->assertOk();
         $this->postJson($url, ['action' => 'save', 'section' => 0, 'revision' => 0, 'answers' => [1 => [$choice]]])->assertJsonPath('revision', 1);
         $original = $attempt->fresh()->getAttributes();
@@ -368,22 +469,22 @@ class MbtiTest extends TestCase
         if ($incomplete === 'empty') {
             $answers = [];
         } elseif ($incomplete === 'missing') {
-            unset($answers[40]);
+            unset($answers[$lastNumber]);
         } elseif ($incomplete === 'blank') {
-            $answers[40] = [];
+            $answers[$lastNumber] = [];
         } else {
-            unset($answers[40]);
+            unset($answers[$lastNumber]);
             $answers['01'] = [$choice];
         }
 
         $this->postJson($url, ['action' => 'finish', 'section' => 0, 'revision' => 1, 'answers' => $answers])
-            ->assertUnprocessable()->assertJsonValidationErrors($incomplete === 'blank' ? 'answers.40' : 'answers');
+            ->assertUnprocessable()->assertJsonValidationErrors($incomplete === 'blank' ? 'answers.'.$lastNumber : 'answers');
         $this->assertSame($original, $attempt->fresh()->getAttributes());
         $this->assertDatabaseMissing('audit_logs', ['target_id' => $attempt->id, 'action' => 'psychometric.completed']);
 
         $this->postJson($url, ['action' => 'finish', 'section' => 0, 'revision' => 1, 'answers' => $completeAnswers])
             ->assertJsonPath('completed', true);
-        $this->assertSame(40, $attempt->fresh()->result['answered']);
+        $this->assertSame($lastNumber, $attempt->fresh()->result['answered']);
         $this->assertNotNull($attempt->fresh()->result['type']);
         $this->get(route('candidate.psychometrics.show', $attempt))->assertSee('Laporan terperinci');
     }
@@ -401,7 +502,7 @@ class MbtiTest extends TestCase
         $sections = $service->sections();
 
         $forward = $service->score($sections, [[1 => [$choice]]]);
-        $reverse = $service->score($sections, [[5 => [$choice]]]);
+        $reverse = $service->score($sections, [[8 => [$choice]]]);
 
         $this->assertSame(['E' => $agree, 'I' => $opposite], $forward['dimensions']['EI']['scores']);
         $this->assertSame(['E' => $opposite, 'I' => $agree], $reverse['dimensions']['EI']['scores']);
@@ -423,38 +524,38 @@ class MbtiTest extends TestCase
         $this->postJson($url, ['action' => 'start', 'section' => 0])->assertOk();
         $this->postJson($url, ['action' => 'save', 'section' => 0, 'revision' => 0, 'answers' => [1 => ['G'], 2 => ['D']]])->assertJsonPath('revision', 1);
         $this->postJson($url, ['action' => 'save', 'section' => 0, 'revision' => 0, 'answers' => [1 => ['A']]])->assertConflict();
-        foreach ([[1 => ['H']], [1 => [0]], [1 => ['A', 'G']], [41 => ['A']]] as $answers) {
+        foreach ([[1 => ['H']], [1 => [0]], [1 => ['A', 'G']], [71 => ['A']]] as $answers) {
             $this->postJson($url, ['action' => 'save', 'section' => 0, 'revision' => 1, 'answers' => $answers])->assertUnprocessable();
         }
 
         $response = $this->get($url)->assertSee('Pilihan: Sangat tidak setuju')->assertSee('Pilihan: Netral');
         $document = HTMLDocument::createFromString($response->getContent(), LIBXML_NOERROR);
-        $this->assertCount(280, $document->querySelectorAll('input[type="radio"]'));
-        $this->assertCount(280, $document->querySelectorAll('input[type="radio"][required]'));
+        $this->assertCount(490, $document->querySelectorAll('input[type="radio"]'));
+        $this->assertCount(490, $document->querySelectorAll('input[type="radio"][required]'));
         $this->assertTrue($document->querySelector('button[value="save"]')->hasAttribute('formnovalidate'));
-        $this->assertCount(40, $document->querySelectorAll('.mbti-statement'));
+        $this->assertCount(70, $document->querySelectorAll('.mbti-statement'));
         $this->assertTrue($document->querySelector('input[name="answers[1][]"][value="G"]')->hasAttribute('checked'));
         $this->assertSame([[1 => ['G'], 2 => ['D']]], $attempt->fresh()->answers);
-        $payload = ['action' => 'finish', 'section' => 0, 'revision' => 1, 'answers' => array_fill(1, 40, ['D'])];
+        $payload = ['action' => 'finish', 'section' => 0, 'revision' => 1, 'answers' => array_fill(1, 70, ['D'])];
         $this->postJson($url, $payload)->assertJsonPath('completed', true)->assertJsonMissingPath('result');
         $this->postJson($url, $payload)->assertJsonPath('completed', true);
 
         $result = $attempt->fresh()->result;
         $this->assertSame('XXXX', $result['type']);
         $this->assertSame('likert7', $result['answer_format']);
-        $this->assertSame(40, $result['answered']);
-        foreach ($result['dimensions'] as $dimension) {
-            $this->assertSame([30, 30], array_values($dimension['scores']));
+        $this->assertSame(70, $result['answered']);
+        foreach ($result['dimensions'] as $pair => $dimension) {
+            $this->assertSame(['EI' => [30, 30], 'SN' => [60, 60], 'TF' => [60, 60], 'JP' => [60, 60]][$pair], array_values($dimension['scores']));
             $this->assertSame([50, 50], array_values($dimension['percentages']));
-            $this->assertSame(10, $dimension['neutral']);
+            $this->assertSame(['EI' => 10, 'SN' => 20, 'TF' => 20, 'JP' => 20][$pair], $dimension['neutral']);
         }
         $this->assertSame(1, AuditLog::where('action', 'psychometric.completed')->count());
-        $this->get($url)->assertSee('Laporan terperinci XXXX')->assertSee('12 bagian')
+        $this->get($url)->assertSee('Laporan terperinci XXXX')->assertSee('20 bagian')
             ->assertDontSee('Cara membaca hasil Anda')->assertDontSee('30 dari 60 poin')
             ->assertDontSee('Pilihan netral: 10 dari 10 jawaban');
         $admin = User::factory()->create(['role' => Role::Admin]);
         Livewire::actingAs($admin)->test(Psychometrics::class)->assertSee('D. Netral')->assertDontSee('30 dari 60 poin')
-            ->assertDontSee('Pilihan netral: 10 dari 10 jawaban')->assertSee('12 bagian');
+            ->assertDontSee('Pilihan netral: 10 dari 10 jawaban')->assertSee('20 bagian');
     }
 
     #[TestWith(['C', 'EXXX', 31, 29, 'I'])]
@@ -462,7 +563,7 @@ class MbtiTest extends TestCase
     public function test_weighted_close_pair_report_explains_points_and_one_scale_step(string $choice, string $type, int $ePoints, int $iPoints, string $opposite): void
     {
         $test = PsychometricTest::factory()->mbti()->published()->create();
-        $answers = [array_replace(array_fill(1, 40, ['D']), [1 => [$choice]])];
+        $answers = [array_replace(array_fill(1, 70, ['D']), [1 => [$choice]])];
         $result = app(MbtiService::class)->score($test->sections, $answers);
         $attempt = PsychometricAttempt::factory()->create(['psychometric_test_id' => $test->id, 'completed_at' => now(), 'result' => $result]);
         $admin = User::factory()->create(['role' => Role::Admin]);
@@ -543,7 +644,7 @@ class MbtiTest extends TestCase
             $this->assertCount(2, $rows);
             $this->assertContains('Tipe MBTI (X = seimbang)', $rows[0]);
             $this->assertNotContains('IQ (konversi aplikasi)', $rows[0]);
-            $this->assertEquals(['INFP', 40, 40, 0, 100, 0, 100, 0, 100, 0, 100], array_slice($rows[1], 8, 11));
+            $this->assertEquals(['INFP', 70, 70, 0, 100, 0, 100, 0, 100, 0, 100], array_slice($rows[1], 8, 11));
             $this->assertCount(count($rows[0]), $rows[1]);
             $this->assertInstanceOf(\DateTimeInterface::class, $rows[1][19]);
         } finally {
@@ -556,7 +657,7 @@ class MbtiTest extends TestCase
         $legacy = PsychometricTest::factory()->legacyMbti()->published()->create();
         $legacySections = $legacy->sections;
         $this->seed(PsychometricTestSeeder::class);
-        $test = PsychometricTest::where('title', 'TES MBTI (7 pilihan)')->sole();
+        $test = PsychometricTest::where('title', 'TES MBTI (70 soal, 7 pilihan)')->sole();
         $sections = $test->sections;
         $sections[0]['seconds'] = 600;
         $test->update(['sections' => $sections]);
@@ -596,6 +697,9 @@ class MbtiTest extends TestCase
         foreach ($sections as $index => $section) {
             foreach ($section['questions'] as $number => $question) {
                 if (isset($question['statement'])) {
+                    if (str_contains($type, 'X') && ! strpbrk($type, $question['dimension'])) {
+                        $answers[$index][$number + 1] = ['D'];
+                    }
                     foreach (str_split($question['dimension']) as $preference) {
                         if (str_contains($type, $preference)) {
                             $answers[$index][$number + 1] = [$question['preference'] === $preference ? 'A' : 'G'];
