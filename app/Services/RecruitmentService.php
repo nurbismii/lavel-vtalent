@@ -242,6 +242,31 @@ class RecruitmentService
         });
     }
 
+    public function restore(User $actor, RecruitmentApplication $app, string $reason): void
+    {
+        $this->adminReason($actor, $reason);
+
+        DB::transaction(function () use ($actor, $app, $reason): void {
+            $user = User::lockForUpdate()->findOrFail($app->user_id);
+            $app = RecruitmentApplication::lockForUpdate()->findOrFail($app->id);
+            if ($app->purged_at) {
+                throw ValidationException::withMessages(['restore' => 'Data lamaran telah dibersihkan sesuai kebijakan retensi.']);
+            }
+            if (! $app->archived_at) {
+                return;
+            }
+            if (! $user->active || $user->role !== Role::Candidate) {
+                throw ValidationException::withMessages(['restore' => 'Lamaran hanya dapat diaktifkan kembali untuk akun kandidat yang aktif.']);
+            }
+            if (RecruitmentApplication::where('active_user_id', $user->id)->exists()) {
+                throw ValidationException::withMessages(['restore' => 'Kandidat sudah memiliki lamaran aktif. Arsipkan lamaran aktif tersebut terlebih dahulu.']);
+            }
+
+            $app->update(['active_user_id' => $user->id, 'archived_at' => null]);
+            AuditLog::record('application.restored', $app, $actor, $reason);
+        }, 5);
+    }
+
     public function updateCandidate(User $actor, User $user, array $data, string $reason): void
     {
         $this->adminReason($actor, $reason);

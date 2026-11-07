@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Enums\Role;
 use App\Filament\Pages\Recruitment;
 use App\Livewire\Candidate\SubmissionForm;
+use App\Models\AuditLog;
 use App\Models\Position;
+use App\Models\PsychometricAttempt;
 use App\Models\RecruitmentApplication;
 use App\Models\RecruitmentPeriod;
 use App\Models\Submission;
@@ -83,6 +85,29 @@ class AdminWorkflowTest extends TestCase
             ->assertViewHas('applications', fn ($applications): bool => $applications->getCollection()->modelKeys() === [$answered->recruitment_application_id]);
     }
 
+    public function test_psychometric_status_filter_requires_a_closed_attempt_with_a_saved_answer(): void
+    {
+        $this->freezeTime();
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $admin->saveAppAuthenticationSecret('TESTSECRET');
+        $completed = PsychometricAttempt::factory()->create(['completed_at' => now(), 'answers' => [0 => [1 => ['A']]]]);
+        $waiting = PsychometricAttempt::factory()->create(['recruitment_application_id' => $completed->recruitment_application_id]);
+        $unanswered = PsychometricAttempt::factory()->create(['completed_at' => now(), 'deadline' => now()->subMinute(), 'answers' => [0 => [1 => []]]]);
+        $inProgress = PsychometricAttempt::factory()->create(['section_index' => 1, 'answers' => [0 => [1 => ['B']]]]);
+        $unassigned = RecruitmentApplication::factory()->create();
+
+        Livewire::actingAs($admin)->test(Recruitment::class)->call('navigate', 'applications')
+            ->set('psychometricFilter', 'completed_answered')
+            ->assertViewHas('applications', fn ($applications): bool => $applications->getCollection()->modelKeys() === [$completed->recruitment_application_id])
+            ->assertSee($completed->test->title)->assertSeeHtml('<span class="badge">Selesai dengan jawaban</span>')
+            ->assertSee($waiting->test->title)->assertSeeHtml('<span class="badge">Belum mulai</span>')
+            ->set('psychometricFilter', 'incomplete')
+            ->assertViewHas('applications', fn ($applications): bool => $applications->getCollection()->sortBy('id')->modelKeys() === [$unanswered->recruitment_application_id, $inProgress->recruitment_application_id, $unassigned->id])
+            ->assertSeeHtml('<span class="badge">Ditutup tanpa jawaban</span>')->assertSeeHtml('<span class="badge">Sedang mengerjakan</span>')
+            ->call('resetApplicationFilters')->assertSet('psychometricFilter', '')
+            ->assertViewHas('applications', fn ($applications): bool => $applications->total() === 4);
+    }
+
     public function test_position_can_change_without_an_upload_task_but_is_locked_after_online_assignment(): void
     {
         $admin = User::factory()->create(['role' => Role::Admin]);
@@ -90,14 +115,49 @@ class AdminWorkflowTest extends TestCase
         $application = RecruitmentApplication::factory()->create();
         $position = Position::factory()->create();
         $page = Livewire::actingAs($admin)->test(Recruitment::class)->call('openApplication', $application->id)
-            ->set('candidate.position_id', $position->id)->set('reason', 'Perubahan posisi sebelum tes')
+            ->set('assignment.position_id', $position->id)->set('reason', 'Perubahan posisi sebelum tes')
             ->call('updateAssignment')->assertHasNoErrors();
         $this->assertSame($position->id, $application->fresh()->position_id);
         TechnicalAssessmentAttempt::factory()->create(['recruitment_application_id' => $application->id]);
 
-        $page->set('candidate.position_id', Position::factory()->create()->id)->call('updateAssignment')->assertStatus(422);
+        $page->set('assignment.position_id', Position::factory()->create()->id)
+            ->set('assignment.recruitment_period_id', RecruitmentPeriod::factory()->create()->id)
+            ->set('reason', 'Perubahan posisi dan batch')->call('updateAssignment')->assertStatus(422);
 
         $this->assertSame($position->id, $application->fresh()->position_id);
+        $this->assertSame($application->recruitment_period_id, $application->fresh()->recruitment_period_id);
+    }
+
+    public function test_admin_can_move_an_application_with_tests_to_an_active_batch(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $admin->saveAppAuthenticationSecret('TESTSECRET');
+        $batchOne = RecruitmentPeriod::factory()->create(['name' => 'Batch 1']);
+        $batchTwo = RecruitmentPeriod::factory()->create(['name' => 'Batch 2']);
+        $inactiveBatch = RecruitmentPeriod::factory()->create(['name' => 'Batch nonaktif', 'active' => false]);
+        $application = RecruitmentApplication::factory()->for($batchOne, 'period')->create();
+        $technical = TechnicalAssessmentAttempt::factory()->for($application, 'application')->create();
+        $psychometric = PsychometricAttempt::factory()->for($application, 'application')->create();
+        $reason = 'Kandidat dipindahkan ke batch 2';
+
+        Livewire::actingAs($admin)->test(Recruitment::class)->call('openApplication', $application->id)
+            ->assertSee('Batch rekrutmen')->assertSee('Pertahankan Batch 1')->assertDontSee('Batch nonaktif')
+            ->set('reason', $reason)->call('updateAssignment')->assertHasErrors('assignment')
+            ->set('assignment.recruitment_period_id', (string) $inactiveBatch->id)->call('updateAssignment')->assertHasErrors('assignment.recruitment_period_id')
+            ->set('assignment.recruitment_period_id', (string) $batchTwo->id)->call('updateAssignment')->assertHasNoErrors()
+            ->assertSee('Penugasan diperbarui.')->assertSee('Pertahankan Batch 2')
+            ->call('navigate', 'applications')->set('periodFilter', (string) $batchOne->id)
+            ->assertViewHas('applications', fn ($applications): bool => $applications->isEmpty())
+            ->set('periodFilter', (string) $batchTwo->id)
+            ->assertViewHas('applications', fn ($applications): bool => $applications->getCollection()->modelKeys() === [$application->id]);
+
+        $this->assertDatabaseHas('recruitment_applications', ['id' => $application->id, 'position_id' => $application->position_id, 'recruitment_period_id' => $batchTwo->id]);
+        $this->assertDatabaseHas('technical_assessment_attempts', ['id' => $technical->id, 'recruitment_application_id' => $application->id]);
+        $this->assertDatabaseHas('psychometric_attempts', ['id' => $psychometric->id, 'recruitment_application_id' => $application->id]);
+        $audit = AuditLog::where('action', 'application.assignment_changed')->where('target_id', $application->id)->sole();
+        $this->assertSame($reason, $audit->reason);
+        $this->assertSame($batchOne->id, $audit->metadata['period_before']);
+        $this->assertSame($batchTwo->id, $audit->metadata['period_after']);
     }
 
     public function test_pasted_emails_select_candidates_without_duplicates_and_preserve_previous_selection(): void
@@ -163,6 +223,64 @@ class AdminWorkflowTest extends TestCase
         Livewire::actingAs($candidate)->test(SubmissionForm::class, ['submission' => $submission->fresh()])
             ->assertSet('versionId', $revision->id)->assertSee('HR membuka revisi')
             ->set('notes', 'Versi diperbarui')->call('save')->assertHasNoErrors();
+    }
+
+    public function test_admin_can_restore_archived_application_and_keep_its_existing_submission(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $admin->saveAppAuthenticationSecret('TESTSECRET');
+        $submission = Submission::factory()->create(['deadline' => now()->subDay()]);
+        $application = $submission->application;
+        $reason = 'Kandidat melanjutkan seleksi';
+
+        $page = Livewire::actingAs($admin)->test(Recruitment::class)->call('openApplication', $application->id)
+            ->assertDontSee('Aktifkan kembali lamaran')
+            ->call('prepareAction', 'archive')->set('reason', 'Pengarsipan sementara')->call('applyAction')
+            ->assertSee('Aktifkan kembali lamaran')
+            ->call('prepareAction', 'restore')->assertSee('Konfirmasi pengaktifan kembali lamaran')
+            ->call('applyAction')->assertHasErrors('reason')
+            ->set('reason', $reason)->call('applyAction')->assertHasNoErrors()->assertSee('Lamaran aktif kembali.')
+            ->assertDontSee('Aktifkan kembali lamaran');
+
+        $page->call('prepareAction', 'restore')->set('reason', $reason)->call('applyAction')->assertHasNoErrors()
+            ->call('navigate', 'applications')->assertViewHas('applications', fn ($applications): bool => $applications->getCollection()->modelKeys() === [$application->id]);
+        $this->assertDatabaseHas('recruitment_applications', ['id' => $application->id, 'active_user_id' => $application->user_id, 'archived_at' => null]);
+        $this->assertDatabaseHas('submissions', ['id' => $submission->id, 'recruitment_application_id' => $application->id, 'deadline' => $submission->getRawOriginal('deadline')]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'application.restored', 'actor_id' => $admin->id, 'target_id' => $application->id, 'reason' => $reason]);
+        $this->assertSame(1, AuditLog::where('action', 'application.restored')->count());
+    }
+
+    public function test_admin_cannot_restore_an_application_when_the_candidate_already_has_an_active_one(): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $admin->saveAppAuthenticationSecret('TESTSECRET');
+        $archived = RecruitmentApplication::factory()->create(['archived_at' => now(), 'active_user_id' => null]);
+        $active = RecruitmentApplication::factory()->create(['user_id' => $archived->user_id, 'active_user_id' => $archived->user_id]);
+
+        Livewire::actingAs($admin)->test(Recruitment::class)->call('openApplication', $archived->id)
+            ->call('prepareAction', 'restore')->set('reason', 'Kandidat melanjutkan seleksi')->call('applyAction')
+            ->assertHasErrors('restore')->assertSee('Kandidat sudah memiliki lamaran aktif.');
+
+        $this->assertDatabaseHas('recruitment_applications', ['id' => $archived->id, 'active_user_id' => null]);
+        $this->assertDatabaseHas('recruitment_applications', ['id' => $active->id, 'active_user_id' => $archived->user_id, 'archived_at' => null]);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'application.restored']);
+    }
+
+    #[TestWith([true, '2026-01-01 00:00:00', 'Data lamaran telah dibersihkan sesuai kebijakan retensi.'], 'retention cleanup')]
+    #[TestWith([false, null, 'Lamaran hanya dapat diaktifkan kembali untuk akun kandidat yang aktif.'], 'inactive account')]
+    public function test_admin_cannot_restore_an_ineligible_application(bool $active, ?string $purgedAt, string $message): void
+    {
+        $admin = User::factory()->create(['role' => Role::Admin]);
+        $admin->saveAppAuthenticationSecret('TESTSECRET');
+        $archived = RecruitmentApplication::factory()->create(['archived_at' => now(), 'active_user_id' => null, 'purged_at' => $purgedAt]);
+        $archived->user->update(['active' => $active]);
+
+        Livewire::actingAs($admin)->test(Recruitment::class)->call('openApplication', $archived->id)
+            ->call('prepareAction', 'restore')->set('reason', 'Kandidat melanjutkan seleksi')->call('applyAction')
+            ->assertHasErrors('restore')->assertSee($message);
+
+        $this->assertDatabaseHas('recruitment_applications', ['id' => $archived->id, 'active_user_id' => null]);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'application.restored']);
     }
 
     public function test_admin_creates_application_and_changes_deadline(): void

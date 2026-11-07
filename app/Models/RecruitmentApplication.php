@@ -47,4 +47,9 @@ class RecruitmentApplication extends Model
     {
         return $this->hasMany(TechnicalAssessmentAttempt::class);
     }
+
+    public function psychometricAttempts(): HasMany
+    {
+        return $this->hasMany(PsychometricAttempt::class);
+    }
 }

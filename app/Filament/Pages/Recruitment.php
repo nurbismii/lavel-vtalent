@@ -18,6 +18,7 @@ use App\Models\TechnicalAssessmentAttempt;
 use App\Models\UploadedFile;
 use App\Models\User;
 use App\Services\CandidateImportService;
+use App\Services\PsychometricService;
 use App\Services\RecruitmentService;
 use App\Services\RecruitmentToolsService;
 use App\Services\SubmissionService;
@@ -198,6 +199,8 @@ class Recruitment extends Page
 
     public string $testFilter = '';
 
+    public string $psychometricFilter = '';
+
     public bool $overdue = false;
 
     public bool $archived = false;
@@ -210,6 +213,8 @@ class Recruitment extends Page
     public ?int $versionId = null;
 
     public array $candidate = ['name' => '', 'email' => '', 'position_id' => '', 'recruitment_period_id' => '', 'portfolio_deadline' => ''];
+
+    public array $assignment = ['position_id' => '', 'recruitment_period_id' => ''];
 
     public array $edit = ['name' => '', 'email' => '', 'active' => true];
 
@@ -301,7 +306,7 @@ class Recruitment extends Page
     public function resetApplicationFilters(): void
     {
         $this->authorizeAdmin();
-        $this->reset('search', 'positionFilter', 'periodFilter', 'portfolioFilter', 'testFilter', 'overdue', 'archived');
+        $this->reset('search', 'positionFilter', 'periodFilter', 'portfolioFilter', 'testFilter', 'psychometricFilter', 'overdue', 'archived');
         $this->resetPage();
     }
 
@@ -387,7 +392,7 @@ class Recruitment extends Page
     public function openApplication(int $id): void
     {
         $this->authorizeAdmin();
-        $this->reset('candidateDeactivation', 'deactivationEmail');
+        $this->reset('candidateDeactivation', 'deactivationEmail', 'assignment');
         $application = RecruitmentApplication::with('user')->findOrFail($id);
         $this->applicationId = $id;
         $this->section = 'detail';
@@ -426,7 +431,7 @@ class Recruitment extends Page
     {
         $this->authorizeAdmin();
         $this->reset('candidateDeactivation', 'deactivationEmail');
-        abort_unless(in_array($action, ['revision', 'deadline', 'exempt', 'archive', 'reset', 'edit'], true), 422);
+        abort_unless(in_array($action, ['revision', 'deadline', 'exempt', 'archive', 'restore', 'reset', 'edit'], true), 422);
         $this->action = $action;
         $this->reason = '';
         $this->deadline = '';
@@ -436,6 +441,7 @@ class Recruitment extends Page
     public function applyAction(): void
     {
         $actor = $this->authorizeAdmin();
+        $this->resetValidation();
         $service = app(RecruitmentService::class);
         $service->adminReason($actor, $this->reason);
         $app = $this->application();
@@ -451,6 +457,9 @@ class Recruitment extends Page
                 break;
             case 'archive':$service->archive($actor, $app, $this->reason);
                 break;
+            case 'restore':
+                $service->restore($actor, $app, $this->reason);
+                break;
             case 'reset':$password = $service->resetAccess($actor, $app->user, $this->reason);
                 $this->dispatch('access-created', password: $password, email: $app->user->email);
                 break;
@@ -458,9 +467,11 @@ class Recruitment extends Page
                 break;
             default:abort(422);
         }
-        $this->feedback = $this->action === 'revision'
-            ? 'Revisi berhasil dibuka. Kandidat dapat memperbarui dokumen hingga tenggat baru. Versi final sebelumnya tetap tersimpan.'
-            : 'Perubahan berhasil disimpan dan dicatat dalam riwayat.';
+        $this->feedback = match ($this->action) {
+            'revision' => 'Revisi berhasil dibuka. Kandidat dapat memperbarui dokumen hingga tenggat baru. Versi final sebelumnya tetap tersimpan.',
+            'restore' => 'Lamaran aktif kembali.',
+            default => 'Perubahan berhasil disimpan dan dicatat dalam riwayat.',
+        };
         $this->action = '';
         $this->reason = '';
     }
@@ -468,16 +479,37 @@ class Recruitment extends Page
     public function updateAssignment(): void
     {
         $actor = $this->authorizeAdmin();
+        $this->feedback = '';
+        $this->resetValidation();
         app(RecruitmentService::class)->adminReason($actor, $this->reason);
-        $this->validate(['candidate.position_id' => 'required|exists:positions,id']);
-        DB::transaction(function () use ($actor) {
+        $validated = $this->validate([
+            'assignment.position_id' => ['nullable', 'integer', 'exists:positions,id'],
+            'assignment.recruitment_period_id' => ['nullable', 'integer', Rule::exists('recruitment_periods', 'id')->where('active', true)],
+        ], ['assignment.recruitment_period_id.exists' => 'Pilih batch rekrutmen yang aktif.']);
+        $changes = array_map('intval', array_filter($validated['assignment'] ?? [], 'filled'));
+
+        DB::transaction(function () use ($actor, $changes): void {
             $app = RecruitmentApplication::lockForUpdate()->findOrFail($this->applicationId);
-            abort_if($app->archived_at, 422);
-            $before = $app->position_id;
-            $app->update(['position_id' => $this->candidate['position_id']]);
-            abort_if($app->technicalAssessmentAttempts()->exists() || $app->submissions()->where('type', SubmissionType::TechnicalTest)->whereNotNull('current_version_id')->exists(), 422, 'Posisi tidak dapat diubah setelah tes ditugaskan atau hasil lama dikirim final.');
-            AuditLog::record('application.assignment_changed', $app, $actor, $this->reason, ['position_before' => $before, 'position_after' => $app->position_id]);
+            abort_if($app->archived_at || $app->purged_at, 422, 'Penugasan hanya dapat diperbarui pada lamaran aktif.');
+            $before = $app->only('position_id', 'recruitment_period_id');
+            $app->fill($changes);
+            if (! $app->isDirty()) {
+                throw ValidationException::withMessages(['assignment' => 'Pilih posisi atau batch yang berbeda.']);
+            }
+            abort_if($app->isDirty('position_id') && (
+                $app->technicalAssessmentAttempts()->exists()
+                || $app->submissions()->where('type', SubmissionType::TechnicalTest)->whereNotNull('current_version_id')->exists()
+            ), 422, 'Posisi tidak dapat diubah setelah tes ditugaskan atau hasil lama dikirim final.');
+
+            $app->save();
+            AuditLog::record('application.assignment_changed', $app, $actor, $this->reason, [
+                'position_before' => $before['position_id'],
+                'position_after' => $app->position_id,
+                'period_before' => $before['recruitment_period_id'],
+                'period_after' => $app->recruitment_period_id,
+            ]);
         });
+        $this->reset('assignment', 'reason');
         $this->feedback = 'Penugasan diperbarui.';
     }
 
@@ -524,7 +556,7 @@ class Recruitment extends Page
         $this->feedback = 'Pengaturan diperbarui.';
     }
 
-    private function filteredApplications(): Builder
+    private function filteredApplications(bool $psychometricsAvailable): Builder
     {
         $query = RecruitmentApplication::query()->with(['user', 'position', 'period', 'submissions', 'technicalAssessmentAttempts']);
         $query->when(! $this->archived, fn ($q) => $q->whereNull('archived_at'))->when($this->archived, fn ($q) => $q->whereNotNull('archived_at'));
@@ -544,6 +576,15 @@ class Recruitment extends Page
                 default => $attempts->whereNull('completed_at')->whereNull('section_started_at'),
             };
         }));
+        $query->when($psychometricsAvailable && in_array($this->psychometricFilter, ['completed_answered', 'incomplete'], true), fn (Builder $q) => $q->whereHas(
+            'psychometricAttempts',
+            fn (Builder $attempts) => $attempts->whereNotNull('completed_at')->whereRaw(
+                $attempts->getConnection()->getDriverName() === 'sqlite'
+                    ? "exists (select 1 from json_tree(psychometric_attempts.answers) where type = 'text' and value <> '')"
+                    : "json_search(psychometric_attempts.answers, 'one', '_%') is not null",
+            ),
+            $this->psychometricFilter === 'completed_answered' ? '>=' : '<',
+        ));
         $query->when($this->overdue, fn ($q) => $q->whereHas('submissions', fn ($s) => $s->where('type', SubmissionType::Portfolio)->where('deadline', '<', now())->whereIn('status', ['not_started', 'draft', 'revision'])));
 
         return $query;
@@ -561,7 +602,7 @@ class Recruitment extends Page
                     throw ValidationException::withMessages(['portfolioExport' => 'Export sebelumnya masih diproses. Tunggu hingga selesai sebelum membuat export baru.']);
                 }
                 $limit = (int) config('submissions.portfolio_export.max_candidates');
-                $ids = $this->filteredApplications()->reorder('id')->limit($limit + 1)->pluck('id')->all();
+                $ids = $this->filteredApplications(PsychometricService::available())->reorder('id')->limit($limit + 1)->pluck('id')->all();
                 if (! $ids || count($ids) > $limit) {
                     throw ValidationException::withMessages(['portfolioExport' => "Pilih filter dengan 1–$limit kandidat untuk export offline."]);
                 }
@@ -584,7 +625,11 @@ class Recruitment extends Page
     protected function getViewData(): array
     {
         $this->authorizeAdmin();
-        $query = $this->filteredApplications();
+        $psychometricsAvailable = PsychometricService::available();
+        $query = $this->filteredApplications($psychometricsAvailable)->when($psychometricsAvailable, fn (Builder $q) => $q->with([
+            'psychometricAttempts:id,recruitment_application_id,psychometric_test_id,completed_at,deadline,section_index,section_started_at,answers',
+            'psychometricAttempts.test:id,title',
+        ]));
         $application = $this->applicationId ? RecruitmentApplication::with(['user', 'position', 'period', 'submissions'])->findOrFail($this->applicationId) : null;
         $submission = match ($this->tab) {
             'Portofolio' => $application?->submissions->firstWhere('type', SubmissionType::Portfolio),
@@ -607,6 +652,7 @@ class Recruitment extends Page
         }
 
         return [
+            'psychometricsAvailable' => $psychometricsAvailable,
             'portfolioExports' => in_array($this->section, ['dashboard', 'applications'], true) ? PortfolioExport::where('actor_id', auth()->id())->where('expires_at', '>', now())->latest()->limit(5)->get() : collect(),
             'recipients' => $this->section === 'tools' ? $this->eligibleRecipients()->when($this->recipientSearch, fn ($q) => $q->where(fn ($s) => $s->where('name', 'like', '%'.mb_substr($this->recipientSearch, 0, 255).'%')->orWhere('email', 'like', '%'.mb_substr($this->recipientSearch, 0, 255).'%')))->orderBy('name')->orderBy('id')->limit(100)->get() : collect(),
             'accessDeliveries' => $this->section === 'tools' ? AccessDelivery::when($this->accessStatusFilter !== '', fn (Builder $query) => $query->where('status', $this->accessStatusFilter))->latest()->paginate(15, pageName: 'accessPage') : collect(),

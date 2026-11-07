@@ -79,6 +79,13 @@
                         </select></label>
                     @endforeach
                     <label class="field">Status tes teknis online<select wire:model.live="testFilter"><option value="">Semua status</option><option value="waiting">Menunggu mulai / tahap berikutnya</option><option value="in_progress">Berlangsung</option><option value="completed">Tes ditutup (semua)</option><option value="completed_answered">Ditutup dengan jawaban tersimpan</option><option value="completed_unanswered">Ditutup tanpa jawaban tersimpan</option></select></label>
+                    @if($psychometricsAvailable)
+                    <label class="field">Status psikotes<select wire:model.live="psychometricFilter">
+                            <option value="">Semua status</option>
+                            <option value="completed_answered">Selesai dengan jawaban</option>
+                            <option value="incomplete">Belum selesai / tanpa jawaban</option>
+                        </select></label>
+                    @endif
                     <div class="applications-toggles">
                         <label><input type="checkbox" wire:model.live="overdue">Tenggat terlewati</label>
                         <label><input type="checkbox" wire:model.live="archived">Lamaran diarsipkan</label>
@@ -87,7 +94,7 @@
             </div>
             <div class="applications-results">
                 <p><strong>{{ number_format($applications->total(), 0, ',', '.') }}</strong> lamaran {{ $archived ? 'diarsipkan' : 'aktif' }} ditemukan</p>
-                @if($search || $positionFilter || $periodFilter || $portfolioFilter || $testFilter || $overdue || $archived)
+                @if($search || $positionFilter || $periodFilter || $portfolioFilter || $testFilter || $psychometricFilter || $overdue || $archived)
                 <button type="button" class="link-button" wire:click="resetApplicationFilters">Reset filter</button>
                 @endif
                 
@@ -112,6 +119,7 @@
                             <th scope="col">Posisi & periode</th>
                             <th scope="col">Portofolio</th>
                             <th scope="col">Tes teknis</th>
+                            @if($psychometricsAvailable)<th scope="col">Psikotes</th>@endif
                             <th scope="col"><span class="applications-sr-only">Aksi</span></th>
                         </tr>
                     </thead>
@@ -140,11 +148,20 @@
                             </td>
                             @endforeach
                             <td data-label="Tes teknis online">@forelse($app->technicalAssessmentAttempts as $attempt)<div><span class="badge {{ $attempt->completed_at ? ($attempt->hasSavedAnswers() ? 'submitted' : 'not_started') : 'draft' }}">Form {{ $attempt->form }} · {{ $attempt->statusLabel() }}</span><small>{{ $attempt->deadline->timezone(App\Models\AppSetting::valueFor('timezone'))->format('d M Y H:i T') }}</small></div>@empty<small>Belum ada penugasan</small>@endforelse</td>
+                            @if($psychometricsAvailable)
+                            <td data-label="Psikotes">
+                                @forelse($app->psychometricAttempts as $attempt)
+                                <div><small>{{ $attempt->test->title }}</small><span class="badge">{{ $attempt->statusLabel() }}</span></div>
+                                @empty
+                                <small>Belum ada penugasan</small>
+                                @endforelse
+                            </td>
+                            @endif
                             <td class="applications-row-action"><button type="button" class="button small" wire:click="openApplication({{ $app->id }})" aria-label="Lihat detail lamaran {{ $app->user->name }}">Detail <span aria-hidden="true"></span></button></td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="5" class="applications-empty"><x-heroicon-o-users />
+                            <td colspan="{{ $psychometricsAvailable ? 6 : 5 }}" class="applications-empty"><x-heroicon-o-users />
                                 <h3>Belum ada lamaran yang cocok</h3>
                                 <p class="muted">Coba ubah filter atau tambahkan lamaran baru.</p><small>Kandidat hasil import tersedia pada pilihan Kandidat terdaftar saat membuat lamaran.</small>
                             </td>
@@ -261,13 +278,50 @@
                 <h2>Profil kandidat</h2><label class="field">Nama<input wire:model="edit.name"></label><label class="field">Email<input wire:model="edit.email" type="email"></label><label class="field"><input type="checkbox" wire:model="edit.active"> Akun aktif</label>
                 <p><small>Penonaktifan atau perubahan email membatalkan sesi lama.</small></p><button class="button" wire:click="prepareAction('edit')">Simpan perubahan akun</button>
                 <hr>
-                <div class="row"><button class="button" wire:click="prepareAction('reset')">Reset akses</button>@if(!$application->archived_at)<button class="button danger" wire:click="prepareAction('archive')">Arsipkan lamaran</button>@endif</div>
-                <button type="button" class="button danger" wire:click="confirmCandidateDeactivation({{ $application->user_id }})" wire:loading.attr="disabled">Nonaktifkan & hapus file</button>
+                <div class="row">
+                    <button type="button" class="button" wire:click="prepareAction('reset')">Reset akses</button>
+                    @if(!$application->archived_at)
+                    <button type="button" class="button danger" wire:click="prepareAction('archive')">Arsipkan lamaran</button>
+                    @elseif(!$application->purged_at)
+                    <button type="button" class="button" wire:click="prepareAction('restore')" wire:loading.attr="disabled" wire:target="prepareAction">Aktifkan kembali lamaran</button>
+                    @else
+                    <small>Data lamaran telah dibersihkan sesuai kebijakan retensi.</small>
+                    @endif
+                </div>
+                <button type="button" class="button danger" style="margin-top: 2px" wire:click="confirmCandidateDeactivation({{ $application->user_id }})" wire:loading.attr="disabled">Nonaktifkan & hapus file</button>
             </section>
             <section class="panel">
-                <h2>Ubah penugasan</h2><small>Posisi dapat diubah sebelum tes online ditugaskan atau hasil tes lama dikirim final.</small><label class="field">Posisi<select wire:model="candidate.position_id">
-                        <option value="">Pilih posisi baru</option>@foreach($positions as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach
-                    </select></label><label class="field">Alasan perubahan<textarea wire:model="reason" minlength="5" maxlength="2000"></textarea></label><button class="button" wire:click="updateAssignment" wire:loading.attr="disabled">Perbarui penugasan</button>
+                <h2>Ubah penugasan</h2>
+                @if($application->archived_at || $application->purged_at)
+                <small>Penugasan dapat diperbarui pada lamaran aktif.</small>
+                @else
+                <form wire:submit="updateAssignment">
+                    <small>Posisi dapat diubah sebelum tes teknis online ditugaskan atau hasil tes lama dikirim final.</small>
+                    <label class="field">Posisi
+                        <select wire:model="assignment.position_id">
+                            <option value="">Pertahankan {{ $application->position->name }}</option>
+                            @foreach($positions->where('id', '!=', $application->position_id) as $position)
+                            <option value="{{ $position->id }}">{{ $position->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('assignment.position_id')<span class="field-error" role="alert">{{ $message }}</span>@enderror
+                    </label>
+                    <label class="field">Batch rekrutmen
+                        <select wire:model="assignment.recruitment_period_id">
+                            <option value="">Pertahankan {{ $application->period->name }}</option>
+                            @foreach($periods->where('active', true)->where('id', '!=', $application->recruitment_period_id) as $period)
+                            <option value="{{ $period->id }}">{{ $period->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('assignment.recruitment_period_id')<span class="field-error" role="alert">{{ $message }}</span>@enderror
+                    </label>
+                    <label class="field">Alasan perubahan<textarea wire:model="reason" minlength="5" maxlength="2000" required></textarea>
+                        @error('reason')<span class="field-error" role="alert">{{ $message }}</span>@enderror
+                    </label>
+                    @error('assignment')<p class="field-error" role="alert">{{ $message }}</p>@enderror
+                    <button type="submit" class="button" style="margin-top: 2px" wire:loading.attr="disabled" wire:target="updateAssignment">Perbarui penugasan</button>
+                </form>
+                @endif
             </section>
         </div>
         @elseif($tab === 'Tes Teknis')<section class="panel"><h2>Tes teknis online</h2><p>Kelola penugasan, jawaban, hasil, dan riwayat aktivitas kandidat melalui halaman tes online.</p>@if(App\Services\TechnicalAssessmentService::available())<a class="button primary" href="{{ route('filament.admin.pages.technical-assessments', ['candidate' => $application->user->email]) }}">Buka tes teknis kandidat</a>@else<p>Tes teknis online belum tersedia.</p>@endif</section>
@@ -290,7 +344,15 @@
             </aside>
         </div>@endif
         @if($action)<section class="panel" style="margin-top:22px" wire:key="confirmation-{{ $applicationId }}-{{ $action }}" x-data x-init="$nextTick(() => { $el.scrollIntoView({ behavior: 'smooth', block: 'center' }); $el.querySelector('textarea').focus({ preventScroll: true }); })" role="region" aria-label="Konfirmasi tindakan">
-            <h2>Konfirmasi {{ match($action){'revision'=>'pembukaan revisi','deadline'=>'perpanjangan tenggat','reset'=>'reset akses','archive'=>'pengarsipan','exempt'=>'pengecualian portofolio',default=>'perubahan akun'} }}</h2>@if($action==='reset')<p>Sesi lama akan dibatalkan dan kandidat wajib mengganti password sementara.</p>@elseif($action==='archive')<p>Pengarsipan menutup pengeditan lamaran tanpa menghapus dokumen.</p>@endif<label class="field">Alasan · Wajib<textarea wire:model="reason" minlength="5" maxlength="2000"></textarea>@error('reason')<span class="field-error" role="alert">{{ $message }}</span>@enderror</label>@if(in_array($action,['revision','deadline']))<label class="field">Tenggat baru ({{ App\Models\AppSetting::valueFor('timezone') }})<input type="datetime-local" wire:model="deadline">@error('deadline')<span class="field-error" role="alert">{{ $message }}</span>@enderror</label>@endif<div class="row" style="margin-top:18px"><button class="button" wire:click="$set('action','')">Batal</button><button class="button primary" wire:click="applyAction" wire:loading.attr="disabled">Konfirmasi & simpan</button></div>
+            <h2>Konfirmasi {{ match($action){'revision'=>'pembukaan revisi','deadline'=>'perpanjangan tenggat','reset'=>'reset akses','archive'=>'pengarsipan','restore'=>'pengaktifan kembali lamaran','exempt'=>'pengecualian portofolio',default=>'perubahan akun'} }}</h2>
+            @if($action==='reset')<p>Sesi lama akan dibatalkan dan kandidat wajib mengganti password sementara.</p>
+            @elseif($action==='archive')<p>Pengarsipan menutup pengeditan lamaran tanpa menghapus dokumen.</p>
+            @elseif($action==='restore')<p>Lamaran akan kembali ke daftar aktif dengan tenggat yang tersimpan.</p>
+            @error('restore')<p class="field-error" role="alert">{{ $message }}</p>@enderror
+            @endif
+            <label class="field">Alasan · Wajib<textarea wire:model="reason" minlength="5" maxlength="2000"></textarea>@error('reason')<span class="field-error" role="alert">{{ $message }}</span>@enderror</label>
+            @if(in_array($action,['revision','deadline']))<label class="field">Tenggat baru ({{ App\Models\AppSetting::valueFor('timezone') }})<input type="datetime-local" wire:model="deadline">@error('deadline')<span class="field-error" role="alert">{{ $message }}</span>@enderror</label>@endif
+            <div class="row" style="margin-top:18px"><button class="button" wire:click="$set('action','')">Batal</button><button class="button primary" wire:click="applyAction" wire:loading.attr="disabled">Konfirmasi & simpan</button></div>
         </section>@endif
         @elseif(in_array($section,['positions','periods']))<div class="two-col">
             <section class="panel">

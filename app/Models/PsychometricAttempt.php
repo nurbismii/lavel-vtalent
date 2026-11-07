@@ -30,6 +30,21 @@ class PsychometricAttempt extends Model
         return $this->hasMany(AuditLog::class, 'target_id')->where('target_type', $this->getMorphClass())->whereIn('action', ['psychometric.activity.tab_hidden', 'psychometric.activity.window_blur', 'psychometric.activity.fullscreen_exit']);
     }
 
+    public function statusLabel(): string
+    {
+        if ($this->completed_at) {
+            $hasAnswers = collect($this->answers)->flatten()->contains(fn (mixed $answer): bool => is_string($answer) && $answer !== '');
+
+            return $hasAnswers ? 'Selesai dengan jawaban' : 'Ditutup tanpa jawaban';
+        }
+
+        return match (true) {
+            now()->gte($this->deadline) => 'Tenggat berakhir',
+            $this->section_started_at !== null, $this->section_index > 0 => 'Sedang mengerjakan',
+            default => 'Belum mulai',
+        };
+    }
+
     public function iqScore(): ?int
     {
         if (! $this->completed_at || $this->raw_score === null || $this->test?->isMbti()) {

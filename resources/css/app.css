@@ -17,13 +17,13 @@ body{font-family:var(--font-sans);font-size:15px;line-height:1.65;color:var(--in
 .applications-actions svg{width:17px;height:17px;flex-shrink:0}
 .applications-filters{padding:22px 28px;background:#f8fafc;border-block:1px solid var(--line)}
 .applications-filter-main{display:grid;grid-template-columns:minmax(220px,1.6fr) repeat(2,minmax(160px,1fr));gap:18px}
-.applications-filter-secondary{display:grid;grid-template-columns:repeat(2,minmax(160px,1fr)) minmax(260px,1.6fr);gap:18px;align-items:end;margin-top:18px}
+.applications-filter-secondary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:end;margin-top:18px}
 .applications-filters .field{margin:0;font-size:12px;color:#526078}
 .applications-filters .field input,.applications-filters .field select{font-size:14px;min-height:44px}
 .applications-search{display:block;position:relative}
 .applications-search svg{position:absolute;width:18px;height:18px;left:13px;top:13px;color:var(--muted);pointer-events:none}
 .applications-filters .applications-search input{padding-left:40px}
-.applications-toggles{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px 20px;min-height:44px;font-size:12px}
+.applications-toggles{display:flex;grid-column:1/-1;align-items:center;flex-wrap:wrap;gap:12px 20px;min-height:44px;font-size:12px}
 .applications-toggles label{display:inline-flex;align-items:center;gap:8px;cursor:pointer;min-height:32px}
 .applications-toggles input{width:16px;height:16px;accent-color:var(--brand);margin:0}
 .applications-results{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:64px;padding:12px 28px}
